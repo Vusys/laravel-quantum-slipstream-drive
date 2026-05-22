@@ -15,6 +15,7 @@ use Vusys\QueryRicerExtreme\Predicate\AndNode;
 use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
 use Vusys\QueryRicerExtreme\Predicate\InNode;
 use Vusys\QueryRicerExtreme\Predicate\NullNode;
+use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
 use Vusys\QueryRicerExtreme\PredicateEvaluator;
 
 final class PredicateEvaluatorTest extends TestCase
@@ -293,5 +294,16 @@ final class PredicateEvaluatorTest extends TestCase
         ]);
 
         $this->assertSame(EvaluationResult::Match, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    // --- Unknown node type ---
+
+    #[Test]
+    public function unknown_node_type_returns_unknown(): void
+    {
+        $attrs = $this->attributes(['status' => 'active']);
+        $node = new class implements PredicateNode {};
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
     }
 }
