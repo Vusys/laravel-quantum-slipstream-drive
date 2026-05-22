@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Performance;
 
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 
-/**
- * @group performance
- */
+#[Group('performance')]
 final class IdentityMapBenchmarkTest extends PerformanceTestCase
 {
     private int $userId;
@@ -21,7 +21,8 @@ final class IdentityMapBenchmarkTest extends PerformanceTestCase
         $this->userId = $user->id;
     }
 
-    public function test_repeated_find_with_identity_map(): void
+    #[Test]
+    public function repeated_find_with_identity_map(): void
     {
         $id = $this->userId;
 
@@ -32,7 +33,8 @@ final class IdentityMapBenchmarkTest extends PerformanceTestCase
         });
     }
 
-    public function test_absent_key_tracking(): void
+    #[Test]
+    public function absent_key_tracking(): void
     {
         $this->bench('absent-key-tracking', function (): void {
             for ($i = 0; $i < 100; $i++) {
@@ -41,13 +43,14 @@ final class IdentityMapBenchmarkTest extends PerformanceTestCase
         });
     }
 
-    public function test_repeated_find_without_identity_map(): void
+    #[Test]
+    public function repeated_find_without_identity_map(): void
     {
         $id = $this->userId;
 
         $this->bench('no-identity-map', function () use ($id): void {
             for ($i = 0; $i < 100; $i++) {
-                User::withoutIdentityMap()->find($id);
+                User::query()->withoutIdentityMap()->find($id);
             }
         });
     }

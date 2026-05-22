@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Unit;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Vusys\QueryRicerExtreme\AttributeFact;
 use Vusys\QueryRicerExtreme\AttributeKnowledge;
@@ -12,7 +13,8 @@ use Vusys\QueryRicerExtreme\Enums\FactSource;
 
 final class AttributeKnowledgeTest extends TestCase
 {
-    public function test_satisfies_wildcard_requires_all_columns_known(): void
+    #[Test]
+    public function satisfies_wildcard_requires_all_columns_known(): void
     {
         $knowledge = new AttributeKnowledge;
         $knowledge->allColumnsKnown = false;
@@ -24,7 +26,8 @@ final class AttributeKnowledgeTest extends TestCase
         $this->assertTrue($knowledge->satisfies(['*']));
     }
 
-    public function test_satisfies_specific_columns_checks_facts(): void
+    #[Test]
+    public function satisfies_specific_columns_checks_facts(): void
     {
         $knowledge = new AttributeKnowledge;
         $knowledge->set('id', $this->makeFact('id', 1));
@@ -34,7 +37,19 @@ final class AttributeKnowledgeTest extends TestCase
         $this->assertFalse($knowledge->satisfies(['id', 'name', 'email']));
     }
 
-    public function test_knows_column_returns_correctly(): void
+    #[Test]
+    public function satisfies_returns_false_when_any_column_missing(): void
+    {
+        $knowledge = new AttributeKnowledge;
+        $knowledge->set('id', $this->makeFact('id', 1));
+
+        $this->assertFalse($knowledge->satisfies(['id', 'email']));
+        $this->assertFalse($knowledge->satisfies(['email']));
+        $this->assertTrue($knowledge->satisfies(['id']));
+    }
+
+    #[Test]
+    public function knows_column_returns_correctly(): void
     {
         $knowledge = new AttributeKnowledge;
 
@@ -45,7 +60,8 @@ final class AttributeKnowledgeTest extends TestCase
         $this->assertTrue($knowledge->knows('id'));
     }
 
-    public function test_get_returns_fact_or_null(): void
+    #[Test]
+    public function get_returns_fact_or_null(): void
     {
         $knowledge = new AttributeKnowledge;
         $fact = $this->makeFact('id', 1);
@@ -55,7 +71,8 @@ final class AttributeKnowledgeTest extends TestCase
         $this->assertNull($knowledge->get('missing'));
     }
 
-    public function test_satisfies_empty_columns_returns_true(): void
+    #[Test]
+    public function satisfies_empty_columns_returns_true(): void
     {
         $knowledge = new AttributeKnowledge;
 
