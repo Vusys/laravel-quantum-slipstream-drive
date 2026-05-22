@@ -139,8 +139,8 @@ final class IdentityMapTest extends TestCase
     #[Test]
     public function flush_clears_all_entries(): void
     {
-        User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $user = User::find(1);
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $user = User::find($alice->id);
         $this->assertInstanceOf(User::class, $user);
 
         $this->store->flush();
