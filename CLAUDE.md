@@ -46,7 +46,21 @@ PHPUnit 12 with Orchestra Testbench.
 - `tests/Feature/` — DB-backed integration tests. Extend `Vusys\QueryRicerExtreme\Tests\TestCase`.
 - `tests/Performance/` — separate suite (`vendor/bin/phpunit --testsuite Performance`). Not run on PR CI.
 
+## Before every push
+
+Run all four checks locally and fix any failures before pushing. This keeps CI green and avoids noisy fix commits.
+
+```bash
+composer test          # must pass
+composer analyse       # must pass (PHPStan level 9, no errors)
+composer pint:check    # must pass — run `composer pint` to auto-fix, then re-check
+composer rector:check  # must pass — apply suggested changes, then re-check
+```
+
+If any check fails, fix it and re-run that check before pushing. Never push a commit that you know will fail CI.
+
 ## Things to avoid
 
 - Adding `@phpstan-ignore` comments or PHPStan baseline entries — explicitly disallowed.
 - Adding code comments explaining WHAT — only add when WHY is non-obvious.
+- Pushing without running the four pre-push checks above.
