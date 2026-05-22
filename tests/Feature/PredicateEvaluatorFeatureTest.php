@@ -219,7 +219,7 @@ final class PredicateEvaluatorFeatureTest extends TestCase
         User::find($bob->id);
 
         $aliceEntry = $this->store->find(
-            connection: 'testing',
+            connection: $alice->getConnectionName() ?? 'default',
             modelClass: User::class,
             table: 'users',
             primaryKeyName: 'id',
@@ -237,7 +237,7 @@ final class PredicateEvaluatorFeatureTest extends TestCase
         );
 
         $bobEntry = $this->store->find(
-            connection: 'testing',
+            connection: $bob->getConnectionName() ?? 'default',
             modelClass: User::class,
             table: 'users',
             primaryKeyName: 'id',
@@ -260,6 +260,37 @@ final class PredicateEvaluatorFeatureTest extends TestCase
         });
 
         $result = User::whereKey([$alice->id, $bob->id])->whereNull('manager_id')->get();
+
+        $this->assertSame(0, $queryCount);
+        $this->assertCount(1, $result);
+
+        $first = $result->first();
+        $this->assertNotNull($first);
+        $this->assertSame($alice->id, $first->id);
+    }
+
+    #[Test]
+    public function predicates_after_safe_scope_where_are_still_evaluated(): void
+    {
+        $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
+        $bob = $this->createFresh('Bob', 'bob@example.com', active: false);
+
+        User::find($alice->id);
+        User::find($bob->id);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        // whereNull('deleted_at') is placed before where('active') so that a
+        // safe-scope where appears between the key-set IN clause and the
+        // predicate in the wheres array. The loop must continue (not break) on
+        // seeing the safe scope so the subsequent predicate is still extracted.
+        $result = User::whereKey([$alice->id, $bob->id])
+            ->whereNull('deleted_at')
+            ->where('active', true)
+            ->get();
 
         $this->assertSame(0, $queryCount);
         $this->assertCount(1, $result);
