@@ -538,7 +538,8 @@ final class IdentityMapTest extends TestCase
             $this->store->disabled(function (): never {
                 throw new \RuntimeException('intentional');
             });
-        } catch (\RuntimeException) {}
+        } catch (\RuntimeException) {
+        }
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -557,7 +558,8 @@ final class IdentityMapTest extends TestCase
             $this->store->explain(function (): never {
                 throw new \RuntimeException('intentional');
             });
-        } catch (\RuntimeException) {}
+        } catch (\RuntimeException) {
+        }
 
         $this->assertFalse($this->store->isCapturing(), 'explain() must restore capturing state even when the callback throws');
     }
