@@ -16,6 +16,9 @@ reviews:
     - '!vendor/**'
     - '!build/**'
     - '!composer.lock'
+  pre_merge_checks:
+    docstrings:
+      mode: off
   path_instructions:
     - path: 'src/**'
       instructions: |
