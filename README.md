@@ -22,7 +22,7 @@ It can also answer `whereKey` queries from memory:
 ```php
 User::find(1);
 
-User::whereKey(1)->first(); // memory — no SQL
+User::query()->whereKey(1)->first(); // memory — no SQL
 ```
 
 This is not a cache. It is an **identity map plus query-elision planner**. Within a configured scope, hydrated model instances are the source of truth for their own known attributes and loaded relations.
@@ -49,7 +49,7 @@ final class User extends Model
 ### Per-query opt-out
 
 ```php
-User::withoutIdentityMap()->find(1);
+User::query()->withoutIdentityMap()->find(1);
 ```
 
 ### Manual flush
