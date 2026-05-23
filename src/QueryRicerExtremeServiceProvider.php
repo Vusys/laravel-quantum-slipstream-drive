@@ -10,6 +10,7 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 
 class QueryRicerExtremeServiceProvider extends ServiceProvider
 {

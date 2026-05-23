@@ -22,10 +22,20 @@ abstract class TestCase extends OrchestraTestCase
     protected function defineDatabaseMigrations(): void
     {
         Schema::dropIfExists('posts');
+        Schema::dropIfExists('uuid_users');
         Schema::dropIfExists('users');
 
         Schema::create('users', function (Blueprint $table): void {
             $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->boolean('active')->default(true);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('uuid_users', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->string('email')->unique();
             $table->boolean('active')->default(true);
@@ -46,6 +56,7 @@ abstract class TestCase extends OrchestraTestCase
     protected function tearDown(): void
     {
         Schema::dropIfExists('posts');
+        Schema::dropIfExists('uuid_users');
         Schema::dropIfExists('users');
         DB::disconnect();
         parent::tearDown();

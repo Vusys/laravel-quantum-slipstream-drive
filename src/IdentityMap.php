@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Facade;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 
 /**
  * @method static void flush(?string $modelClass = null)

@@ -6,11 +6,11 @@ namespace Vusys\QueryRicerExtreme\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\AttributeFact;
-use Vusys\QueryRicerExtreme\AttributeKnowledge;
 use Vusys\QueryRicerExtreme\Enums\FactConfidence;
 use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\IdentityMapStore;
+use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
+use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 
@@ -437,6 +437,39 @@ final class IdentityMapTest extends TestCase
         User::query()->where('id', '=', $user->id)->first();
 
         $this->assertSame(0, $queryCount, 'Explicit unqualified id= where should use the map');
+    }
+
+    #[Test]
+    public function or_where_null_on_deleted_at_falls_through_to_sql(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        User::find($user->id);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        User::query()->where('id', $user->id)->orWhereNull('deleted_at')->first();
+
+        $this->assertSame(1, $queryCount, 'orWhereNull(deleted_at) changes query semantics — boolean=or must not be treated as a safe soft-delete scope');
+    }
+
+    #[Test]
+    public function unqualified_deleted_at_where_null_is_recognised_as_safe_scope(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        User::find($user->id);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = User::query()->where('id', $user->id)->whereNull('deleted_at')->first();
+
+        $this->assertInstanceOf(User::class, $result);
+        $this->assertSame(0, $queryCount, 'Unqualified whereNull(deleted_at) must be recognised as a safe scope so the map shortcut fires');
     }
 
     #[Test]

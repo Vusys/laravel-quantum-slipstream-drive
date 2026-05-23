@@ -6,17 +6,17 @@ namespace Vusys\QueryRicerExtreme\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\AttributeFact;
-use Vusys\QueryRicerExtreme\AttributeKnowledge;
 use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
 use Vusys\QueryRicerExtreme\Enums\FactConfidence;
 use Vusys\QueryRicerExtreme\Enums\FactSource;
+use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
+use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
 use Vusys\QueryRicerExtreme\Predicate\AndNode;
 use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
 use Vusys\QueryRicerExtreme\Predicate\InNode;
 use Vusys\QueryRicerExtreme\Predicate\NullNode;
+use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
 use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
-use Vusys\QueryRicerExtreme\PredicateEvaluator;
 
 final class PredicateEvaluatorTest extends TestCase
 {

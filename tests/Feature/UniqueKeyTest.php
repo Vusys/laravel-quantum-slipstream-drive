@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Enums\PlanType;
 use Vusys\QueryRicerExtreme\IdentityMap;
-use Vusys\QueryRicerExtreme\IdentityMapStore;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 

@@ -28,6 +28,20 @@
         "Break_": {
             "ignoreSourceCodeByRegex": ["break;"]
         },
+        // HasIdentityMap: restored() listener is redundant — restore() calls save() internally which fires saved,
+        // so afterSaved() already runs via the saved listener regardless. Removing restored() is a no-op.
+        "MethodCallRemoval": {
+            "ignoreSourceCodeByRegex": [
+                "static::restored",
+                "static::forceDeleted",
+                "->afterForceDeleted\\(\\$model\\)"
+            ]
+        },
+        // HasIdentityMap: registering forceDeleted only for SoftDeletes models — negating the guard registers
+        // the listener on all models, but forceDeleted event never fires for non-SoftDeletes models so it is harmless.
+        "IfNegation": {
+            "ignoreSourceCodeByRegex": ["class_uses_recursive\\(static::class\\)"]
+        },
     },
     minMsi: 0,
     minCoveredMsi: 0,
