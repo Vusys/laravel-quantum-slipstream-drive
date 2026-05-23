@@ -21,7 +21,9 @@ abstract class TestCase extends OrchestraTestCase
     #[\Override]
     protected function defineDatabaseMigrations(): void
     {
+        Schema::dropIfExists('comments');
         Schema::dropIfExists('posts');
+        Schema::dropIfExists('tags');
         Schema::dropIfExists('uuid_users');
         Schema::dropIfExists('users');
 
@@ -43,11 +45,25 @@ abstract class TestCase extends OrchestraTestCase
             $table->softDeletes();
         });
 
+        Schema::create('tags', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
         Schema::create('posts', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('user_id')->constrained();
+            $table->foreignId('tag_id')->nullable()->constrained();
             $table->string('title');
             $table->boolean('published')->default(false);
+            $table->timestamps();
+        });
+
+        Schema::create('comments', function (Blueprint $table): void {
+            $table->id();
+            $table->morphs('commentable');
+            $table->string('body');
             $table->timestamps();
         });
     }
@@ -55,7 +71,9 @@ abstract class TestCase extends OrchestraTestCase
     #[\Override]
     protected function tearDown(): void
     {
+        Schema::dropIfExists('comments');
         Schema::dropIfExists('posts');
+        Schema::dropIfExists('tags');
         Schema::dropIfExists('uuid_users');
         Schema::dropIfExists('users');
         DB::disconnect();
