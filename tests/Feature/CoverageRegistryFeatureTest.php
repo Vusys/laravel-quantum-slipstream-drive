@@ -537,4 +537,207 @@ final class CoverageRegistryFeatureTest extends TestCase
         $this->assertNotEmpty($hit);
         $this->assertFalse($hit[0]->sqlExecuted);
     }
+
+    // -------------------------------------------------------------------------
+    // count() fallthrough paths
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function count_with_identity_map_disabled_falls_through_to_sql(): void
+    {
+        $this->seedUsers();
+
+        $sql = $this->countSql(function (): void {
+            User::query()->withoutIdentityMap()->count();
+        });
+
+        $this->assertGreaterThan(0, $sql, 'count() with withoutIdentityMap() must always hit SQL');
+    }
+
+    #[Test]
+    public function count_with_store_disabled_falls_through_to_sql(): void
+    {
+        $this->seedUsers();
+
+        $sql = $this->countSql(function (): void {
+            $this->store->disabled(function (): void {
+                User::where('active', true)->count();
+            });
+        });
+
+        $this->assertGreaterThan(0, $sql, 'count() when store is disabled must hit SQL');
+    }
+
+    #[Test]
+    public function count_with_column_arg_falls_through_to_sql(): void
+    {
+        $this->seedUsers();
+
+        $sql = $this->countSql(function (): void {
+            User::where('active', true)->count('id');
+        });
+
+        $this->assertSame(1, $sql, 'count() with a column argument must fall through to SQL');
+    }
+
+    #[Test]
+    public function count_falls_through_when_no_coverage(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+
+        $sql = $this->countSql(function (): void {
+            User::where('active', true)->count();
+        });
+
+        $this->assertSame(1, $sql, 'count() before any coverage is seeded must hit SQL');
+    }
+
+    // -------------------------------------------------------------------------
+    // pluck() fallthrough paths
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function pluck_with_identity_map_disabled_falls_through_to_sql(): void
+    {
+        $this->seedUsers();
+
+        $sql = $this->countSql(function (): void {
+            User::query()->withoutIdentityMap()->pluck('name');
+        });
+
+        $this->assertGreaterThan(0, $sql, 'pluck() with withoutIdentityMap() must always hit SQL');
+    }
+
+    #[Test]
+    public function pluck_with_store_disabled_falls_through_to_sql(): void
+    {
+        $this->seedUsers();
+
+        $sql = $this->countSql(function (): void {
+            $this->store->disabled(function (): void {
+                User::where('active', true)->pluck('name');
+            });
+        });
+
+        $this->assertGreaterThan(0, $sql, 'pluck() when store is disabled must hit SQL');
+    }
+
+    #[Test]
+    public function pluck_falls_through_when_no_coverage(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+
+        $sql = $this->countSql(function (): void {
+            User::where('active', true)->pluck('name');
+        });
+
+        $this->assertSame(1, $sql, 'pluck() before any coverage is seeded must hit SQL');
+    }
+
+    #[Test]
+    public function pluck_with_expression_column_falls_through_to_sql(): void
+    {
+        $this->seedUsers();
+
+        $sql = $this->countSql(function (): void {
+            User::where('active', true)->pluck(DB::raw('name'));
+        });
+
+        $this->assertSame(1, $sql, 'pluck() with a non-string expression column must fall through to SQL');
+    }
+
+    // -------------------------------------------------------------------------
+    // Partial column coverage
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function partial_column_coverage_falls_through_for_uncovered_column(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+        User::get(['id', 'name']);
+
+        $sql = $this->countSql(function (): void {
+            User::get(['id', 'email']);
+        });
+
+        $this->assertSame(1, $sql, 'get() requesting a column absent from the coverage ColumnSet must fall through to SQL');
+    }
+
+    #[Test]
+    public function partial_column_coverage_served_when_columns_match(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+        User::get(['id', 'name']);
+
+        $sql = $this->countSql(function (): void {
+            $users = User::get(['id', 'name']);
+            $this->assertCount(1, $users);
+        });
+
+        $this->assertSame(0, $sql, 'get() requesting covered columns should be served without SQL');
+    }
+
+    #[Test]
+    public function full_select_falls_through_when_coverage_recorded_with_partial_columns(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+        User::get(['id', 'name']);
+
+        // A wildcard request cannot be served by a partial-column ColumnSet.
+        $sql = $this->countSql(function (): void {
+            User::all();
+        });
+
+        $this->assertSame(1, $sql, 'Full select must fall through when coverage only has partial columns');
+    }
+
+    // -------------------------------------------------------------------------
+    // Identity map miss during coverage serve
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function get_falls_through_when_identity_map_flushed_after_coverage(): void
+    {
+        $this->seedUsers();
+        $this->store->flush();
+
+        // Coverage registry still has the AndNode([]) entry but the identity map is empty.
+        $sql = $this->countSql(function (): void {
+            User::where('active', true)->get();
+        });
+
+        $this->assertGreaterThan(0, $sql, 'get() must fall through to SQL when identity entries are absent');
+    }
+
+    // -------------------------------------------------------------------------
+    // sortForFirst edge cases
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function first_with_raw_order_by_falls_through_to_sql(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+        User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
+        User::all();
+
+        $sql = $this->countSql(function (): void {
+            User::where('active', true)->orderByRaw('id ASC')->first();
+        });
+
+        $this->assertSame(1, $sql, 'first() with a raw ORDER BY must fall through to SQL');
+    }
+
+    #[Test]
+    public function first_with_string_sort_column_falls_through_to_sql(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+        User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
+        User::all();
+
+        $sql = $this->countSql(function (): void {
+            User::where('active', true)->orderBy('name')->first();
+        });
+
+        $this->assertSame(1, $sql, 'first() ordered by a non-numeric column must fall through to SQL');
+    }
 }

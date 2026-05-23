@@ -51,7 +51,7 @@
         // The identity map entry always shadows the absent record for a model found by SQL;
         // killing this would require asserting the raw SQL result count before coverage is recorded.
         "ArrayOneItem": {
-            "ignoreSourceCodeByRegex": [".*return \\$models.*"]
+            "ignoreSourceCodeByRegex": ["return \\$models;"]
         },
         // pluck/first neededColumns/resolvedColumns — removing a column from the satisfies-check array
         // is only observable when the identity map entry has partial column knowledge, which no test exercises.
