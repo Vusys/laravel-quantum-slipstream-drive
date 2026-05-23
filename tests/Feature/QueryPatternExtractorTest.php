@@ -90,6 +90,42 @@ final class QueryPatternExtractorTest extends TestCase
         $this->assertNull($extractor->extractSinglePrimaryKeyLookup());
     }
 
+    #[Test]
+    public function extract_single_pk_returns_null_when_join_present(): void
+    {
+        $extractor = new QueryPatternExtractor(
+            User::query()->join('posts', 'posts.user_id', '=', 'users.id')->where('users.id', 1)
+        );
+
+        $this->assertNull($extractor->extractSinglePrimaryKeyLookup());
+    }
+
+    #[Test]
+    public function extract_single_pk_returns_null_when_lock_present(): void
+    {
+        $extractor = new QueryPatternExtractor(User::query()->where('id', 1)->lockForUpdate());
+
+        $this->assertNull($extractor->extractSinglePrimaryKeyLookup());
+    }
+
+    #[Test]
+    public function extract_single_pk_returns_null_when_union_present(): void
+    {
+        $extractor = new QueryPatternExtractor(
+            User::query()->where('id', 1)->union(User::query()->where('id', 2))
+        );
+
+        $this->assertNull($extractor->extractSinglePrimaryKeyLookup());
+    }
+
+    #[Test]
+    public function extract_single_pk_returns_null_when_group_by_present(): void
+    {
+        $extractor = new QueryPatternExtractor(User::query()->where('id', 1)->groupBy('id'));
+
+        $this->assertNull($extractor->extractSinglePrimaryKeyLookup());
+    }
+
     // -------------------------------------------------------------------------
     // extractBoundedKeySet
     // -------------------------------------------------------------------------
@@ -133,6 +169,58 @@ final class QueryPatternExtractorTest extends TestCase
         $extractor = new QueryPatternExtractor(Post::query()->where('id', 1));
 
         $this->assertNull($extractor->extractBoundedKeySet());
+    }
+
+    #[Test]
+    public function extract_bounded_key_set_returns_null_when_join_present(): void
+    {
+        $extractor = new QueryPatternExtractor(
+            User::query()->join('posts', 'posts.user_id', '=', 'users.id')->whereKey([1, 2, 3])
+        );
+
+        $this->assertNull($extractor->extractBoundedKeySet());
+    }
+
+    #[Test]
+    public function extract_bounded_key_set_returns_null_when_lock_present(): void
+    {
+        $extractor = new QueryPatternExtractor(User::query()->whereKey([1, 2, 3])->lockForUpdate());
+
+        $this->assertNull($extractor->extractBoundedKeySet());
+    }
+
+    #[Test]
+    public function extract_bounded_key_set_returns_null_when_union_present(): void
+    {
+        $extractor = new QueryPatternExtractor(
+            User::query()->whereKey([1, 2, 3])->union(User::query()->whereKey([4]))
+        );
+
+        $this->assertNull($extractor->extractBoundedKeySet());
+    }
+
+    #[Test]
+    public function extract_bounded_key_set_returns_null_when_limit_set(): void
+    {
+        $extractor = new QueryPatternExtractor(User::query()->whereKey([1, 2, 3])->limit(2));
+
+        $this->assertNull($extractor->extractBoundedKeySet());
+    }
+
+    #[Test]
+    public function extract_bounded_key_set_returns_null_when_positive_offset_set(): void
+    {
+        $extractor = new QueryPatternExtractor(User::query()->whereKey([1, 2, 3])->offset(1));
+
+        $this->assertNull($extractor->extractBoundedKeySet());
+    }
+
+    #[Test]
+    public function extract_bounded_key_set_is_not_blocked_by_zero_offset(): void
+    {
+        $extractor = new QueryPatternExtractor(User::query()->whereKey([1, 2, 3])->offset(0));
+
+        $this->assertNotNull($extractor->extractBoundedKeySet());
     }
 
     #[Test]
