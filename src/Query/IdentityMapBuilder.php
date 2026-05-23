@@ -236,9 +236,14 @@ class IdentityMapBuilder extends Builder
             if ($extraPredicateNodes !== []) {
                 $evaluator = new PredicateEvaluator;
                 $predicate = new AndNode($extraPredicateNodes);
+                $processTruth = $this->isProcessTruth();
 
                 foreach ($hits as $hitKey => $hitEntry) {
-                    $result = $evaluator->evaluate($hitEntry->attributes, $predicate);
+                    if ($processTruth) {
+                        $hitEntry->attributes->syncFromModel($hitEntry->model);
+                    }
+
+                    $result = $evaluator->evaluate($hitEntry->attributes, $predicate, $processTruth);
 
                     if ($result === EvaluationResult::Match) {
                         /** @var TModel $hitModel */
@@ -350,10 +355,13 @@ class IdentityMapBuilder extends Builder
                 equalityValues: $uniqueKeyValues,
             );
 
-            if ($uniqueEntry !== null && $uniqueEntry->state === LifecycleState::Exists && $uniqueEntry->attributes->satisfies($columns)) {
+            $processTruth = $this->isProcessTruth();
+            $uniqueEntry = $this->revalidateUniqueEntry($uniqueEntry, $processTruth);
+
+            if ($uniqueEntry instanceof IdentityEntry && $uniqueEntry->state === LifecycleState::Exists && $uniqueEntry->attributes->satisfies($columns)) {
                 if ($extraNodes !== []) {
                     $evaluator = new PredicateEvaluator;
-                    $evalResult = $evaluator->evaluate($uniqueEntry->attributes, new AndNode($extraNodes));
+                    $evalResult = $evaluator->evaluate($uniqueEntry->attributes, new AndNode($extraNodes), $processTruth);
 
                     if ($evalResult === EvaluationResult::Reject) {
                         $store->capture(new Explanation(
@@ -397,7 +405,7 @@ class IdentityMapBuilder extends Builder
                 }
             }
 
-            if ($extraNodes === [] && $store->isAbsentByUniqueKey(
+            if ($extraNodes === [] && ! $processTruth && $store->isAbsentByUniqueKey(
                 connection: $connection,
                 modelClass: $model::class,
                 table: $model->getTable(),
@@ -515,10 +523,13 @@ class IdentityMapBuilder extends Builder
             equalityValues: $uniqueKeyValues,
         );
 
-        if ($entry !== null && $entry->state === LifecycleState::Exists) {
+        $processTruth = $this->isProcessTruth();
+        $entry = $this->revalidateUniqueEntry($entry, $processTruth);
+
+        if ($entry instanceof IdentityEntry && $entry->state === LifecycleState::Exists) {
             if ($extraNodes !== []) {
                 $evaluator = new PredicateEvaluator;
-                $evalResult = $evaluator->evaluate($entry->attributes, new AndNode($extraNodes));
+                $evalResult = $evaluator->evaluate($entry->attributes, new AndNode($extraNodes), $processTruth);
 
                 if ($evalResult === EvaluationResult::Reject) {
                     $store->capture(new Explanation(
@@ -555,7 +566,7 @@ class IdentityMapBuilder extends Builder
             return true;
         }
 
-        if ($extraNodes === [] && $store->isAbsentByUniqueKey(
+        if ($extraNodes === [] && ! $processTruth && $store->isAbsentByUniqueKey(
             connection: $connection,
             modelClass: $model::class,
             table: $model->getTable(),
@@ -802,6 +813,7 @@ class IdentityMapBuilder extends Builder
 
         $pkName = $model->getKeyName();
         $evaluator = new PredicateEvaluator;
+        $processTruth = $this->isProcessTruth();
         $result = [];
 
         foreach ($entry->primaryKeys as $pk) {
@@ -815,7 +827,11 @@ class IdentityMapBuilder extends Builder
                 return null;
             }
 
-            $evalResult = $evaluator->evaluate($mapEntry->attributes, $region);
+            if ($processTruth) {
+                $mapEntry->attributes->syncFromModel($mapEntry->model);
+            }
+
+            $evalResult = $evaluator->evaluate($mapEntry->attributes, $region, $processTruth);
 
             if ($evalResult === EvaluationResult::Unknown) {
                 return null;
@@ -977,5 +993,19 @@ class IdentityMapBuilder extends Builder
         });
 
         return $models[0];
+    }
+
+    /**
+     * Under process-truth, the unique-key index is built from original values and cannot
+     * reliably reflect current (dirty) state, including drift-in. Always force SQL.
+     */
+    private function revalidateUniqueEntry(?IdentityEntry $entry, bool $processTruth): ?IdentityEntry
+    {
+        return $processTruth ? null : $entry;
+    }
+
+    private function isProcessTruth(): bool
+    {
+        return config('query-ricer-extreme.attribute_truth', 'database_only') === 'process_truth';
     }
 }
