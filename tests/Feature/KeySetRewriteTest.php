@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Feature;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QueryRicerExtreme\Tests\Models\Post;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 
@@ -23,6 +24,17 @@ final class KeySetRewriteTest extends TestCase
     }
 
     // Helper: create a user without populating the identity map.
+    private function countSql(callable $callback): int
+    {
+        $n = 0;
+        DB::listen(static function () use (&$n): void {
+            $n++;
+        });
+        $callback();
+
+        return $n;
+    }
+
     private function createFresh(string $name, string $email): User
     {
         $user = User::create(['name' => $name, 'email' => $email]);
@@ -60,8 +72,14 @@ final class KeySetRewriteTest extends TestCase
         $foundAlice = User::find($alice->id);
         $foundBob = User::find($bob->id);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $result = User::whereKey([$alice->id, $bob->id])->get();
 
+        $this->assertSame(0, $queryCount, 'whereKey with all keys in memory must issue no SQL');
         $this->assertSame($foundAlice, $result->find($alice->id));
         $this->assertSame($foundBob, $result->find($bob->id));
     }
@@ -94,8 +112,14 @@ final class KeySetRewriteTest extends TestCase
 
         $cachedAlice = User::find($alice->id);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $result = User::whereKey([$alice->id, $bob->id])->get();
 
+        $this->assertSame(1, $queryCount, 'Partial key-set hit must issue one SQL query for the unknown key');
         $this->assertSame($cachedAlice, $result->find($alice->id));
     }
 
@@ -126,8 +150,14 @@ final class KeySetRewriteTest extends TestCase
         User::find($alice->id);
         User::find($charlie->id);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $result = User::whereKey([$charlie->id, $alice->id, $bob->id])->get();
 
+        $this->assertSame(1, $queryCount, 'Partial key-set with two memory hits must issue one SQL query for the unknown key');
         $this->assertCount(3, $result);
         $this->assertSame([$charlie->id, $alice->id, $bob->id], $result->pluck('id')->all());
     }
@@ -431,5 +461,69 @@ final class KeySetRewriteTest extends TestCase
 
         $this->assertSame(0, $queryCount, 'whereIn (type In) with all keys in memory must issue no SQL');
         $this->assertCount(2, $result);
+    }
+
+    #[Test]
+    public function withcount_on_keyset_always_executes_sql(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        Post::create(['user_id' => $alice->id, 'title' => 'Post 1', 'published' => true]);
+        Post::create(['user_id' => $alice->id, 'title' => 'Post 2', 'published' => true]);
+        $this->store->flush();
+
+        User::find($alice->id);
+        User::find($bob->id);
+
+        $sql = $this->countSql(function () use ($alice, $bob): void {
+            $users = User::withCount('posts')->whereKey([$alice->id, $bob->id])->get();
+
+            foreach ($users as $u) {
+                $this->assertTrue(
+                    $u->offsetExists('posts_count'),
+                    "User #{$u->id} is missing posts_count — was served from identity map without SQL",
+                );
+            }
+
+            $byId = $users->keyBy('id');
+            $aliceUser = $byId[$alice->id];
+            $bobUser = $byId[$bob->id];
+            $this->assertInstanceOf(User::class, $aliceUser);
+            $this->assertInstanceOf(User::class, $bobUser);
+            $this->assertSame(2, (int) $aliceUser->posts_count);
+            $this->assertSame(0, (int) $bobUser->posts_count);
+        });
+
+        $this->assertGreaterThan(0, $sql, 'withCount key-set query must execute SQL even when keys are in the map');
+    }
+
+    #[Test]
+    public function eager_loading_runs_for_all_models_including_memory_served(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        Post::create(['user_id' => $alice->id, 'title' => 'Alice Post', 'published' => true]);
+        $this->store->flush();
+
+        User::find($alice->id);
+        User::find($bob->id);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $users = User::with('posts')->whereKey([$alice->id, $bob->id])->get();
+
+        $this->assertGreaterThan(0, $queryCount, 'with() must execute SQL for eager loading even when user models come from memory');
+        $byId = $users->keyBy('id');
+        $aliceUser = $byId[$alice->id];
+        $bobUser = $byId[$bob->id];
+        $this->assertInstanceOf(User::class, $aliceUser);
+        $this->assertInstanceOf(User::class, $bobUser);
+        $this->assertTrue($aliceUser->relationLoaded('posts'), 'Alice must have posts relation loaded');
+        $this->assertTrue($bobUser->relationLoaded('posts'), 'Bob must have posts relation loaded');
+        $this->assertCount(1, $aliceUser->posts);
+        $this->assertCount(0, $bobUser->posts);
     }
 }

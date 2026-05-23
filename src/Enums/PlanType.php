@@ -22,4 +22,5 @@ enum PlanType: string
     case ReturnExistsFromCoverage = 'return_exists_from_coverage';
     case ReturnPluckFromCoverage = 'return_pluck_from_coverage';
     case ReturnFirstFromCoverage = 'return_first_from_coverage';
+    case ReturnSoleFromCoverage = 'return_sole_from_coverage';
 }

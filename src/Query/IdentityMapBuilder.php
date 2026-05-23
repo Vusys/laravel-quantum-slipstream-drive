@@ -8,6 +8,8 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\MultipleRecordsFoundException;
 use Illuminate\Support\Collection as SupportCollection;
 use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
 use Vusys\QueryRicerExtreme\Coverage\CoverageEntry;
@@ -66,6 +68,13 @@ class IdentityMapBuilder extends Builder
 
         if ($store->isDisabled()) {
             return $this->whereKey($id)->first($columns);
+        }
+
+        // Queries with non-string SELECT expressions (withCount, selectRaw, …) add
+        // virtual columns to each row that are never stored in the identity map.
+        // Returning a cached model would silently drop those computed attributes.
+        if ((new QueryPatternExtractor($this))->hasNonStringSelectColumns()) {
+            return $this->withoutIdentityMap()->whereKey($id)->first($columns);
         }
 
         $connection = $this->getModel()->getConnection()->getName() ?? 'default';
@@ -737,6 +746,57 @@ class IdentityMapBuilder extends Builder
         }
 
         return parent::first($columns);
+    }
+
+    /**
+     * @param  list<string>|string  $columns
+     * @return TModel
+     */
+    #[\Override]
+    public function sole($columns = ['*']): mixed
+    {
+        if ($this->identityMapDisabled) {
+            return parent::sole($columns);
+        }
+
+        $store = resolve(IdentityMapStore::class);
+
+        if ($store->isDisabled()) {
+            return parent::sole($columns);
+        }
+
+        /** @var TModel $model */
+        $model = $this->getModel();
+        $connection = $model->getConnection()->getName() ?? 'default';
+        $fingerprint = ScopeFingerprinter::fromBuilder($this);
+        $extractor = new QueryPatternExtractor($this);
+
+        $resolvedColumns = is_array($columns) ? $columns : [$columns];
+
+        $coveredModels = $this->getModelsFromCoverage($resolvedColumns, $store, $connection, $fingerprint, $extractor);
+
+        if ($coveredModels !== null) {
+            $count = count($coveredModels);
+
+            $store->capture(new Explanation(
+                type: PlanType::ReturnSoleFromCoverage,
+                modelClass: $model::class,
+                reason: 'coverage-subset-hit',
+                sqlExecuted: false,
+            ));
+
+            if ($count === 0) {
+                throw (new ModelNotFoundException)->setModel($model::class);
+            }
+
+            if ($count > 1) {
+                throw new MultipleRecordsFoundException($count);
+            }
+
+            return $coveredModels[0];
+        }
+
+        return parent::sole($columns);
     }
 
     #[\Override]
