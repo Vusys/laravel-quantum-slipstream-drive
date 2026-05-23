@@ -132,6 +132,51 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
+  comprehensive:
+    runs-on: ubuntu-latest
+    name: "Comprehensive data providers (PHP 8.4 / L13 / sqlite)"
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+
+      - name: Configure Composer authentication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: composer config --global --auth github-oauth.github.com "$GH_TOKEN"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        with:
+          path: ~/.composer/cache/files
+          key: composer-comprehensive-${{ hashFiles('composer.json') }}
+          restore-keys: |
+            composer-comprehensive-
+
+      - name: Pin to Laravel 13
+        run: |
+          composer remove --dev --no-update larastan/larastan rector/rector driftingly/rector-laravel laravel/pint
+          composer require --dev --no-update \
+            "laravel/framework:^13.0" \
+            "orchestra/testbench:^11.0"
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Run comprehensive data-provider tests
+        env:
+          DB_CONNECTION: sqlite
+        run: vendor/bin/phpunit --group comprehensive
+
   static-analysis:
     runs-on: ubuntu-latest
     name: Static analysis & code style

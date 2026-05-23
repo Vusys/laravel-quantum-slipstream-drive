@@ -6,10 +6,10 @@ namespace Vusys\QueryRicerExtreme\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\AttributeFact;
 use Vusys\QueryRicerExtreme\Enums\FactConfidence;
 use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\IdentityMapStore;
+use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 

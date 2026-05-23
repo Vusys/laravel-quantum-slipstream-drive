@@ -6,10 +6,10 @@ namespace Vusys\QueryRicerExtreme\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\AttributeFact;
-use Vusys\QueryRicerExtreme\AttributeKnowledge;
 use Vusys\QueryRicerExtreme\Enums\FactConfidence;
 use Vusys\QueryRicerExtreme\Enums\FactSource;
+use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
+use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
 
 final class AttributeKnowledgeTest extends TestCase
 {

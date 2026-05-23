@@ -1,0 +1,315 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Vusys\QueryRicerExtreme\Query;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
+use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
+use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+
+final readonly class QueryPatternExtractor
+{
+    /** @param Builder<Model> $builder */
+    public function __construct(private Builder $builder) {}
+
+    public function extractSinglePrimaryKeyLookup(): int|string|null
+    {
+        $query = $this->builder->getQuery();
+
+        /** @var array<int, array<string, mixed>> $wheres */
+        $wheres = $query->wheres;
+
+        if ($wheres === []) {
+            return null;
+        }
+
+        $model = $this->builder->getModel();
+        $qualifiedKey = $model->getQualifiedKeyName();
+        $unqualifiedKey = $model->getKeyName();
+
+        $pkWhere = null;
+
+        foreach ($wheres as $where) {
+            $type = $where['type'] ?? null;
+            $column = $where['column'] ?? null;
+            $operator = $where['operator'] ?? null;
+            $boolean = $where['boolean'] ?? null;
+
+            if (
+                $type === 'Basic'
+                && is_string($column)
+                && in_array($column, [$qualifiedKey, $unqualifiedKey], true)
+                && $operator === '='
+                && $boolean === 'and'
+            ) {
+                if ($pkWhere !== null) {
+                    return null;
+                }
+
+                $pkWhere = $where;
+
+                continue;
+            }
+
+            if (! $this->isSafeGlobalScopeWhere($where)) {
+                return null;
+            }
+        }
+
+        if ($pkWhere === null) {
+            return null;
+        }
+
+        $value = $pkWhere['value'] ?? null;
+
+        if (! is_int($value) && ! is_string($value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array{list<int|string>, list<PredicateNode>}|null
+     *                                                           Returns [keySet, extraPredicateNodes] where extraPredicateNodes is empty for pure key-set queries.
+     */
+    public function extractBoundedKeySet(): ?array
+    {
+        $query = $this->builder->getQuery();
+
+        /** @var array<int, array<string, mixed>> $wheres */
+        $wheres = $query->wheres;
+
+        if ($wheres === []) {
+            return null;
+        }
+
+        $model = $this->builder->getModel();
+        $qualifiedKey = $model->getQualifiedKeyName();
+        $unqualifiedKey = $model->getKeyName();
+
+        $inWhere = null;
+        $extraPredicateNodes = [];
+
+        foreach ($wheres as $where) {
+            $type = $where['type'] ?? null;
+            $column = $where['column'] ?? null;
+            $boolean = $where['boolean'] ?? null;
+
+            if (
+                in_array($type, ['In', 'InRaw'], true)
+                && is_string($column)
+                && in_array($column, [$qualifiedKey, $unqualifiedKey], true)
+                && $boolean === 'and'
+            ) {
+                if ($inWhere !== null) {
+                    return null;
+                }
+                $inWhere = $where;
+
+                continue;
+            }
+
+            if ($this->isSafeGlobalScopeWhere($where)) {
+                continue;
+            }
+
+            if ($boolean !== 'and') {
+                return null;
+            }
+
+            $node = PredicateExtractor::fromWhere($where);
+
+            if (! $node instanceof PredicateNode) {
+                return null;
+            }
+
+            $extraPredicateNodes[] = $node;
+        }
+
+        if ($inWhere === null) {
+            return null;
+        }
+
+        $values = $inWhere['values'] ?? null;
+
+        if (! is_array($values) || $values === []) {
+            return null;
+        }
+
+        $keys = [];
+
+        foreach ($values as $value) {
+            if (! is_int($value) && ! is_string($value)) {
+                return null;
+            }
+
+            $keys[] = $value;
+        }
+
+        return [$keys, $extraPredicateNodes];
+    }
+
+    /**
+     * Detect whether the current query is a unique-key lookup that can be served from the
+     * identity map.
+     *
+     * Returns [uniqueKeyValues, extraPredicateNodes] when a configured unique index is
+     * matched, or null when the query cannot be safely answered from the unique-key index.
+     *
+     * @param  list<list<string>>  $uniqueIndexes
+     * @return array{array<string, mixed>, list<PredicateNode>}|null
+     */
+    public function extractUniqueKeyLookup(array $uniqueIndexes): ?array
+    {
+        if ($uniqueIndexes === []) {
+            return null;
+        }
+
+        $query = $this->builder->getQuery();
+
+        if (
+            ($query->joins !== null && $query->joins !== [])
+            || ($query->unions !== null && $query->unions !== [])
+            || ($query->groups !== null && $query->groups !== [])
+            || ($query->havings !== null && $query->havings !== [])
+            || $query->lock !== null
+            || ($query->offset !== null && $query->offset > 0)
+            || ($query->limit !== null && $query->limit < 1)
+        ) {
+            return null;
+        }
+
+        /** @var array<int, array<string, mixed>> $wheres */
+        $wheres = $query->wheres;
+
+        if ($wheres === []) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $equalityMap */
+        $equalityMap = [];
+
+        /** @var list<PredicateNode> $extraNodes */
+        $extraNodes = [];
+
+        foreach ($wheres as $where) {
+            $type = $where['type'] ?? null;
+            $column = $where['column'] ?? null;
+            $boolean = $where['boolean'] ?? null;
+
+            if ($this->isSafeGlobalScopeWhere($where)) {
+                continue;
+            }
+
+            if ($boolean !== 'and') {
+                return null;
+            }
+
+            if ($type === 'Basic' && is_string($column) && ($where['operator'] ?? null) === '=') {
+                if (array_key_exists($column, $equalityMap)) {
+                    return null;
+                }
+
+                $equalityMap[$column] = $where['value'] ?? null;
+
+                continue;
+            }
+
+            $node = PredicateExtractor::fromWhere($where);
+
+            if (! $node instanceof PredicateNode) {
+                return null;
+            }
+
+            $extraNodes[] = $node;
+        }
+
+        if ($equalityMap === []) {
+            return null;
+        }
+
+        foreach ($uniqueIndexes as $indexColumns) {
+            $allPresent = true;
+
+            foreach ($indexColumns as $col) {
+                if (! array_key_exists($col, $equalityMap)) {
+                    $allPresent = false;
+                    break;
+                }
+            }
+
+            if (! $allPresent) {
+                continue;
+            }
+
+            $uniqueKeyValues = [];
+            $remainingEquality = $equalityMap;
+
+            foreach ($indexColumns as $col) {
+                $uniqueKeyValues[$col] = $equalityMap[$col];
+                unset($remainingEquality[$col]);
+            }
+
+            $allExtraNodes = $extraNodes;
+
+            foreach ($remainingEquality as $col => $val) {
+                $allExtraNodes[] = new ComparisonNode($col, '=', $val);
+            }
+
+            return [$uniqueKeyValues, $allExtraNodes];
+        }
+
+        return null;
+    }
+
+    /**
+     * Merge memory-served and SQL-fetched models in the original key-set input order.
+     *
+     * @param  array<int, Model>  $memoryModels
+     * @param  array<int, Model>  $fetchedModels
+     * @param  list<int|string>  $keyOrder
+     * @return list<Model>
+     */
+    public static function mergeByInputOrder(array $memoryModels, array $fetchedModels, array $keyOrder): array
+    {
+        /** @var array<int|string, Model> $byKey */
+        $byKey = [];
+
+        foreach ($memoryModels as $m) {
+            $k = $m->getKey();
+            if (is_int($k) || is_string($k)) {
+                $byKey[$k] = $m;
+            }
+        }
+
+        foreach ($fetchedModels as $m) {
+            $k = $m->getKey();
+            if (is_int($k) || is_string($k)) {
+                $byKey[$k] = $m;
+            }
+        }
+
+        $result = [];
+
+        foreach ($keyOrder as $key) {
+            if (isset($byKey[$key])) {
+                $result[] = $byKey[$key];
+            }
+        }
+
+        return $result;
+    }
+
+    /** @param array<string, mixed> $where */
+    private function isSafeGlobalScopeWhere(array $where): bool
+    {
+        $type = $where['type'] ?? null;
+        $column = $where['column'] ?? null;
+
+        return $type === 'Null' && is_string($column) && str_ends_with($column, 'deleted_at');
+    }
+}

@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
 use Vusys\QueryRicerExtreme\Predicate\InNode;
 use Vusys\QueryRicerExtreme\Predicate\NullNode;
-use Vusys\QueryRicerExtreme\PredicateExtractor;
+use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
 
 final class PredicateExtractorTest extends TestCase
 {

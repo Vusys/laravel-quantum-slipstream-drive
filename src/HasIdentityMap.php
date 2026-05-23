@@ -6,6 +6,8 @@ namespace Vusys\QueryRicerExtreme;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Vusys\QueryRicerExtreme\Query\IdentityMapBuilder;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 
 trait HasIdentityMap
 {
