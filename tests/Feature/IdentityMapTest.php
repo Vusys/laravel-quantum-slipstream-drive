@@ -53,8 +53,15 @@ final class IdentityMapTest extends TestCase
     public function find_returns_same_instance_as_created(): void
     {
         $created = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $found = User::find($created->id);
 
+        $this->assertSame(0, $queryCount, 'find() after create must be served from identity map without SQL');
         $this->assertSame($created, $found);
     }
 
@@ -79,8 +86,14 @@ final class IdentityMapTest extends TestCase
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $fromWhereKey = User::query()->whereKey($user->id)->first();
 
+        $this->assertSame(0, $queryCount, 'whereKey()->first() must be served from identity map without SQL');
         $this->assertSame($user, $fromWhereKey);
     }
 
@@ -304,6 +317,7 @@ final class IdentityMapTest extends TestCase
         $result = User::find($user->id);
 
         $this->assertNull($result);
+        $this->assertSame(0, $queryCount, 'find() for soft-deleted model must be served from identity map without SQL');
     }
 
     #[Test]
@@ -931,7 +945,13 @@ final class IdentityMapTest extends TestCase
 
         DB::table('users')->where('id', $alice->id)->update(['active' => 0]);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $fromMap = User::find($alice->id);
+        $this->assertSame(0, $queryCount, 'find() must be served from map after raw DB update — map entry is stale but still served');
         $this->assertInstanceOf(User::class, $fromMap);
         $fromDb = User::withoutIdentityMap()->find($alice->id);
         $this->assertInstanceOf(User::class, $fromDb);

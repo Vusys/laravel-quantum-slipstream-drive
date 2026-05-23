@@ -85,8 +85,12 @@ final class CoverageRegistryFeatureTest extends TestCase
     public function limit_prevents_coverage_recording(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        User::limit(5)->get();
 
+        $sql = $this->countSql(function (): void {
+            User::limit(5)->get();
+        });
+
+        $this->assertSame(1, $sql, 'Limited query must execute SQL');
         $this->assertSame(0, $this->registry->entryCount());
     }
 
@@ -94,8 +98,12 @@ final class CoverageRegistryFeatureTest extends TestCase
     public function distinct_prevents_coverage_recording(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        User::distinct()->get();
 
+        $sql = $this->countSql(function (): void {
+            User::distinct()->get();
+        });
+
+        $this->assertSame(1, $sql, 'Distinct query must execute SQL');
         $this->assertSame(0, $this->registry->entryCount());
     }
 
@@ -124,17 +132,21 @@ final class CoverageRegistryFeatureTest extends TestCase
     {
         $this->seedUsers();
 
-        $active = User::where('active', true)->get();
-        $inactive = User::where('active', false)->get();
+        $sql = $this->countSql(function (): void {
+            $active = User::where('active', true)->get();
+            $inactive = User::where('active', false)->get();
 
-        $this->assertCount(1, $active);
-        $this->assertCount(1, $inactive);
-        $firstActive = $active->first();
-        $firstInactive = $inactive->first();
-        $this->assertNotNull($firstActive);
-        $this->assertNotNull($firstInactive);
-        $this->assertSame('Alice', $firstActive->name);
-        $this->assertSame('Bob', $firstInactive->name);
+            $this->assertCount(1, $active);
+            $this->assertCount(1, $inactive);
+            $firstActive = $active->first();
+            $firstInactive = $inactive->first();
+            $this->assertNotNull($firstActive);
+            $this->assertNotNull($firstInactive);
+            $this->assertSame('Alice', $firstActive->name);
+            $this->assertSame('Bob', $firstInactive->name);
+        });
+
+        $this->assertSame(0, $sql, 'Subset queries must be served from coverage without SQL');
     }
 
     #[Test]
@@ -812,14 +824,17 @@ final class CoverageRegistryFeatureTest extends TestCase
 
         User::all();
 
-        $users = User::withCount('posts')->get();
+        $sql = $this->countSql(function (): void {
+            $users = User::withCount('posts')->get();
+            foreach ($users as $u) {
+                $this->assertTrue(
+                    $u->offsetExists('posts_count'),
+                    "User #{$u->id} must have posts_count — virtual column must come from SQL",
+                );
+            }
+        });
 
-        foreach ($users as $u) {
-            $this->assertTrue(
-                $u->offsetExists('posts_count'),
-                "User #{$u->id} must have posts_count — virtual column must come from SQL",
-            );
-        }
+        $this->assertGreaterThan(0, $sql, 'withCount must execute SQL even when coverage is recorded');
     }
 
     // -------------------------------------------------------------------------
@@ -834,8 +849,11 @@ final class CoverageRegistryFeatureTest extends TestCase
 
         $before = $this->registry->entryCount();
 
-        User::select('active')->groupBy('active')->get();
+        $sql = $this->countSql(function (): void {
+            User::select('active')->groupBy('active')->get();
+        });
 
+        $this->assertGreaterThan(0, $sql, 'GROUP BY query must always execute SQL');
         $this->assertSame($before, $this->registry->entryCount(), 'GROUP BY must not create a coverage entry');
     }
 
@@ -897,9 +915,16 @@ final class CoverageRegistryFeatureTest extends TestCase
 
         User::where('active', true)->get();
 
-        $this->expectException(MultipleRecordsFoundException::class);
+        $sql = $this->countSql(function (): void {
+            try {
+                User::where('active', true)->sole();
+                $this->fail('Expected MultipleRecordsFoundException');
+            } catch (MultipleRecordsFoundException) {
+                // expected
+            }
+        });
 
-        User::where('active', true)->sole();
+        $this->assertSame(0, $sql, 'sole() with multiple coverage matches must not execute SQL');
     }
 
     #[Test]
@@ -909,9 +934,16 @@ final class CoverageRegistryFeatureTest extends TestCase
 
         User::all();
 
-        $this->expectException(ModelNotFoundException::class);
+        $sql = $this->countSql(function (): void {
+            try {
+                User::where('active', true)->sole();
+                $this->fail('Expected ModelNotFoundException');
+            } catch (ModelNotFoundException) {
+                // expected
+            }
+        });
 
-        User::where('active', true)->sole();
+        $this->assertSame(0, $sql, 'sole() with no coverage matches must not execute SQL');
     }
 
     #[Test]
@@ -922,7 +954,11 @@ final class CoverageRegistryFeatureTest extends TestCase
 
         User::all();
 
-        $found = User::where('active', true)->sole();
-        $this->assertSame($alice->id, $found->id);
+        $sql = $this->countSql(function () use ($alice): void {
+            $found = User::where('active', true)->sole();
+            $this->assertSame($alice->id, $found->id);
+        });
+
+        $this->assertSame(0, $sql, 'sole() with exactly one coverage match must not execute SQL');
     }
 }

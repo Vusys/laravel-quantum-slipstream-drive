@@ -72,8 +72,14 @@ final class KeySetRewriteTest extends TestCase
         $foundAlice = User::find($alice->id);
         $foundBob = User::find($bob->id);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $result = User::whereKey([$alice->id, $bob->id])->get();
 
+        $this->assertSame(0, $queryCount, 'whereKey with all keys in memory must issue no SQL');
         $this->assertSame($foundAlice, $result->find($alice->id));
         $this->assertSame($foundBob, $result->find($bob->id));
     }
@@ -106,8 +112,14 @@ final class KeySetRewriteTest extends TestCase
 
         $cachedAlice = User::find($alice->id);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $result = User::whereKey([$alice->id, $bob->id])->get();
 
+        $this->assertSame(1, $queryCount, 'Partial key-set hit must issue one SQL query for the unknown key');
         $this->assertSame($cachedAlice, $result->find($alice->id));
     }
 
@@ -138,8 +150,14 @@ final class KeySetRewriteTest extends TestCase
         User::find($alice->id);
         User::find($charlie->id);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $result = User::whereKey([$charlie->id, $alice->id, $bob->id])->get();
 
+        $this->assertSame(1, $queryCount, 'Partial key-set with two memory hits must issue one SQL query for the unknown key');
         $this->assertCount(3, $result);
         $this->assertSame([$charlie->id, $alice->id, $bob->id], $result->pluck('id')->all());
     }
@@ -490,8 +508,14 @@ final class KeySetRewriteTest extends TestCase
         User::find($alice->id);
         User::find($bob->id);
 
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
         $users = User::with('posts')->whereKey([$alice->id, $bob->id])->get();
 
+        $this->assertGreaterThan(0, $queryCount, 'with() must execute SQL for eager loading even when user models come from memory');
         $byId = $users->keyBy('id');
         $aliceUser = $byId[$alice->id];
         $bobUser = $byId[$bob->id];
