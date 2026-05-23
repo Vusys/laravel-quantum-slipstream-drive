@@ -125,6 +125,58 @@ final class CoverageRegistryTest extends TestCase
         $this->assertSame($matching, $result);
     }
 
+    #[Test]
+    public function find_covering_skips_wrong_connection_and_returns_later_match(): void
+    {
+        // Entry 1: modelClass matches but connection does NOT — must continue, not break.
+        $this->registry->record($this->makeEntry(connection: 'mysql'));
+        $matching = $this->makeEntry(connection: 'default');
+        $this->registry->record($matching);
+
+        $result = $this->registry->findCovering('App\\User', 'default', 'users', 'fp', new AndNode([]));
+
+        $this->assertSame($matching, $result);
+    }
+
+    #[Test]
+    public function find_covering_skips_wrong_table_and_returns_later_match(): void
+    {
+        // Entry 1: modelClass + connection match but table does NOT.
+        $this->registry->record($this->makeEntry(table: 'admins'));
+        $matching = $this->makeEntry(table: 'users');
+        $this->registry->record($matching);
+
+        $result = $this->registry->findCovering('App\\User', 'default', 'users', 'fp', new AndNode([]));
+
+        $this->assertSame($matching, $result);
+    }
+
+    #[Test]
+    public function find_covering_skips_wrong_scope_fingerprint_and_returns_later_match(): void
+    {
+        // Entry 1: modelClass + connection + table match but scopeFingerprint does NOT.
+        $this->registry->record($this->makeEntry(scopeFingerprint: 'fp-other'));
+        $matching = $this->makeEntry(scopeFingerprint: 'fp');
+        $this->registry->record($matching);
+
+        $result = $this->registry->findCovering('App\\User', 'default', 'users', 'fp', new AndNode([]));
+
+        $this->assertSame($matching, $result);
+    }
+
+    #[Test]
+    public function find_covering_skips_incomplete_and_returns_later_complete_match(): void
+    {
+        // Entry 1: all fields match but complete = false — must continue, not break.
+        $this->registry->record($this->makeEntry(complete: false));
+        $matching = $this->makeEntry(complete: true);
+        $this->registry->record($matching);
+
+        $result = $this->registry->findCovering('App\\User', 'default', 'users', 'fp', new AndNode([]));
+
+        $this->assertSame($matching, $result);
+    }
+
     // -------------------------------------------------------------------------
     // SubsetChecker integration — non-trivial predicate regions
     // -------------------------------------------------------------------------

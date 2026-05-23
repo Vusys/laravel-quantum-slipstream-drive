@@ -761,6 +761,11 @@ class IdentityMapBuilder extends Builder
      * @param  list<string>  $columns  Output columns required ([] = no output columns needed)
      * @return array<int, TModel>|null
      */
+    /**
+     * @param  list<string>  $columns
+     * @param  QueryPatternExtractor<TModel>  $extractor
+     * @return list<TModel>|null
+     */
     private function getModelsFromCoverage(
         array $columns,
         IdentityMapStore $store,
@@ -835,6 +840,7 @@ class IdentityMapBuilder extends Builder
      *
      * @param  array<int, TModel>  $models
      * @param  list<string>  $columns
+     * @param  QueryPatternExtractor<TModel>  $extractor
      */
     private function tryRecordCoverage(
         array $models,
@@ -883,6 +889,7 @@ class IdentityMapBuilder extends Builder
     /**
      * Handle the exists() path for coverage + SQL fallthrough when unique-key check did not match.
      */
+    /** @param  QueryPatternExtractor<TModel>  $extractor */
     private function existsFromCoverageOrSql(IdentityMapStore $store, QueryPatternExtractor $extractor): bool
     {
         /** @var TModel $model */
