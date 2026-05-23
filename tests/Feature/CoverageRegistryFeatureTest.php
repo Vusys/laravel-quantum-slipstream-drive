@@ -52,6 +52,17 @@ final class CoverageRegistryFeatureTest extends TestCase
         return $count;
     }
 
+    /** @param list<Explanation> $explanations */
+    private function findExplanationByType(array $explanations, PlanType $type): Explanation
+    {
+        foreach ($explanations as $e) {
+            if ($e->type === $type) {
+                return $e;
+            }
+        }
+        $this->fail("No explanation found for PlanType::{$type->name}");
+    }
+
     // -------------------------------------------------------------------------
     // Coverage recording
     // -------------------------------------------------------------------------
@@ -477,9 +488,8 @@ final class CoverageRegistryFeatureTest extends TestCase
             User::where('active', true)->get();
         });
 
-        $hit = array_values(array_filter($explanations, static fn (Explanation $e): bool => $e->type === PlanType::ReturnCollectionFromCoverage));
-        $this->assertNotEmpty($hit);
-        $this->assertFalse($hit[0]->sqlExecuted);
+        $hit = $this->findExplanationByType($explanations, PlanType::ReturnCollectionFromCoverage);
+        $this->assertFalse($hit->sqlExecuted);
     }
 
     #[Test]
@@ -491,9 +501,8 @@ final class CoverageRegistryFeatureTest extends TestCase
             User::where('active', true)->count();
         });
 
-        $hit = array_values(array_filter($explanations, static fn (Explanation $e): bool => $e->type === PlanType::ReturnCountFromCoverage));
-        $this->assertNotEmpty($hit);
-        $this->assertFalse($hit[0]->sqlExecuted);
+        $hit = $this->findExplanationByType($explanations, PlanType::ReturnCountFromCoverage);
+        $this->assertFalse($hit->sqlExecuted);
     }
 
     #[Test]
@@ -505,9 +514,8 @@ final class CoverageRegistryFeatureTest extends TestCase
             User::where('active', true)->exists();
         });
 
-        $hit = array_values(array_filter($explanations, static fn (Explanation $e): bool => $e->type === PlanType::ReturnExistsFromCoverage));
-        $this->assertNotEmpty($hit);
-        $this->assertFalse($hit[0]->sqlExecuted);
+        $hit = $this->findExplanationByType($explanations, PlanType::ReturnExistsFromCoverage);
+        $this->assertFalse($hit->sqlExecuted);
     }
 
     #[Test]
@@ -519,9 +527,8 @@ final class CoverageRegistryFeatureTest extends TestCase
             User::where('active', true)->pluck('name');
         });
 
-        $hit = array_values(array_filter($explanations, static fn (Explanation $e): bool => $e->type === PlanType::ReturnPluckFromCoverage));
-        $this->assertNotEmpty($hit);
-        $this->assertFalse($hit[0]->sqlExecuted);
+        $hit = $this->findExplanationByType($explanations, PlanType::ReturnPluckFromCoverage);
+        $this->assertFalse($hit->sqlExecuted);
     }
 
     #[Test]
@@ -533,9 +540,8 @@ final class CoverageRegistryFeatureTest extends TestCase
             User::where('active', true)->first();
         });
 
-        $hit = array_values(array_filter($explanations, static fn (Explanation $e): bool => $e->type === PlanType::ReturnFirstFromCoverage));
-        $this->assertNotEmpty($hit);
-        $this->assertFalse($hit[0]->sqlExecuted);
+        $hit = $this->findExplanationByType($explanations, PlanType::ReturnFirstFromCoverage);
+        $this->assertFalse($hit->sqlExecuted);
     }
 
     // -------------------------------------------------------------------------
