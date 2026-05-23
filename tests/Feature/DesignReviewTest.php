@@ -402,7 +402,8 @@ final class DesignReviewTest extends TestCase
         $before = $this->registry->entryCount();
 
         // A GROUP BY query must not create a coverage entry.
-        DB::table('users')->groupBy('active')->get();
+        // Select only the grouped column so the query is valid on all drivers.
+        User::select('active')->groupBy('active')->get();
 
         $this->assertSame($before, $this->registry->entryCount(), 'GROUP BY must not create a coverage entry');
     }
