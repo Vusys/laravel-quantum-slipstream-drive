@@ -185,6 +185,61 @@ final class HasManyMemoryTest extends TestCase
     }
 
     #[Test]
+    public function has_many_falls_back_with_non_star_columns(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Post::create(['user_id' => $user->id, 'title' => 'P1', 'published' => true]);
+
+        $user->load('posts');
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = $user->posts()->get(['id', 'title']);
+
+        $this->assertGreaterThan(0, $queryCount, 'hasMany with non-star columns should fall back to SQL');
+        $this->assertCount(1, $result);
+    }
+
+    #[Test]
+    public function has_many_falls_back_with_unsupported_predicate(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Post::create(['user_id' => $user->id, 'title' => 'Post One', 'published' => true]);
+
+        $user->load('posts');
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = $user->posts()->where('title', 'LIKE', '%One%')->get();
+
+        $this->assertGreaterThan(0, $queryCount, 'hasMany with LIKE predicate should fall back to SQL');
+        $this->assertCount(1, $result);
+    }
+
+    #[Test]
+    public function has_many_falls_back_when_store_disabled_on_lazy_load(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Post::create(['user_id' => $user->id, 'title' => 'P1', 'published' => true]);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = $this->store->disabled(fn (): Collection => $user->posts);
+
+        $this->assertGreaterThan(0, $queryCount, 'hasMany getResults() should issue SQL when store disabled');
+        $this->assertCount(1, $result);
+    }
+
+    #[Test]
     public function has_many_does_not_mark_complete_after_constrained_eager_load(): void
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);

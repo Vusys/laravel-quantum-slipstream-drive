@@ -182,4 +182,59 @@ final class MorphManyMemoryTest extends TestCase
         $this->assertGreaterThan(0, $queryCount, 'morphMany should fall back when a child entry is missing from store');
         $this->assertCount(1, $result);
     }
+
+    #[Test]
+    public function morph_many_falls_back_with_non_star_columns(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Comment::create(['commentable_type' => User::class, 'commentable_id' => $user->id, 'body' => 'hello']);
+
+        $user->load('comments');
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = $user->comments()->get(['id', 'body']);
+
+        $this->assertGreaterThan(0, $queryCount, 'morphMany with non-star columns should fall back to SQL');
+        $this->assertCount(1, $result);
+    }
+
+    #[Test]
+    public function morph_many_falls_back_with_unsupported_predicate(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Comment::create(['commentable_type' => User::class, 'commentable_id' => $user->id, 'body' => 'hello world']);
+
+        $user->load('comments');
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = $user->comments()->where('body', 'LIKE', '%hello%')->get();
+
+        $this->assertGreaterThan(0, $queryCount, 'morphMany with LIKE predicate should fall back to SQL');
+        $this->assertCount(1, $result);
+    }
+
+    #[Test]
+    public function morph_many_falls_back_when_store_disabled_on_lazy_load(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Comment::create(['commentable_type' => User::class, 'commentable_id' => $user->id, 'body' => 'hello']);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = $this->store->disabled(fn (): Collection => $user->comments);
+
+        $this->assertGreaterThan(0, $queryCount, 'morphMany getResults() should issue SQL when store disabled');
+        $this->assertCount(1, $result);
+    }
 }

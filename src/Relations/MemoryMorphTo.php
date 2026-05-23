@@ -74,7 +74,7 @@ final class MemoryMorphTo extends MorphTo
 
         /** @var TRelatedModel $relatedInstance */
         $relatedInstance = new $resolvedClass;
-        $connection = $relatedInstance->getConnectionName() ?? 'default';
+        $connection = $relatedInstance->getConnectionName() ?? $this->query->getModel()->getConnectionName() ?? 'default';
         $fingerprint = ScopeFingerprinter::fromBuilder($this->query);
         $ownerKey = $this->getOwnerKeyName();
 
