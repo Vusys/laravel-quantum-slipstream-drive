@@ -16,10 +16,7 @@ use Vusys\QueryRicerExtreme\Tests\Models\User;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 
 /**
- * Tests derived from the design review.
- *
- * Each group is labelled with the review issue code (C-n, S-n, etc.).
- * Tests that were failing before fixes are marked with @see design-review.md.
+ * Tests derived from the design review (design-review.md).
  */
 final class DesignReviewTest extends TestCase
 {
@@ -53,14 +50,14 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-10: withCount / aggregate SELECT columns
+    // withCount / aggregate SELECT columns
     // withCount adds a subquery column to the SELECT that is never stored in the
     // identity map.  Serving such a query from coverage or from the key-set
     // memory path would return models without the virtual column.
     // =========================================================================
 
     #[Test]
-    public function c10_withcount_not_served_from_coverage(): void
+    public function withcount_not_served_from_coverage(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => true]);
@@ -93,7 +90,7 @@ final class DesignReviewTest extends TestCase
     }
 
     #[Test]
-    public function c10_withcount_key_set_executes_sql_for_memory_models_too(): void
+    public function withcount_key_set_executes_sql_for_memory_models_too(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         $bob = User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => true]);
@@ -127,7 +124,7 @@ final class DesignReviewTest extends TestCase
     }
 
     #[Test]
-    public function c10_withcount_single_find_executes_sql(): void
+    public function withcount_single_find_executes_sql(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         Post::create(['user_id' => $alice->id, 'title' => 'Post 1', 'published' => true]);
@@ -149,7 +146,7 @@ final class DesignReviewTest extends TestCase
     }
 
     #[Test]
-    public function c10_selectraw_not_served_from_coverage(): void
+    public function selectraw_not_served_from_coverage(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
 
@@ -171,11 +168,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-6: LIMIT must not create coverage (already enforced — regression guard)
+    // LIMIT must not create coverage
     // =========================================================================
 
     #[Test]
-    public function c6_limited_query_does_not_create_coverage(): void
+    public function limited_query_does_not_create_coverage(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => true]);
@@ -194,13 +191,13 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-4 / first() ordering: first() on multiple coverage models without an
+    // first() on multiple coverage models without an
     // ORDER BY must fall through to SQL, not return an arbitrary memory model.
     // (Already enforced — regression guard.)
     // =========================================================================
 
     #[Test]
-    public function c4_first_without_order_falls_through_to_sql_when_multiple_matches(): void
+    public function first_without_order_falls_through_to_sql_when_multiple_matches(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => true]);
@@ -218,11 +215,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-4 / first() with a single match in coverage is safe to serve from memory.
+    // first() with a single match in coverage is safe to serve from memory.
     // =========================================================================
 
     #[Test]
-    public function c4_first_with_single_match_in_coverage_is_served_from_memory(): void
+    public function first_with_single_match_in_coverage_is_served_from_memory(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => false]);
@@ -240,13 +237,13 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-2: Unique-key stale index is lazily evicted on lookup
+    // Unique-key stale index is lazily evicted on lookup
     // After saving a model with a changed unique column, the old index entry is
     // evicted on the next lookup attempt (not wrong data, verified here).
     // =========================================================================
 
     #[Test]
-    public function c2_stale_unique_key_index_evicted_after_email_change(): void
+    public function stale_unique_key_index_evicted_after_email_change(): void
     {
         config(['query-ricer-extreme.models' => [
             User::class => ['unique' => [['email']]],
@@ -270,7 +267,7 @@ final class DesignReviewTest extends TestCase
     }
 
     #[Test]
-    public function c2_new_email_value_is_indexed_after_save(): void
+    public function new_email_value_is_indexed_after_save(): void
     {
         config(['query-ricer-extreme.models' => [
             User::class => ['unique' => [['email']]],
@@ -293,11 +290,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-13: Absence record cleared when a model is created with the same PK
+    // Absence record cleared when a model is created with the same PK
     // =========================================================================
 
     #[Test]
-    public function c13_absence_cleared_when_model_is_created(): void
+    public function absence_cleared_when_model_is_created(): void
     {
         // Record absence for id=9999.
         $this->assertNull(User::find(9999));
@@ -328,11 +325,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-7: Process-truth — dirty model excluded from covered region
+    // Process-truth — dirty model excluded from covered region
     // =========================================================================
 
     #[Test]
-    public function c7_dirty_model_excluded_from_coverage_region_under_process_truth(): void
+    public function dirty_model_excluded_from_coverage_region_under_process_truth(): void
     {
         config(['query-ricer-extreme.attribute_truth' => 'process_truth']);
 
@@ -360,11 +357,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-7 counterpart: database_only mode uses original values from coverage
+    // database_only mode uses original values from coverage
     // =========================================================================
 
     #[Test]
-    public function c7_dirty_model_included_in_coverage_region_under_database_only(): void
+    public function dirty_model_included_in_coverage_region_under_database_only(): void
     {
         config(['query-ricer-extreme.attribute_truth' => 'database_only']);
 
@@ -390,11 +387,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // I-2: GROUP BY must not create coverage
+    // GROUP BY must not create coverage
     // =========================================================================
 
     #[Test]
-    public function i2_group_by_query_does_not_create_coverage(): void
+    public function group_by_query_does_not_create_coverage(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => true]);
@@ -409,11 +406,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // S-4: aggregate hazard vs coverage — count/exists from coverage must work
+    // count/exists served from coverage
     // =========================================================================
 
     #[Test]
-    public function s4_count_served_from_coverage(): void
+    public function count_served_from_coverage(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => false]);
@@ -429,7 +426,7 @@ final class DesignReviewTest extends TestCase
     }
 
     #[Test]
-    public function s4_exists_served_from_coverage(): void
+    public function exists_served_from_coverage(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => false]);
@@ -445,14 +442,14 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-11: sole() — correct exception behaviour
+    // sole() — correct exception behaviour
     // sole() in Eloquent calls take(2)->get() which adds LIMIT 2.
     // isSafeForCoverage() returns false for LIMIT queries, so sole() always
     // hits the database and throws correctly.
     // =========================================================================
 
     #[Test]
-    public function c11_sole_throws_multiple_records_exception_when_more_than_one_match(): void
+    public function sole_throws_multiple_records_exception_when_more_than_one_match(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => true]);
@@ -466,7 +463,7 @@ final class DesignReviewTest extends TestCase
     }
 
     #[Test]
-    public function c11_sole_throws_model_not_found_exception_when_no_match(): void
+    public function sole_throws_model_not_found_exception_when_no_match(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
 
@@ -479,7 +476,7 @@ final class DesignReviewTest extends TestCase
     }
 
     #[Test]
-    public function c11_sole_returns_model_when_exactly_one_match(): void
+    public function sole_returns_model_when_exactly_one_match(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => false]);
@@ -491,7 +488,7 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // S-1: Transaction rollback — correct DB value is visible after rollback
+    // Transaction rollback — correct DB value is visible after rollback
     //
     // The package has no transaction journal, but SQLite/Eloquent state is
     // consistent enough in tests that find() returns the rolled-back DB value.
@@ -502,7 +499,7 @@ final class DesignReviewTest extends TestCase
     // =========================================================================
 
     #[Test]
-    public function s1_transaction_rollback_db_value_visible_after_flush(): void
+    public function transaction_rollback_db_value_visible_after_flush(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::find($alice->id); // prime map
@@ -530,7 +527,7 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // S-7: Unknown global scope — must not produce a wrong fingerprint
+    // withoutGlobalScope produces a separate fingerprint
     // When a custom GlobalScope is applied, the ScopeFingerprinter currently
     // only fingerprints SoftDeleteScope.  A model loaded WITH the custom scope
     // is stored under a potentially wrong fingerprint.  This test documents
@@ -538,7 +535,7 @@ final class DesignReviewTest extends TestCase
     // =========================================================================
 
     #[Test]
-    public function s7_withoutglobalscope_produces_separate_fingerprint_from_default(): void
+    public function withoutglobalscope_produces_separate_fingerprint_from_default(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
 
@@ -556,11 +553,11 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-5: Key-set merge preserves input order
+    // Key-set merge preserves input order
     // =========================================================================
 
     #[Test]
-    public function c5_keyset_merge_preserves_input_order(): void
+    public function keyset_merge_preserves_input_order(): void
     {
         $u1 = User::create(['name' => 'One',   'email' => 'one@example.com',   'active' => true]);
         $u2 = User::create(['name' => 'Two',   'email' => 'two@example.com',   'active' => true]);
@@ -583,13 +580,13 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // I-3 / allColumnsKnown: coverage does not satisfy withCount virtual columns
+    // Coverage does not satisfy withCount virtual columns
     // Regression guard to ensure allColumnsKnown cannot be used to satisfy a
     // virtual column that is not stored in the identity map.
     // =========================================================================
 
     #[Test]
-    public function i3_coverage_column_satisfaction_does_not_cover_virtual_columns(): void
+    public function coverage_column_satisfaction_does_not_cover_virtual_columns(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         Post::create(['user_id' => $alice->id, 'title' => 'Post 1', 'published' => true]);
@@ -609,13 +606,13 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // M-2: increment / decrement bypass model events — attribute goes stale
+    // increment / decrement bypass model events — attribute goes stale
     // This test documents the known limitation: after an increment() the
     // identity map still holds the pre-increment value.
     // =========================================================================
 
     #[Test]
-    public function m2_increment_leaves_map_attribute_stale_known_limitation(): void
+    public function increment_leaves_map_attribute_stale_known_limitation(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
 
@@ -640,13 +637,13 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-6 + S-6: Coverage subset check is conservative for OR predicates
+    // Coverage subset check is conservative for disjoint predicates
     // A query whose predicate is NOT a subset of the coverage region must
     // always execute SQL.
     // =========================================================================
 
     #[Test]
-    public function s6_coverage_subset_rejects_disjoint_predicate(): void
+    public function coverage_subset_rejects_disjoint_predicate(): void
     {
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => false]);
@@ -665,14 +662,14 @@ final class DesignReviewTest extends TestCase
     }
 
     // =========================================================================
-    // C-9: Eager loading receives the full merged model set
+    // Eager loading receives the full merged model set
     // When a key-set query is partially served from memory, the eager-loaded
     // relation must still be loaded for ALL returned models including those
     // served from memory.
     // =========================================================================
 
     #[Test]
-    public function c9_eager_loading_includes_memory_served_models(): void
+    public function eager_loading_includes_memory_served_models(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         $bob = User::create(['name' => 'Bob',   'email' => 'bob@example.com',   'active' => true]);
