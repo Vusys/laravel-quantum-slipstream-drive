@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QueryRicerExtreme\Tests\Performance;
 
 use Illuminate\Support\Facades\DB;
-use Vusys\QueryRicerExtreme\IdentityMapStore;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 
 abstract class PerformanceTestCase extends TestCase
