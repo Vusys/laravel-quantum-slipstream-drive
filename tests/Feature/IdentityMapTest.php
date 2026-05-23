@@ -440,6 +440,39 @@ final class IdentityMapTest extends TestCase
     }
 
     #[Test]
+    public function or_where_null_on_deleted_at_falls_through_to_sql(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        User::find($user->id);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        User::query()->where('id', $user->id)->orWhereNull('deleted_at')->first();
+
+        $this->assertSame(1, $queryCount, 'orWhereNull(deleted_at) changes query semantics — boolean=or must not be treated as a safe soft-delete scope');
+    }
+
+    #[Test]
+    public function unqualified_deleted_at_where_null_is_recognised_as_safe_scope(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        User::find($user->id);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        $result = User::query()->where('id', $user->id)->whereNull('deleted_at')->first();
+
+        $this->assertInstanceOf(User::class, $result);
+        $this->assertSame(0, $queryCount, 'Unqualified whereNull(deleted_at) must be recognised as a safe scope so the map shortcut fires');
+    }
+
+    #[Test]
     public function where_clause_with_extra_filter_falls_through_to_sql(): void
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
