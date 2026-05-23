@@ -411,4 +411,87 @@ final class PredicateEvaluatorTest extends TestCase
             'IS NULL matches when currentValue is null under process-truth',
         );
     }
+
+    // --- InNode process-truth routing ---
+
+    #[Test]
+    public function in_node_default_uses_original_value(): void
+    {
+        // original is in the list, current is not
+        $attrs = $this->dirtyAttributes(['status' => ['original' => 'active', 'current' => 'disabled']]);
+        $node = new InNode('status', ['active', 'pending'], false);
+
+        $this->assertSame(
+            EvaluationResult::Match,
+            $this->evaluator->evaluate($attrs, $node),
+            'Default (no $processTruth) must read originalValue for InNode',
+        );
+    }
+
+    #[Test]
+    public function in_node_process_truth_false_uses_original_value(): void
+    {
+        $attrs = $this->dirtyAttributes(['status' => ['original' => 'active', 'current' => 'disabled']]);
+        $node = new InNode('status', ['active', 'pending'], false);
+
+        $this->assertSame(
+            EvaluationResult::Match,
+            $this->evaluator->evaluate($attrs, $node, processTruth: false),
+        );
+    }
+
+    #[Test]
+    public function in_node_process_truth_true_uses_current_value(): void
+    {
+        // original is in the list, current is not — process-truth must read current
+        $attrs = $this->dirtyAttributes(['status' => ['original' => 'active', 'current' => 'disabled']]);
+        $node = new InNode('status', ['active', 'pending'], false);
+
+        $this->assertSame(
+            EvaluationResult::Reject,
+            $this->evaluator->evaluate($attrs, $node, processTruth: true),
+            '$processTruth=true must read currentValue for InNode',
+        );
+    }
+
+    #[Test]
+    public function in_node_process_truth_matches_when_current_is_in_list(): void
+    {
+        // original is NOT in the list, current is — process-truth should match
+        $attrs = $this->dirtyAttributes(['status' => ['original' => 'disabled', 'current' => 'active']]);
+        $node = new InNode('status', ['active', 'pending'], false);
+
+        $this->assertSame(
+            EvaluationResult::Match,
+            $this->evaluator->evaluate($attrs, $node, processTruth: true),
+        );
+    }
+
+    #[Test]
+    public function not_in_node_default_uses_original_value(): void
+    {
+        // original is NOT in the exclusion list (match), current IS in the list (reject)
+        $attrs = $this->dirtyAttributes(['status' => ['original' => 'active', 'current' => 'disabled']]);
+        $node = new InNode('status', ['disabled', 'banned'], true);
+
+        $this->assertSame(
+            EvaluationResult::Match,
+            $this->evaluator->evaluate($attrs, $node),
+            'Default (no $processTruth) must read originalValue for negated InNode',
+        );
+    }
+
+    #[Test]
+    public function not_in_node_process_truth_true_uses_current_value(): void
+    {
+        // original NOT in list → Match; current IN list → Reject under process-truth
+        $attrs = $this->dirtyAttributes(['status' => ['original' => 'active', 'current' => 'disabled']]);
+        $node = new InNode('status', ['disabled', 'banned'], true);
+
+        $this->assertSame(
+            EvaluationResult::Reject,
+            $this->evaluator->evaluate($attrs, $node, processTruth: true),
+            '$processTruth=true must read currentValue for negated InNode',
+        );
+    }
 }
