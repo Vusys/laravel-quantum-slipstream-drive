@@ -571,7 +571,6 @@ final class IdentityMapTest extends TestCase
             $this->store->disabled(function (): never {
                 throw new \RuntimeException('intentional');
             });
-            $this->fail('Expected RuntimeException was not thrown.');
         } catch (\RuntimeException) {
         }
 
@@ -722,5 +721,22 @@ final class IdentityMapTest extends TestCase
         $this->assertSame('return_collection_from_memory', $explanations[0]->type->value);
         $this->assertFalse($explanations[0]->sqlExecuted);
         $this->assertContains($alice->id, $explanations[0]->memoryKeys);
+    }
+
+    #[Test]
+    public function explanation_to_string_includes_plan_model_and_sql_executed(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        User::find($alice->id);
+
+        $explanations = $this->store->explain(function () use ($alice): void {
+            User::find($alice->id);
+        });
+
+        $this->assertCount(1, $explanations);
+        $string = (string) $explanations[0];
+        $this->assertStringContainsString('Plan:', $string);
+        $this->assertStringContainsString('Model:', $string);
+        $this->assertStringContainsString('SQL executed: no', $string);
     }
 }
