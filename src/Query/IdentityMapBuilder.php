@@ -758,10 +758,6 @@ class IdentityMapBuilder extends Builder
      * Returns the filtered model array when coverage can serve the query, or
      * null when the query must fall through to SQL.
      *
-     * @param  list<string>  $columns  Output columns required ([] = no output columns needed)
-     * @return array<int, TModel>|null
-     */
-    /**
      * @param  list<string>  $columns
      * @param  QueryPatternExtractor<TModel>  $extractor
      * @return list<TModel>|null
