@@ -23,12 +23,6 @@ final class IdentityGraph
 
     public function addEdge(RelationEdge $edge): void
     {
-        if ($this->maxEdges !== null && $this->edgeCount >= $this->maxEdges) {
-            $this->flush();
-
-            return;
-        }
-
         $bucket = $edge->from->key().'|'.$edge->relationName;
         $existing = $this->edges[$bucket] ?? [];
 
@@ -41,6 +35,12 @@ final class IdentityGraph
             }
         }
 
+        if ($this->maxEdges !== null && $this->edgeCount >= $this->maxEdges) {
+            $this->flush();
+
+            return;
+        }
+
         $existing[] = $edge;
         $this->edges[$bucket] = $existing;
         $this->edgeCount++;
@@ -48,13 +48,21 @@ final class IdentityGraph
 
     public function addCoverage(RelationCoverage $coverage): void
     {
+        $key = RelationCoverageKey::make($coverage->parent, $coverage->relationName);
+
+        if (isset($this->coverage[$key])) {
+            $this->coverage[$key] = $coverage;
+
+            return;
+        }
+
         if ($this->maxCoverage !== null && count($this->coverage) >= $this->maxCoverage) {
             $this->flush();
 
             return;
         }
 
-        $this->coverage[RelationCoverageKey::make($coverage->parent, $coverage->relationName)] = $coverage;
+        $this->coverage[$key] = $coverage;
     }
 
     /** @return list<RelationEdge> */

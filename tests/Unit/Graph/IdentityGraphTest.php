@@ -258,6 +258,40 @@ final class IdentityGraphTest extends TestCase
     }
 
     #[Test]
+    public function add_edge_upsert_at_cap_does_not_flush(): void
+    {
+        $graph = new IdentityGraph(maxEdges: 1);
+        $user = $this->userIdentity();
+        $post = $this->postIdentity();
+        $first = $this->makeEdge($user, $post);
+        $second = $this->makeEdge($user, $post);
+        $second->version = 7;
+
+        $graph->addEdge($first);
+        $graph->addEdge($second);
+
+        $edges = $graph->edgesFrom($user, 'posts');
+        $this->assertCount(1, $edges);
+        $this->assertSame($second, $edges[0], 'upserting an existing edge at the cap must replace in place, not flush');
+        $this->assertSame(1, $graph->edgeCount());
+    }
+
+    #[Test]
+    public function add_coverage_upsert_at_cap_does_not_flush(): void
+    {
+        $graph = new IdentityGraph(maxCoverage: 1);
+        $user = $this->userIdentity();
+        $first = $this->makeCoverage($user, childPrimaryKeys: [10]);
+        $second = $this->makeCoverage($user, childPrimaryKeys: [10, 11]);
+
+        $graph->addCoverage($first);
+        $graph->addCoverage($second);
+
+        $this->assertSame($second, $graph->coverageFor($user, 'posts'), 'upserting existing coverage at the cap must replace in place, not flush');
+        $this->assertSame(1, $graph->coverageCount());
+    }
+
+    #[Test]
     public function max_coverage_allows_storage_up_to_limit_then_flushes(): void
     {
         $graph = new IdentityGraph(maxCoverage: 2);
