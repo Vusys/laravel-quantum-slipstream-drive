@@ -61,12 +61,13 @@ final class WhereShapeTest extends TestCase
             'eq bool true reject' => ['=',  1,       false,   EvaluationResult::Reject],
             'eq bool false reject' => ['=',  0,       true,    EvaluationResult::Reject],
 
-            // Null equality (loose ==: null==null is true; 0==null is also true in PHP)
-            'eq null null match' => ['=',  null,    null,    EvaluationResult::Match],
-            'eq null string reject' => ['=',  'x',     null,    EvaluationResult::Reject],
-            'eq zero null match' => ['=',  0,       null,    EvaluationResult::Match],
-            'neq null string match' => ['!=', 'x',     null,    EvaluationResult::Match],
-            'neq null null reject' => ['!=', null,    null,    EvaluationResult::Reject],
+            // Null equality: SQL NULL comparisons always yield NULL (Unknown), never Match/Reject.
+            // PHP loose equality would match null==null, null==0 etc., which is incorrect SQL semantics.
+            'eq null null match' => ['=',  null,    null,    EvaluationResult::Unknown],
+            'eq null string reject' => ['=',  'x',     null,    EvaluationResult::Unknown],
+            'eq zero null match' => ['=',  0,       null,    EvaluationResult::Unknown],
+            'neq null string match' => ['!=', 'x',     null,    EvaluationResult::Unknown],
+            'neq null null reject' => ['!=', null,    null,    EvaluationResult::Unknown],
 
             // Empty string
             'eq empty string match' => ['=',  '',      '',      EvaluationResult::Match],

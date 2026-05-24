@@ -55,6 +55,10 @@ final class PredicateEvaluator
         $attrValue = $processTruth ? $fact->currentValue : $fact->originalValue;
         $predicateValue = $node->value;
 
+        if ($attrValue === null || $predicateValue === null) {
+            return EvaluationResult::Unknown;
+        }
+
         // phpcs:ignore SlevomatCodingStandard.Operators.DisallowEqualOperators
         return match ($node->operator) {
             '=' => $attrValue == $predicateValue
@@ -76,6 +80,11 @@ final class PredicateEvaluator
         }
 
         $attrValue = $processTruth ? $fact->currentValue : $fact->originalValue;
+
+        if ($attrValue === null) {
+            return EvaluationResult::Unknown;
+        }
+
         $found = false;
 
         foreach ($node->values as $value) {

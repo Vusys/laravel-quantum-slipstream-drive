@@ -80,21 +80,38 @@ final class MemoryBelongsTo extends BelongsTo
         }
 
         if ($entry !== null && $entry->state === LifecycleState::Exists) {
-            $store->capture(new Explanation(
-                type: PlanType::ReturnBelongsToFromMemory,
-                modelClass: $related::class,
-                reason: 'belongs-to-memory-hit',
-                sqlExecuted: false,
-                memoryKeys: [$entry->primaryKeyValue],
-            ));
+            $rawCols = $this->query->getQuery()->columns;
+            $colList = $rawCols !== null ? array_filter($rawCols, is_string(...)) : [];
+            if ($colList === []) {
+                $colList = ['*'];
+            }
 
-            /** @var TRelatedModel $cached */
-            $cached = $entry->model;
+            if ($entry->attributes->satisfies(array_values($colList))) {
+                $store->capture(new Explanation(
+                    type: PlanType::ReturnBelongsToFromMemory,
+                    modelClass: $related::class,
+                    reason: 'belongs-to-memory-hit',
+                    sqlExecuted: false,
+                    memoryKeys: [$entry->primaryKeyValue],
+                ));
 
-            return $cached;
+                /** @var TRelatedModel $cached */
+                $cached = $entry->model;
+
+                return $cached;
+            }
         }
 
-        return parent::getResults();
+        $result = parent::getResults();
+
+        if ($result instanceof Model) {
+            $rawCols = $this->query->getQuery()->columns;
+            if ($rawCols === null || $rawCols === ['*']) {
+                resolve(IdentityMapStore::class)->markAllColumnsKnown($result);
+            }
+        }
+
+        return $result;
     }
 
     private function queryHasHazards(): bool

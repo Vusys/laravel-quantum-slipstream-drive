@@ -31,6 +31,8 @@ final class IdentityMapStore
 
     private bool $disabled = false;
 
+    private ?string $pendingFingerprint = null;
+
     private bool $capturing = false;
 
     /** @var list<Explanation> */
@@ -39,6 +41,11 @@ final class IdentityMapStore
     public function __construct()
     {
         $this->uniqueKeyIndex = new UniqueKeyIndex;
+    }
+
+    public function setPendingFingerprint(?string $fingerprint): void
+    {
+        $this->pendingFingerprint = $fingerprint;
     }
 
     public function remember(Model $model, bool $allColumnsKnown = false): void
@@ -57,7 +64,7 @@ final class IdentityMapStore
             return;
         }
 
-        $fingerprint = ScopeFingerprinter::fromModel($model);
+        $fingerprint = $this->pendingFingerprint ?? ScopeFingerprinter::fromModel($model);
         $mapKey = $this->makeKey($model, $key, $fingerprint);
 
         if (isset($this->entries[$mapKey])) {
@@ -506,9 +513,9 @@ final class IdentityMapStore
         PredicateNode $predicate,
         array $values,
         PredicateEvaluator $evaluator,
-    ): void {
+    ): bool {
         if ($this->disabled) {
-            return;
+            return false;
         }
 
         $keysToEvict = [];
@@ -559,6 +566,8 @@ final class IdentityMapStore
         foreach ($keysToEvict as $key) {
             unset($this->entries[$key]);
         }
+
+        return $keysToEvict !== [];
     }
 
     /**
@@ -573,9 +582,9 @@ final class IdentityMapStore
         PredicateNode $predicate,
         PredicateEvaluator $evaluator,
         bool $softDeletes,
-    ): void {
+    ): bool {
         if ($this->disabled) {
-            return;
+            return false;
         }
 
         $keysToEvict = [];
@@ -606,6 +615,8 @@ final class IdentityMapStore
         foreach ($keysToEvict as $key) {
             unset($this->entries[$key]);
         }
+
+        return $keysToEvict !== [];
     }
 
     /** @return array<string, mixed> */

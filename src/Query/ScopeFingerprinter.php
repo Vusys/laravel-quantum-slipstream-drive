@@ -20,6 +20,11 @@ final class ScopeFingerprinter
     {
         $parts = self::softDeletePart($builder);
 
+        $extra = self::extraScopePart($builder);
+        if ($extra !== '') {
+            $parts[] = 'scope:'.$extra;
+        }
+
         return $parts === [] ? 'default' : implode(',', $parts);
     }
 
@@ -52,11 +57,90 @@ final class ScopeFingerprinter
 
         $removedScopes = $builder->removedScopes();
 
-        if (in_array(SoftDeletingScope::class, $removedScopes, true)) {
-            return ['soft-delete:with-trashed'];
+        if (! in_array(SoftDeletingScope::class, $removedScopes, true)) {
+            return ['soft-delete:default'];
         }
 
-        return ['soft-delete:default'];
+        $model = $builder->getModel();
+        $deletedAt = method_exists($model, 'getDeletedAtColumn')
+            ? $model->getDeletedAtColumn()
+            : 'deleted_at';
+        $qualifiedDeletedAt = method_exists($model, 'getQualifiedDeletedAtColumn')
+            ? $model->getQualifiedDeletedAtColumn()
+            : $model->getTable().'.'.$deletedAt;
+
+        foreach ($builder->getQuery()->wheres as $where) {
+            if (
+                ($where['type'] ?? null) === 'NotNull'
+                && ($where['boolean'] ?? null) === 'and'
+                && is_string($where['column'] ?? null)
+                && in_array($where['column'], [$deletedAt, $qualifiedDeletedAt], true)
+            ) {
+                return ['soft-delete:only-trashed'];
+            }
+        }
+
+        return ['soft-delete:with-trashed'];
+    }
+
+    /**
+     * Hash extra global-scope WHERE clauses beyond the soft-delete guard.
+     *
+     * Uses a fresh model query with scopes applied to capture only the clauses
+     * that global scopes contribute, excluding the soft-delete IS NULL guard and
+     * any user-supplied predicates that were added after scope application.
+     *
+     * @template T of Model
+     *
+     * @param  Builder<T>  $builder
+     */
+    private static function extraScopePart(Builder $builder): string
+    {
+        $model = $builder->getModel();
+        $deletedAt = method_exists($model, 'getDeletedAtColumn')
+            ? $model->getDeletedAtColumn()
+            : 'deleted_at';
+        $qualifiedDeletedAt = method_exists($model, 'getQualifiedDeletedAtColumn')
+            ? $model->getQualifiedDeletedAtColumn()
+            : $model->getTable().'.'.$deletedAt;
+
+        /** @var array<int, array<string, mixed>> $scopeWheres */
+        $scopeWheres = $model->newQuery()->applyScopes()->getQuery()->wheres;
+
+        $clauses = [];
+
+        foreach ($scopeWheres as $where) {
+            $type = $where['type'] ?? null;
+            $column = $where['column'] ?? null;
+            $boolean = $where['boolean'] ?? null;
+
+            if (
+                $type === 'Null'
+                && $boolean === 'and'
+                && is_string($column)
+                && in_array($column, [$deletedAt, $qualifiedDeletedAt], true)
+            ) {
+                continue;
+            }
+
+            $encoded = json_encode($where, JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+            if (! is_string($encoded)) {
+                $type = is_string($where['type']) ? $where['type'] : '';
+                $col = is_string($where['column']) ? $where['column'] : '';
+                $clauses[] = $type.'|'.$col;
+            } else {
+                $clauses[] = $encoded;
+            }
+        }
+
+        if ($clauses === []) {
+            return '';
+        }
+
+        sort($clauses);
+
+        return md5(implode('|', $clauses));
     }
 
     private static function usesSoftDeletes(Model $model): bool
