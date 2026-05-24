@@ -173,16 +173,23 @@ final class BelongsToMemoryTest extends TestCase
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
         $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
 
-        $queryCount = 0;
-        DB::listen(function () use (&$queryCount): void {
-            $queryCount++;
-        });
-
         $relation = $post->user();
         $relation->getQuery()->groupBy('users.id');
-        $relation->getResults();
 
-        $this->assertGreaterThan(0, $queryCount, 'queryHasHazards() must fall back to SQL when GROUP BY is present');
+        // MariaDB (ONLY_FULL_GROUP_BY) rejects SELECT * GROUP BY id; use explain() to verify
+        // the decision path regardless of whether the SQL itself succeeds on the current engine.
+        try {
+            $explanations = $this->store->explain(fn () => $relation->getResults());
+        } catch (QueryException) {
+            $explanations = [];
+        }
+
+        $planTypes = array_map(fn (Explanation $e) => $e->type->value, $explanations);
+        $this->assertNotContains(
+            'return_belongs_to_from_memory',
+            $planTypes,
+            'queryHasHazards() must prevent MemoryBelongsTo from serving directly when GROUP BY is present',
+        );
     }
 
     #[Test]
