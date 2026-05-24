@@ -16,6 +16,7 @@ final class PredicateColumns
             $node instanceof ComparisonNode => [$node->column],
             $node instanceof InNode => [$node->column],
             $node instanceof NullNode => [$node->column],
+            $node instanceof BetweenNode => [$node->column],
             default => [],
         };
     }

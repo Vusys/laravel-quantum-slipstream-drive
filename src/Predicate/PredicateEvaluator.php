@@ -17,6 +17,7 @@ final class PredicateEvaluator
             $node instanceof ComparisonNode => $this->evaluateComparison($attributes, $node, $processTruth),
             $node instanceof InNode => $this->evaluateIn($attributes, $node, $processTruth),
             $node instanceof NullNode => $this->evaluateNull($attributes, $node, $processTruth),
+            $node instanceof BetweenNode => $this->evaluateBetween($attributes, $node, $processTruth),
             default => EvaluationResult::Unknown,
         };
     }
@@ -67,7 +68,23 @@ final class PredicateEvaluator
             '!=', '<>' => $attrValue != $predicateValue
                 ? EvaluationResult::Match
                 : EvaluationResult::Reject,
+            '>', '>=', '<', '<=' => $this->evaluateNumericComparison($attrValue, $node->operator, $predicateValue),
             default => EvaluationResult::Unknown,
+        };
+    }
+
+    /** @param '>'|'>='|'<'|'<=' $op */
+    private function evaluateNumericComparison(mixed $a, string $op, mixed $b): EvaluationResult
+    {
+        if (! is_int($a) && ! is_float($a) || ! is_int($b) && ! is_float($b)) {
+            return EvaluationResult::Unknown;
+        }
+
+        return match ($op) {
+            '>' => $a > $b ? EvaluationResult::Match : EvaluationResult::Reject,
+            '>=' => $a >= $b ? EvaluationResult::Match : EvaluationResult::Reject,
+            '<' => $a < $b ? EvaluationResult::Match : EvaluationResult::Reject,
+            '<=' => $a <= $b ? EvaluationResult::Match : EvaluationResult::Reject,
         };
     }
 
@@ -131,5 +148,30 @@ final class PredicateEvaluator
 
         // IS NULL
         return $isNull ? EvaluationResult::Match : EvaluationResult::Reject;
+    }
+
+    private function evaluateBetween(AttributeKnowledge $attributes, BetweenNode $node, bool $processTruth): EvaluationResult
+    {
+        $fact = $attributes->get($node->column);
+
+        if (! $fact instanceof AttributeFact) {
+            return EvaluationResult::Unknown;
+        }
+
+        $v = $processTruth ? $fact->currentValue : $fact->originalValue;
+
+        if (! is_int($v) && ! is_float($v)
+            || ! is_int($node->min) && ! is_float($node->min)
+            || ! is_int($node->max) && ! is_float($node->max)
+        ) {
+            return EvaluationResult::Unknown;
+        }
+
+        $inRange = $v >= $node->min && $v <= $node->max;
+
+        return match ($node->negated) {
+            true => $inRange ? EvaluationResult::Reject : EvaluationResult::Match,
+            false => $inRange ? EvaluationResult::Match : EvaluationResult::Reject,
+        };
     }
 }

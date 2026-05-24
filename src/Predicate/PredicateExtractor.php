@@ -6,7 +6,7 @@ namespace Vusys\QueryRicerExtreme\Predicate;
 
 final class PredicateExtractor
 {
-    private const array SUPPORTED_OPERATORS = ['=', '!=', '<>'];
+    private const array SUPPORTED_OPERATORS = ['=', '!=', '<>', '>', '>=', '<', '<='];
 
     /** @param array<string, mixed> $where */
     public static function fromWhere(array $where): ?PredicateNode
@@ -24,6 +24,7 @@ final class PredicateExtractor
             'NotIn' => self::fromInWhere($column, $where, true),
             'Null' => new NullNode($column, false),
             'NotNull' => new NullNode($column, true),
+            'between', 'Between' => self::fromBetweenWhere($column, $where),
             default => null,
         };
     }
@@ -57,5 +58,24 @@ final class PredicateExtractor
 
         /** @var list<mixed> $values */
         return new InNode($column, $values, $negated);
+    }
+
+    /** @param array<string, mixed> $where */
+    private static function fromBetweenWhere(string $column, array $where): ?BetweenNode
+    {
+        $values = $where['values'] ?? null;
+        $not = (bool) ($where['not'] ?? false);
+
+        if (! is_array($values) || count($values) !== 2) {
+            return null;
+        }
+
+        [$min, $max] = array_values($values);
+
+        if (! is_scalar($min) || ! is_scalar($max)) {
+            return null;
+        }
+
+        return new BetweenNode($column, $min, $max, $not);
     }
 }
