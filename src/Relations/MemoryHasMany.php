@@ -7,16 +7,25 @@ namespace Vusys\QueryRicerExtreme\Relations;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
 use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
+use Vusys\QueryRicerExtreme\Enums\LifecycleState;
 use Vusys\QueryRicerExtreme\Enums\PlanType;
 use Vusys\QueryRicerExtreme\Enums\RelationKind;
 use Vusys\QueryRicerExtreme\Explanation;
+use Vusys\QueryRicerExtreme\Graph\EdgeConfidence;
+use Vusys\QueryRicerExtreme\Graph\EdgeSource;
+use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
+use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
+use Vusys\QueryRicerExtreme\Graph\RelationCoverage;
+use Vusys\QueryRicerExtreme\Graph\RelationEdge;
 use Vusys\QueryRicerExtreme\Knowledge\RelationFact;
 use Vusys\QueryRicerExtreme\Predicate\AndNode;
 use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
 use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
 use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
 use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
+use Vusys\QueryRicerExtreme\Store\IdentityEntry;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 
 /**
@@ -59,23 +68,6 @@ final class MemoryHasMany extends HasMany
             return $r;
         }
 
-        if (! $this->parent->relationLoaded($this->relationName)) {
-            /** @var Collection<int, TRelatedModel> $r */
-            $r = $this->query->get($columns);
-
-            return $r;
-        }
-
-        $parentEntry = $store->findEntry($this->parent);
-        $fact = $parentEntry?->relations->get($this->relationName);
-
-        if ($fact === null || ! $fact->complete) {
-            /** @var Collection<int, TRelatedModel> $r */
-            $r = $this->query->get($columns);
-
-            return $r;
-        }
-
         if ($this->queryHasHazards()) {
             /** @var Collection<int, TRelatedModel> $r */
             $r = $this->query->get($columns);
@@ -92,9 +84,28 @@ final class MemoryHasMany extends HasMany
             return $r;
         }
 
-        $loadedCollection = $this->parent->getRelation($this->relationName);
+        $loadedCollection = $this->parent->relationLoaded($this->relationName)
+            ? $this->parent->getRelation($this->relationName)
+            : null;
 
         if (! $loadedCollection instanceof Collection) {
+            $fromGraph = $this->getFromGraph($store, $extraNodes);
+
+            if ($fromGraph instanceof Collection) {
+                /** @var Collection<int, TRelatedModel> $fromGraph */
+                return $fromGraph;
+            }
+
+            /** @var Collection<int, TRelatedModel> $r */
+            $r = $this->query->get($columns);
+
+            return $r;
+        }
+
+        $parentEntry = $store->findEntry($this->parent);
+        $fact = $parentEntry?->relations->get($this->relationName);
+
+        if ($fact === null || ! $fact->complete) {
             /** @var Collection<int, TRelatedModel> $r */
             $r = $this->query->get($columns);
 
@@ -201,6 +212,8 @@ final class MemoryHasMany extends HasMany
             ));
         }
 
+        $this->recordGraphCoverage($result);
+
         return $result;
     }
 
@@ -236,6 +249,14 @@ final class MemoryHasMany extends HasMany
                     complete: true,
                     value: null,
                 ));
+            }
+
+            $loaded = $model->getRelation($relation);
+
+            if ($loaded instanceof Collection) {
+                /** @var Collection<int, TRelatedModel> $typed */
+                $typed = $loaded;
+                $this->recordGraphCoverageForParent($model, $typed);
             }
         }
 
@@ -356,5 +377,164 @@ final class MemoryHasMany extends HasMany
             && $boolean === 'and'
             && is_string($column)
             && in_array($column, [$deletedAt, $qualifiedDeletedAt], true);
+    }
+
+    /** @param Collection<int, TRelatedModel> $result */
+    private function recordGraphCoverage(Collection $result): void
+    {
+        $this->recordGraphCoverageForParent($this->parent, $result);
+    }
+
+    /** @param Collection<int, TRelatedModel> $children */
+    private function recordGraphCoverageForParent(Model $parent, Collection $children): void
+    {
+        if (! $this->isGraphEnabled()) {
+            return;
+        }
+
+        $parentIdentity = ModelIdentity::fromModel($parent);
+
+        if (! $parentIdentity instanceof ModelIdentity || $this->relationName === null) {
+            return;
+        }
+
+        $graph = resolve(IdentityGraph::class);
+        $childPrimaryKeys = [];
+
+        foreach ($children as $child) {
+            $childIdentity = ModelIdentity::fromModel($child);
+
+            if (! $childIdentity instanceof ModelIdentity) {
+                return;
+            }
+
+            $childPrimaryKeys[] = $childIdentity->primaryKeyValue;
+
+            $graph->addEdge(new RelationEdge(
+                from: $parentIdentity,
+                relationName: $this->relationName,
+                kind: RelationKind::HasMany,
+                to: $childIdentity,
+                source: EdgeSource::LoadedRelation,
+                confidence: EdgeConfidence::Certain,
+                version: 1,
+            ));
+        }
+
+        $graph->addCoverage(new RelationCoverage(
+            parent: $parentIdentity,
+            relationName: $this->relationName,
+            relatedModelClass: $this->related::class,
+            complete: true,
+            columns: new ColumnSet(['*']),
+            childPrimaryKeys: $childPrimaryKeys,
+        ));
+    }
+
+    /**
+     * @param  list<PredicateNode>  $extraNodes
+     * @return Collection<int, TRelatedModel>|null
+     */
+    private function getFromGraph(IdentityMapStore $store, array $extraNodes): ?Collection
+    {
+        if (! $this->isGraphEnabled() || $this->relationName === null) {
+            return null;
+        }
+
+        $parentIdentity = ModelIdentity::fromModel($this->parent);
+
+        if (! $parentIdentity instanceof ModelIdentity) {
+            return null;
+        }
+
+        $graph = resolve(IdentityGraph::class);
+        $coverage = $graph->coverageFor($parentIdentity, $this->relationName);
+
+        if ($coverage === null || ! $coverage->complete) {
+            return null;
+        }
+
+        $children = $this->fetchChildrenFromStore($store, $coverage);
+
+        if ($children === null) {
+            return null;
+        }
+
+        if ($extraNodes === []) {
+            $store->capture(new Explanation(
+                type: PlanType::FilterHasManyInMemory,
+                modelClass: $this->related::class,
+                reason: 'has-many-from-graph-coverage',
+                sqlExecuted: false,
+            ));
+
+            return $this->related->newCollection($children);
+        }
+
+        $predicate = new AndNode($extraNodes);
+        $evaluator = new PredicateEvaluator;
+        $filtered = [];
+
+        foreach ($children as $child) {
+            $entry = $store->findEntry($child);
+
+            if (! $entry instanceof IdentityEntry) {
+                return null;
+            }
+
+            $result = $evaluator->evaluate($entry->attributes, $predicate);
+
+            if ($result === EvaluationResult::Unknown) {
+                return null;
+            }
+
+            if ($result === EvaluationResult::Match) {
+                $filtered[] = $child;
+            }
+        }
+
+        $store->capture(new Explanation(
+            type: PlanType::FilterHasManyInMemory,
+            modelClass: $this->related::class,
+            reason: 'has-many-graph-coverage-filtered',
+            sqlExecuted: false,
+        ));
+
+        return $this->related->newCollection($filtered);
+    }
+
+    /** @return list<TRelatedModel>|null */
+    private function fetchChildrenFromStore(IdentityMapStore $store, RelationCoverage $coverage): ?array
+    {
+        $related = $this->related;
+        $connection = $related->getConnectionName() ?? 'default';
+        $fingerprint = ScopeFingerprinter::fromModel($related);
+        $children = [];
+
+        foreach ($coverage->childPrimaryKeys as $pk) {
+            $entry = $store->find(
+                connection: $connection,
+                modelClass: $related::class,
+                table: $related->getTable(),
+                primaryKeyName: $related->getKeyName(),
+                primaryKeyValue: $pk,
+                fingerprint: $fingerprint,
+            );
+
+            if (! $entry instanceof IdentityEntry || $entry->state !== LifecycleState::Exists) {
+                return null;
+            }
+
+            /** @var TRelatedModel $typed */
+            $typed = $entry->model;
+            $children[] = $typed;
+        }
+
+        return $children;
+    }
+
+    private function isGraphEnabled(): bool
+    {
+        return (bool) config('query-ricer-extreme.relation_graph.enabled', true);
     }
 }

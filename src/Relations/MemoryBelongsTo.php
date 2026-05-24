@@ -8,7 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Vusys\QueryRicerExtreme\Enums\LifecycleState;
 use Vusys\QueryRicerExtreme\Enums\PlanType;
+use Vusys\QueryRicerExtreme\Enums\RelationKind;
 use Vusys\QueryRicerExtreme\Explanation;
+use Vusys\QueryRicerExtreme\Graph\EdgeConfidence;
+use Vusys\QueryRicerExtreme\Graph\EdgeSource;
+use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
+use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
+use Vusys\QueryRicerExtreme\Graph\RelationEdge;
 use Vusys\QueryRicerExtreme\HasIdentityMap;
 use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
@@ -105,6 +111,8 @@ final class MemoryBelongsTo extends BelongsTo
                 /** @var TRelatedModel $cached */
                 $cached = $entry->model;
 
+                $this->recordGraphEdge($cached);
+
                 return $cached;
             }
         }
@@ -116,9 +124,41 @@ final class MemoryBelongsTo extends BelongsTo
             if ($rawCols === null || $rawCols === ['*']) {
                 resolve(IdentityMapStore::class)->markAllColumnsKnown($result);
             }
+
+            $this->recordGraphEdge($result);
         }
 
         return $result;
+    }
+
+    private function recordGraphEdge(Model $parent): void
+    {
+        if (! (bool) config('query-ricer-extreme.relation_graph.enabled', true)) {
+            return;
+        }
+
+        $relationName = $this->getRelationName();
+
+        if ($relationName === '') {
+            return;
+        }
+
+        $childIdentity = ModelIdentity::fromModel($this->child);
+        $parentIdentity = ModelIdentity::fromModel($parent);
+
+        if (! $childIdentity instanceof ModelIdentity || ! $parentIdentity instanceof ModelIdentity) {
+            return;
+        }
+
+        resolve(IdentityGraph::class)->addEdge(new RelationEdge(
+            from: $childIdentity,
+            relationName: $relationName,
+            kind: RelationKind::BelongsTo,
+            to: $parentIdentity,
+            source: EdgeSource::ForeignKeyFact,
+            confidence: EdgeConfidence::Certain,
+            version: 1,
+        ));
     }
 
     private function queryHasHazards(): bool

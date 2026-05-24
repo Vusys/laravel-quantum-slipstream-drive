@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
+use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
+use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
 use Vusys\QueryRicerExtreme\Query\IdentityMapBuilder;
 use Vusys\QueryRicerExtreme\Relations\MemoryBelongsTo;
 use Vusys\QueryRicerExtreme\Relations\MemoryHasMany;
@@ -65,14 +67,21 @@ trait HasIdentityMap
 
         static::saved(function (Model $model): void {
             resolve(IdentityMapStore::class)->afterSaved($model);
+            $graph = resolve(IdentityGraph::class);
 
             if ($model->wasRecentlyCreated) {
                 resolve(CoverageRegistry::class)->flushModelClass($model::class);
+                $graph->invalidateModelClass($model::class);
             } else {
                 $changedColumns = array_keys($model->getChanges());
 
                 if ($changedColumns !== []) {
                     resolve(CoverageRegistry::class)->flushByColumns($model::class, $changedColumns);
+                }
+
+                $identity = ModelIdentity::fromModel($model);
+                if ($identity instanceof ModelIdentity) {
+                    $graph->invalidateModel($identity);
                 }
             }
         });
@@ -80,12 +89,14 @@ trait HasIdentityMap
         static::deleted(function (Model $model): void {
             resolve(IdentityMapStore::class)->afterDeleted($model);
             resolve(CoverageRegistry::class)->flushModelClass($model::class);
+            resolve(IdentityGraph::class)->invalidateModelClass($model::class);
         });
 
         if (in_array(SoftDeletes::class, class_uses_recursive(static::class), true)) {
             static::registerModelEvent('restored', function (Model $model): void {
                 resolve(IdentityMapStore::class)->afterSaved($model);
                 resolve(CoverageRegistry::class)->flushModelClass($model::class);
+                resolve(IdentityGraph::class)->invalidateModelClass($model::class);
             });
 
             static::registerModelEvent('forceDeleted', function (Model $model): void {
