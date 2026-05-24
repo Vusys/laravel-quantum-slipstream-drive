@@ -245,18 +245,20 @@ final class AggregateFromCoverageTest extends TestCase
     #[Test]
     public function non_numeric_column_value_falls_through_to_sql(): void
     {
-        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true, 'score' => 10]);
+        // 'score' is a nullable integer cast. When the DB value is null, Eloquent's
+        // integer cast returns null, which fails the !is_int && !is_float guard and
+        // must force SQL fallthrough on every aggregate. A string column would also
+        // exercise this path but is unportable: Postgres rejects SUM(varchar) with a
+        // type error, whereas SQLite/MySQL silently coerce strings.
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true, 'score' => null]);
         User::where('active', true)->get();
 
-        // 'name' is a string column — non-numeric values must force SQL fallthrough
-        // on every aggregate. Run each in its own listener scope so we measure
-        // each aggregate independently.
         foreach (['sum', 'min', 'max', 'avg'] as $method) {
             $sql = $this->countSql(function () use ($method): void {
-                User::where('active', true)->{$method}('name');
+                User::where('active', true)->{$method}('score');
             });
 
-            $this->assertSame(1, $sql, "{$method}() on a string column must fall through to SQL");
+            $this->assertSame(1, $sql, "{$method}() on a null-valued column must fall through to SQL");
         }
     }
 
