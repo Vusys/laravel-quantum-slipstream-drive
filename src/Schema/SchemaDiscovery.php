@@ -42,12 +42,10 @@ final class SchemaDiscovery
         $unique = [];
 
         foreach ($indexes as $index) {
-            $isUnique = (bool) ($index['unique'] ?? false);
-            $isPrimary = (bool) ($index['primary'] ?? false);
-            if (! $isUnique) {
+            if (($index['unique'] ?? false) !== true) {
                 continue;
             }
-            if ($isPrimary) {
+            if (($index['primary'] ?? false) === true) {
                 continue;
             }
 
@@ -62,15 +60,14 @@ final class SchemaDiscovery
                 continue;
             }
 
-            $stringColumns = array_values(array_filter($columns, is_string(...)));
-            if ($stringColumns === []) {
-                continue;
-            }
-            if (count($stringColumns) !== count($columns)) {
-                continue;
+            foreach ($columns as $col) {
+                if (! is_string($col)) {
+                    continue 2;
+                }
             }
 
-            $unique[] = $stringColumns;
+            /** @var list<string> $columns */
+            $unique[] = $columns;
         }
 
         return $this->cache[$modelClass] = $unique;

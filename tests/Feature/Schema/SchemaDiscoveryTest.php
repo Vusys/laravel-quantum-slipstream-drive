@@ -30,6 +30,9 @@ final class SchemaDiscoveryTest extends TestCase
         Schema::dropIfExists('m15_compound');
         Schema::dropIfExists('m15_nonunique');
         Schema::dropIfExists('m15_cache_probe');
+        Schema::dropIfExists('m15_pk_only');
+        Schema::dropIfExists('m15_mixed');
+        Schema::dropIfExists('m15_interleaved');
         parent::tearDown();
     }
 
@@ -42,8 +45,85 @@ final class SchemaDiscoveryTest extends TestCase
     #[Test]
     public function primary_key_is_excluded(): void
     {
-        foreach ($this->discovery->uniqueIndexesFor(User::class) as $columns) {
-            $this->assertNotSame(['id'], $columns, 'Primary key must not be reported as a unique index');
+        Schema::create('m15_pk_only', function (Blueprint $table): void {
+            $table->id();
+            $table->string('label');
+        });
+
+        try {
+            $model = new class extends Model
+            {
+                protected $table = 'm15_pk_only';
+
+                public $timestamps = false;
+            };
+
+            $this->assertSame([], $this->discovery->uniqueIndexesFor($model::class), 'A table with only a primary key has no discoverable unique indexes');
+        } finally {
+            Schema::dropIfExists('m15_pk_only');
+        }
+    }
+
+    #[Test]
+    public function non_unique_index_is_excluded_when_mixed_with_unique(): void
+    {
+        Schema::create('m15_mixed', function (Blueprint $table): void {
+            $table->id();
+            $table->string('searchable')->index();
+            $table->string('handle')->unique();
+        });
+
+        try {
+            $model = new class extends Model
+            {
+                protected $table = 'm15_mixed';
+
+                public $timestamps = false;
+            };
+
+            $this->assertSame(
+                [['handle']],
+                $this->discovery->uniqueIndexesFor($model::class),
+                'A non-unique index appearing alongside a unique index must not stop discovery from reporting the unique one',
+            );
+        } finally {
+            Schema::dropIfExists('m15_mixed');
+        }
+    }
+
+    #[Test]
+    public function non_unique_index_does_not_short_circuit_subsequent_unique_indexes(): void
+    {
+        // Two unique indexes separated by a non-unique one. Index iteration order
+        // is DB-specific, so regardless of which direction the driver walks the
+        // list, the non-unique entry will appear between the two uniques — the
+        // loop must continue past it, not break out.
+        Schema::create('m15_interleaved', function (Blueprint $table): void {
+            $table->id();
+            $table->string('alpha')->unique();
+            $table->string('beta')->index();
+            $table->string('gamma')->unique();
+        });
+
+        try {
+            $model = new class extends Model
+            {
+                protected $table = 'm15_interleaved';
+
+                public $timestamps = false;
+            };
+
+            $result = $this->discovery->uniqueIndexesFor($model::class);
+            $sorted = array_map(fn (array $cols): array => $cols, $result);
+            sort($sorted);
+
+            $this->assertSame(
+                [['alpha'], ['gamma']],
+                $sorted,
+                'Both unique indexes must be discovered even when a non-unique index sits between them in iteration order',
+            );
+        } finally {
+            Schema::dropIfExists('m15_interleaved');
         }
     }
 
