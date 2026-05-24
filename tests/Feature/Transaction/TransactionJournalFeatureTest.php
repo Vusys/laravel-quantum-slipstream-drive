@@ -1,0 +1,197 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Vusys\QueryRicerExtreme\Tests\Feature\Transaction;
+
+use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\Test;
+use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
+use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QueryRicerExtreme\Store\TransactionJournal;
+use Vusys\QueryRicerExtreme\Tests\Models\User;
+use Vusys\QueryRicerExtreme\Tests\TestCase;
+
+final class TransactionJournalFeatureTest extends TestCase
+{
+    private IdentityMapStore $store;
+
+    private CoverageRegistry $registry;
+
+    private TransactionJournal $journal;
+
+    #[\Override]
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->store = resolve(IdentityMapStore::class);
+        $this->registry = resolve(CoverageRegistry::class);
+        $this->journal = resolve(TransactionJournal::class);
+        $this->store->flush();
+        $this->registry->flush();
+        $this->journal->flush();
+    }
+
+    private function countSql(callable $callback): int
+    {
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        try {
+            $callback();
+            $count = count(DB::getQueryLog());
+        } finally {
+            DB::disableQueryLog();
+        }
+
+        return $count;
+    }
+
+    #[Test]
+    public function rollback_restores_pre_transaction_attribute_state(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $userId = $user->id;
+        $this->store->flush();
+
+        $fresh = User::find($userId);
+        $this->assertInstanceOf(User::class, $fresh);
+        $this->assertSame('Alice', $fresh->name);
+
+        DB::beginTransaction();
+        $fresh->name = 'Changed';
+        $fresh->save();
+        DB::rollBack();
+
+        $again = User::find($userId);
+        $this->assertInstanceOf(User::class, $again);
+        $this->assertSame('Alice', $again->name);
+        $this->assertSame($fresh, $again, 'identity preserved on restore');
+    }
+
+    #[Test]
+    public function rollback_removes_models_created_inside_the_transaction(): void
+    {
+        DB::beginTransaction();
+        $new = User::create(['name' => 'Temp', 'email' => 'temp@example.com']);
+        $tempId = $new->id;
+        DB::rollBack();
+
+        $sql = $this->countSql(function () use ($tempId): void {
+            $result = User::find($tempId);
+            $this->assertNull($result);
+        });
+
+        $this->assertGreaterThan(0, $sql, 'find must hit the DB after rollback drops the entry');
+    }
+
+    #[Test]
+    public function nested_savepoint_rollback_only_affects_inner_level(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $userId = $user->id;
+        $this->store->flush();
+
+        $fresh = User::find($userId);
+        $this->assertInstanceOf(User::class, $fresh);
+
+        DB::beginTransaction();
+        $fresh->name = 'Outer';
+        $fresh->save();
+
+        DB::beginTransaction();
+        $fresh->name = 'Inner';
+        $fresh->save();
+        DB::rollBack();
+
+        $afterInner = User::find($userId);
+        $this->assertInstanceOf(User::class, $afterInner);
+        $this->assertSame('Outer', $afterInner->name);
+
+        DB::rollBack();
+
+        $afterOuter = User::find($userId);
+        $this->assertInstanceOf(User::class, $afterOuter);
+        $this->assertSame('Alice', $afterOuter->name);
+    }
+
+    #[Test]
+    public function commit_keeps_in_transaction_writes_visible_in_map(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $userId = $user->id;
+        $this->store->flush();
+
+        $fresh = User::find($userId);
+        $this->assertInstanceOf(User::class, $fresh);
+
+        DB::beginTransaction();
+        $fresh->name = 'Saved';
+        $fresh->save();
+        DB::commit();
+
+        $again = User::find($userId);
+        $this->assertInstanceOf(User::class, $again);
+        $this->assertSame('Saved', $again->name);
+    }
+
+    #[Test]
+    public function rollback_flushes_coverage_for_touched_model_classes_only(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
+        User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => false]);
+        $this->store->flush();
+        $this->registry->flush();
+
+        User::where('active', false)->get();
+        $this->assertGreaterThan(0, $this->registry->entryCount(), 'baseline coverage recorded');
+
+        DB::beginTransaction();
+        User::where('active', false)->update(['active' => true]);
+        DB::rollBack();
+
+        $this->assertSame(0, $this->registry->entryCount(), 'coverage for touched class is flushed on rollback');
+    }
+
+    #[Test]
+    public function rollback_with_inactive_journal_falls_back_to_full_flush(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $aliceId = $alice->id;
+        $fresh = User::find($aliceId);
+        $this->assertInstanceOf(User::class, $fresh);
+
+        $this->journal->flush();
+
+        DB::beginTransaction();
+        $this->journal->flush();
+        $fresh->name = 'Changed';
+        $fresh->save();
+        DB::rollBack();
+
+        $sql = $this->countSql(function () use ($aliceId): void {
+            User::find($aliceId);
+        });
+
+        $this->assertGreaterThan(0, $sql, 'inactive-journal rollback must wipe the map (forces SQL)');
+    }
+
+    #[Test]
+    public function rollback_undoes_absent_records_taken_in_transaction(): void
+    {
+        $sql = $this->countSql(function (): void {
+            User::find(999_999);
+        });
+        $this->assertGreaterThan(0, $sql);
+        $this->store->flush();
+
+        DB::beginTransaction();
+        User::find(999_999);
+        DB::rollBack();
+
+        $sqlAfter = $this->countSql(function (): void {
+            User::find(999_999);
+        });
+
+        $this->assertGreaterThan(0, $sqlAfter, 'absent record taken inside tx must be cleared on rollback');
+    }
+}
