@@ -81,12 +81,19 @@ final class MemoryBelongsTo extends BelongsTo
 
         if ($entry !== null && $entry->state === LifecycleState::Exists) {
             $rawCols = $this->query->getQuery()->columns;
-            $colList = $rawCols !== null ? array_filter($rawCols, is_string(...)) : [];
-            if ($colList === []) {
+            $colList = null;
+
+            if ($rawCols === null || $rawCols === []) {
                 $colList = ['*'];
+            } else {
+                $stringCols = array_values(array_filter($rawCols, is_string(...)));
+                if (count($stringCols) === count($rawCols)) {
+                    $colList = $stringCols;
+                }
+                // else: SELECT contains raw expressions — cannot serve from cache
             }
 
-            if ($entry->attributes->satisfies(array_values($colList))) {
+            if ($colList !== null && $entry->attributes->satisfies($colList)) {
                 $store->capture(new Explanation(
                     type: PlanType::ReturnBelongsToFromMemory,
                     modelClass: $related::class,

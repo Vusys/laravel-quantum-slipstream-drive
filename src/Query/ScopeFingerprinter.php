@@ -86,9 +86,9 @@ final class ScopeFingerprinter
     /**
      * Hash extra global-scope WHERE clauses beyond the soft-delete guard.
      *
-     * Uses a fresh model query with scopes applied to capture only the clauses
-     * that global scopes contribute, excluding the soft-delete IS NULL guard and
-     * any user-supplied predicates that were added after scope application.
+     * Mirrors the removed-scope list from $builder onto a fresh query so that
+     * withoutGlobalScope(...) calls are respected: scopes the caller explicitly
+     * removed are excluded from the fingerprint hash.
      *
      * @template T of Model
      *
@@ -104,8 +104,13 @@ final class ScopeFingerprinter
             ? $model->getQualifiedDeletedAtColumn()
             : $model->getTable().'.'.$deletedAt;
 
+        $freshBuilder = $model->newQuery();
+        foreach ($builder->removedScopes() as $removed) {
+            $freshBuilder->withoutGlobalScope($removed);
+        }
+
         /** @var array<int, array<string, mixed>> $scopeWheres */
-        $scopeWheres = $model->newQuery()->applyScopes()->getQuery()->wheres;
+        $scopeWheres = $freshBuilder->applyScopes()->getQuery()->wheres;
 
         $clauses = [];
 

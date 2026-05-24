@@ -86,13 +86,22 @@ final class PredicateEvaluator
         }
 
         $found = false;
+        $hasNullInList = false;
 
         foreach ($node->values as $value) {
+            if ($value === null) {
+                $hasNullInList = true;
+            }
+
             // phpcs:ignore SlevomatCodingStandard.Operators.DisallowEqualOperators
             if ($attrValue == $value) {
                 $found = true;
                 break;
             }
+        }
+
+        if (! $found && $hasNullInList) {
+            return EvaluationResult::Unknown;
         }
 
         if ($node->negated) {
