@@ -79,7 +79,8 @@ class IdentityMapBuilder extends Builder
         }
 
         $connection = $this->getModel()->getConnection()->getName() ?? 'default';
-        $fingerprint = ScopeFingerprinter::fromBuilder($this);
+        $scopedBuilder = $this->applyScopes();
+        $fingerprint = ScopeFingerprinter::fromBuilder($scopedBuilder);
         $entry = $store->find(
             connection: $connection,
             modelClass: $model::class,
@@ -132,7 +133,12 @@ class IdentityMapBuilder extends Builder
             sqlExecuted: true,
         ));
 
-        $result = $this->whereKey($id)->first($columns);
+        $store->setPendingFingerprint($fingerprint);
+        try {
+            $result = $this->whereKey($id)->first($columns);
+        } finally {
+            $store->setPendingFingerprint(null);
+        }
 
         if ($result instanceof Model) {
             if ($columns === ['*']) {
@@ -300,8 +306,13 @@ class IdentityMapBuilder extends Builder
             $rewriteBuilder = $this->withoutIdentityMap();
             $rewriteBuilder->whereKey($sqlKeys);
 
-            /** @var array<int, TModel> $fetched */
-            $fetched = $rewriteBuilder->getModels($columns);
+            $store->setPendingFingerprint($fingerprint);
+            try {
+                /** @var array<int, TModel> $fetched */
+                $fetched = $rewriteBuilder->getModels($columns);
+            } finally {
+                $store->setPendingFingerprint(null);
+            }
 
             $isFullSelect = $columns === ['*'];
 
@@ -432,7 +443,12 @@ class IdentityMapBuilder extends Builder
                 return [];
             }
 
-            $models = parent::getModels($columns);
+            $store->setPendingFingerprint($fingerprint);
+            try {
+                $models = parent::getModels($columns);
+            } finally {
+                $store->setPendingFingerprint(null);
+            }
 
             $isFullSelect = $columns === ['*'];
 
@@ -470,7 +486,12 @@ class IdentityMapBuilder extends Builder
         }
 
         // --- fallthrough: execute SQL normally ---
-        $models = parent::getModels($columns);
+        $store->setPendingFingerprint($fingerprint);
+        try {
+            $models = parent::getModels($columns);
+        } finally {
+            $store->setPendingFingerprint(null);
+        }
 
         $isFullSelect = $columns === ['*'];
 
@@ -814,8 +835,12 @@ class IdentityMapBuilder extends Builder
         $result = parent::update($values);
 
         if ($predicate instanceof PredicateNode) {
-            $store->applyMassUpdate($modelClass, $predicate, $values, new PredicateEvaluator);
-            $registry->flushByColumns($modelClass, array_keys($values));
+            $hadEvictions = $store->applyMassUpdate($modelClass, $predicate, $values, new PredicateEvaluator);
+            if ($hadEvictions) {
+                $registry->flushModelClass($modelClass);
+            } else {
+                $registry->flushByColumns($modelClass, array_keys($values));
+            }
         } else {
             $store->flush($modelClass);
             $registry->flushModelClass($modelClass);

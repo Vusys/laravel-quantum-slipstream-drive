@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QueryRicerExtreme;
 
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -55,6 +56,11 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         });
 
         Event::listen(JobFailed::class, function (): void {
+            $this->app->make(IdentityMapStore::class)->flush();
+            $this->app->make(CoverageRegistry::class)->flush();
+        });
+
+        Event::listen(TransactionRolledBack::class, function (): void {
             $this->app->make(IdentityMapStore::class)->flush();
             $this->app->make(CoverageRegistry::class)->flush();
         });

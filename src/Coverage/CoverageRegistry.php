@@ -89,6 +89,9 @@ final class CoverageRegistry
                     if (in_array($col, $regionColumns, true)) {
                         return false;
                     }
+                    if (! $e->columns->allColumns && $e->columns->covers([$col])) {
+                        return false;
+                    }
                 }
 
                 return true;

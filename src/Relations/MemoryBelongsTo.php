@@ -80,21 +80,45 @@ final class MemoryBelongsTo extends BelongsTo
         }
 
         if ($entry !== null && $entry->state === LifecycleState::Exists) {
-            $store->capture(new Explanation(
-                type: PlanType::ReturnBelongsToFromMemory,
-                modelClass: $related::class,
-                reason: 'belongs-to-memory-hit',
-                sqlExecuted: false,
-                memoryKeys: [$entry->primaryKeyValue],
-            ));
+            $rawCols = $this->query->getQuery()->columns;
+            $colList = null;
 
-            /** @var TRelatedModel $cached */
-            $cached = $entry->model;
+            if ($rawCols === null || $rawCols === []) {
+                $colList = ['*'];
+            } else {
+                $stringCols = array_values(array_filter($rawCols, is_string(...)));
+                if (count($stringCols) === count($rawCols)) {
+                    $colList = $stringCols;
+                }
+                // else: SELECT contains raw expressions — cannot serve from cache
+            }
 
-            return $cached;
+            if ($colList !== null && $entry->attributes->satisfies($colList)) {
+                $store->capture(new Explanation(
+                    type: PlanType::ReturnBelongsToFromMemory,
+                    modelClass: $related::class,
+                    reason: 'belongs-to-memory-hit',
+                    sqlExecuted: false,
+                    memoryKeys: [$entry->primaryKeyValue],
+                ));
+
+                /** @var TRelatedModel $cached */
+                $cached = $entry->model;
+
+                return $cached;
+            }
         }
 
-        return parent::getResults();
+        $result = parent::getResults();
+
+        if ($result instanceof Model) {
+            $rawCols = $this->query->getQuery()->columns;
+            if ($rawCols === null || $rawCols === ['*']) {
+                resolve(IdentityMapStore::class)->markAllColumnsKnown($result);
+            }
+        }
+
+        return $result;
     }
 
     private function queryHasHazards(): bool
