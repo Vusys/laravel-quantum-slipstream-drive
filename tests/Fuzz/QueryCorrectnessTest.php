@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QueryRicerExtreme\Tests\Fuzz;
 
 use PHPUnit\Framework\Attributes\Group;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QueryRicerExtreme\IdentityMap;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 
 #[Group('fuzzer')]
@@ -20,13 +20,11 @@ final class QueryCorrectnessTest extends FuzzerTestCase
         $population = [];
 
         $this->eachSeed(function (int $seed, int $step) use (&$population): void {
-            $store = resolve(IdentityMapStore::class);
-
             if ($step === 0) {
                 $population = $this->buildPopulation($seed, $step);
             }
 
-            $store->flush();
+            IdentityMap::flush();
 
             // 60 % chance to use a known ID, 40 % a guaranteed-absent one
             $useKnown = $population !== [] && mt_rand(0, 9) < 6;
@@ -37,7 +35,7 @@ final class QueryCorrectnessTest extends FuzzerTestCase
             $found = User::find($id);
             $actualId = ($found instanceof User) ? $found->id : null;
 
-            $oracleRaw = $store->disabled(fn () => User::find($id));
+            $oracleRaw = IdentityMap::disabled(fn () => User::find($id));
             $oracleId = ($oracleRaw instanceof User) ? $oracleRaw->id : null;
 
             $this->assertSame($oracleId, $actualId, "find({$id})");
@@ -54,13 +52,11 @@ final class QueryCorrectnessTest extends FuzzerTestCase
         $population = [];
 
         $this->eachSeed(function (int $seed, int $step) use (&$population): void {
-            $store = resolve(IdentityMapStore::class);
-
             if ($step === 0) {
                 $population = $this->buildPopulation($seed, $step);
             }
 
-            $store->flush();
+            IdentityMap::flush();
 
             // Build a query set: random subset of known IDs + 1-2 unknown IDs
             $knownIds = array_map(fn (User $u) => $u->id, $population);
@@ -77,7 +73,7 @@ final class QueryCorrectnessTest extends FuzzerTestCase
 
             $actual = User::whereKey($queryIds)->get()->pluck('id')->sort()->values()->all();
 
-            $oracle = $store->disabled(
+            $oracle = IdentityMap::disabled(
                 fn () => User::whereKey($queryIds)->get()->pluck('id')->sort()->values()->all()
             );
 
@@ -95,8 +91,6 @@ final class QueryCorrectnessTest extends FuzzerTestCase
         $population = [];
 
         $this->eachSeed(function (int $seed, int $step) use (&$population): void {
-            $store = resolve(IdentityMapStore::class);
-
             if ($step === 0) {
                 $population = $this->buildPopulation($seed, $step);
             }
@@ -105,7 +99,7 @@ final class QueryCorrectnessTest extends FuzzerTestCase
                 return;
             }
 
-            $store->flush();
+            IdentityMap::flush();
 
             // Warm a random prefix of the population so some entries are cached, some are not
             $warmCount = mt_rand(0, count($population));
@@ -124,7 +118,7 @@ final class QueryCorrectnessTest extends FuzzerTestCase
                 ->values()
                 ->all();
 
-            $oracle = $store->disabled(
+            $oracle = IdentityMap::disabled(
                 fn () => User::whereKey($ids)
                     ->where('active', $activeValue)
                     ->get()
