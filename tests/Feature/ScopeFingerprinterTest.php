@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Feature;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
+use Vusys\QueryRicerExtreme\Tests\Models\PublishedPost;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 
@@ -79,6 +80,15 @@ final class ScopeFingerprinterTest extends TestCase
             ScopeFingerprinter::fromModel($live),
             ScopeFingerprinter::fromModel($trashed),
         );
+    }
+
+    public function test_non_soft_delete_global_scope_affects_fingerprint(): void
+    {
+        $fpWith = ScopeFingerprinter::fromBuilder(PublishedPost::query()->applyScopes());
+        $fpWithout = ScopeFingerprinter::fromBuilder(PublishedPost::withoutGlobalScope('published')->applyScopes());
+
+        $this->assertNotSame($fpWith, $fpWithout, 'Removing a non-SD global scope must produce a different fingerprint');
+        $this->assertSame('default', $fpWithout, 'Fingerprint with all non-SD scopes removed must fall back to default');
     }
 
     public function test_withoutglobalscope_query_produces_different_fingerprint(): void

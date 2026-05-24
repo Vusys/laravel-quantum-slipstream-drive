@@ -23,12 +23,24 @@ final readonly class QueryPatternExtractor
     {
         $query = $this->builder->getQuery();
 
-        return ($query->joins !== null && $query->joins !== [])
+        if (
+            ($query->joins !== null && $query->joins !== [])
             || ($query->unions !== null && $query->unions !== [])
             || $query->lock !== null
             || ($query->groups !== null && $query->groups !== [])
             || ($query->havings !== null && $query->havings !== [])
-            || $this->hasNonStringSelectColumns();
+            || $this->hasNonStringSelectColumns()
+        ) {
+            return true;
+        }
+
+        foreach ($query->wheres as $where) {
+            if (($where['type'] ?? null) === 'raw') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
