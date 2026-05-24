@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Vusys\QueryRicerExtreme\HasIdentityMap;
+use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
 
 /**
  * @property int $id
@@ -17,6 +18,7 @@ use Vusys\QueryRicerExtreme\HasIdentityMap;
 final class Comment extends Model
 {
     use HasIdentityMap;
+    use UsesContextConnection;
 
     /** @var list<string> */
     protected $fillable = ['commentable_type', 'commentable_id', 'body'];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QueryRicerExtreme\Tests\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
 
 /**
  * @property int $id
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class Tag extends Model
 {
+    use UsesContextConnection;
+
     /** @var list<string> */
     protected $fillable = ['name'];
 }

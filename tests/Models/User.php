@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Vusys\QueryRicerExtreme\HasIdentityMap;
+use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
 
 /**
  * @property int $id
@@ -22,6 +23,7 @@ final class User extends Model
 {
     use HasIdentityMap;
     use SoftDeletes;
+    use UsesContextConnection;
 
     /** @var list<string> */
     protected $fillable = ['name', 'email', 'active'];

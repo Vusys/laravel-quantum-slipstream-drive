@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Vusys\QueryRicerExtreme\HasIdentityMap;
+use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
 
 /**
  * @property int $id
@@ -18,6 +19,7 @@ use Vusys\QueryRicerExtreme\HasIdentityMap;
 final class Post extends Model
 {
     use HasIdentityMap;
+    use UsesContextConnection;
 
     /** @var list<string> */
     protected $fillable = ['user_id', 'tag_id', 'title', 'published'];

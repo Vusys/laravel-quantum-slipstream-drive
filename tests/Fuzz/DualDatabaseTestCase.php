@@ -1,0 +1,134 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Vusys\QueryRicerExtreme\Tests\Fuzz;
+
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+abstract class DualDatabaseTestCase extends FuzzerTestCase
+{
+    private const string SECONDARY = 'lqre_test_b';
+
+    #[\Override]
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->configureSecondaryConnection();
+        $this->createSecondaryDatabaseIfNeeded();
+        $this->migrateSecondaryDatabase();
+    }
+
+    #[\Override]
+    protected function tearDown(): void
+    {
+        $this->dropSecondaryTables();
+        DB::connection('test_b')->disconnect();
+        $this->dropSecondaryDatabaseIfNeeded();
+        parent::tearDown();
+    }
+
+    private function configureSecondaryConnection(): void
+    {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            config(['database.connections.test_b' => [
+                'driver' => 'sqlite',
+                'database' => ':memory:',
+                'foreign_key_constraints' => true,
+            ]]);
+
+            return;
+        }
+
+        $defaultName = config('database.default');
+        if (! is_string($defaultName)) {
+            return;
+        }
+
+        $primary = config("database.connections.{$defaultName}");
+        if (! is_array($primary)) {
+            return;
+        }
+
+        config(['database.connections.test_b' => array_merge($primary, ['database' => self::SECONDARY])]);
+    }
+
+    private function createSecondaryDatabaseIfNeeded(): void
+    {
+        match (DB::connection()->getDriverName()) {
+            'sqlite' => null,
+            'mysql', 'mariadb' => DB::statement('CREATE DATABASE IF NOT EXISTS `'.self::SECONDARY.'`'),
+            'pgsql' => $this->createPostgresDatabase(),
+            default => null,
+        };
+    }
+
+    private function createPostgresDatabase(): void
+    {
+        try {
+            DB::statement('CREATE DATABASE "'.self::SECONDARY.'"');
+        } catch (\Throwable) {
+        }
+    }
+
+    private function migrateSecondaryDatabase(): void
+    {
+        Schema::connection('test_b')->dropIfExists('comments');
+        Schema::connection('test_b')->dropIfExists('posts');
+        Schema::connection('test_b')->dropIfExists('tags');
+        Schema::connection('test_b')->dropIfExists('users');
+
+        Schema::connection('test_b')->create('users', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->boolean('active')->default(true);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::connection('test_b')->create('tags', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        Schema::connection('test_b')->create('posts', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('tag_id')->nullable();
+            $table->string('title');
+            $table->boolean('published')->default(false);
+            $table->timestamps();
+        });
+
+        Schema::connection('test_b')->create('comments', function (Blueprint $table): void {
+            $table->id();
+            $table->morphs('commentable');
+            $table->string('body');
+            $table->timestamps();
+        });
+    }
+
+    private function dropSecondaryTables(): void
+    {
+        Schema::connection('test_b')->dropIfExists('comments');
+        Schema::connection('test_b')->dropIfExists('posts');
+        Schema::connection('test_b')->dropIfExists('tags');
+        Schema::connection('test_b')->dropIfExists('users');
+    }
+
+    private function dropSecondaryDatabaseIfNeeded(): void
+    {
+        match (DB::connection()->getDriverName()) {
+            'sqlite' => null,
+            'mysql', 'mariadb' => DB::statement('DROP DATABASE IF EXISTS `'.self::SECONDARY.'`'),
+            'pgsql' => null,
+            default => null,
+        };
+    }
+}
