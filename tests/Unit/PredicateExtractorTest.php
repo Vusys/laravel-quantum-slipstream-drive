@@ -6,6 +6,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Vusys\QueryRicerExtreme\Predicate\BetweenNode;
 use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
 use Vusys\QueryRicerExtreme\Predicate\InNode;
 use Vusys\QueryRicerExtreme\Predicate\NullNode;
@@ -65,9 +66,9 @@ final class PredicateExtractorTest extends TestCase
     {
         $node = PredicateExtractor::fromWhere([
             'type' => 'Basic',
-            'column' => 'age',
-            'operator' => '>',
-            'value' => 18,
+            'column' => 'name',
+            'operator' => 'like',
+            'value' => 'A%',
             'boolean' => 'and',
         ]);
 
@@ -216,6 +217,156 @@ final class PredicateExtractorTest extends TestCase
             'type' => 'Basic',
             'operator' => '=',
             'value' => 'x',
+            'boolean' => 'and',
+        ]);
+
+        $this->assertNull($node);
+    }
+
+    #[Test]
+    public function extracts_greater_than_comparison(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'Basic',
+            'column' => 'age',
+            'operator' => '>',
+            'value' => 18,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(ComparisonNode::class, $node);
+        $this->assertSame('>', $node->operator);
+        $this->assertSame(18, $node->value);
+    }
+
+    #[Test]
+    public function extracts_greater_than_or_equal_comparison(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'Basic',
+            'column' => 'age',
+            'operator' => '>=',
+            'value' => 18,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(ComparisonNode::class, $node);
+        $this->assertSame('>=', $node->operator);
+    }
+
+    #[Test]
+    public function extracts_less_than_comparison(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'Basic',
+            'column' => 'age',
+            'operator' => '<',
+            'value' => 65,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(ComparisonNode::class, $node);
+        $this->assertSame('<', $node->operator);
+    }
+
+    #[Test]
+    public function extracts_less_than_or_equal_comparison(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'Basic',
+            'column' => 'age',
+            'operator' => '<=',
+            'value' => 65,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(ComparisonNode::class, $node);
+        $this->assertSame('<=', $node->operator);
+    }
+
+    #[Test]
+    public function extracts_between_lowercase_type(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'values' => [18, 65],
+            'not' => false,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(BetweenNode::class, $node);
+        $this->assertSame('age', $node->column);
+        $this->assertSame(18, $node->min);
+        $this->assertSame(65, $node->max);
+        $this->assertFalse($node->negated);
+    }
+
+    #[Test]
+    public function extracts_between_capitalised_type(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'Between',
+            'column' => 'age',
+            'values' => [18, 65],
+            'not' => false,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(BetweenNode::class, $node);
+        $this->assertFalse($node->negated);
+    }
+
+    #[Test]
+    public function extracts_not_between(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'values' => [18, 65],
+            'not' => true,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(BetweenNode::class, $node);
+        $this->assertTrue($node->negated);
+    }
+
+    #[Test]
+    public function between_with_wrong_value_count_returns_null(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'values' => [18],
+            'not' => false,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertNull($node);
+    }
+
+    #[Test]
+    public function between_with_non_scalar_value_returns_null(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'values' => [18, new \stdClass],
+            'not' => false,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertNull($node);
+    }
+
+    #[Test]
+    public function between_with_missing_values_returns_null(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'not' => false,
             'boolean' => 'and',
         ]);
 

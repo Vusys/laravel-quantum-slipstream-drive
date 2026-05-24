@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Unit;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Vusys\QueryRicerExtreme\Predicate\AndNode;
+use Vusys\QueryRicerExtreme\Predicate\BetweenNode;
 use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
 use Vusys\QueryRicerExtreme\Predicate\InNode;
 use Vusys\QueryRicerExtreme\Predicate\NullNode;
@@ -31,6 +32,12 @@ final class PredicateColumnsTest extends TestCase
     public function null_node_returns_its_column(): void
     {
         $this->assertSame(['deleted_at'], PredicateColumns::fromNode(new NullNode('deleted_at', false)));
+    }
+
+    #[Test]
+    public function between_node_returns_its_column(): void
+    {
+        $this->assertSame(['age'], PredicateColumns::fromNode(new BetweenNode('age', 18, 65, false)));
     }
 
     #[Test]
