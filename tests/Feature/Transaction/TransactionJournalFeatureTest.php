@@ -194,4 +194,135 @@ final class TransactionJournalFeatureTest extends TestCase
 
         $this->assertGreaterThan(0, $sqlAfter, 'absent record taken inside tx must be cleared on rollback');
     }
+
+    #[Test]
+    public function rollback_restores_entry_attribute_knowledge_not_just_model(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $userId = $user->id;
+        $this->store->flush();
+
+        $fresh = User::find($userId);
+        $this->assertInstanceOf(User::class, $fresh);
+
+        $entry = $this->store->findEntry($fresh);
+        $this->assertNotNull($entry);
+        $this->assertSame('Alice', $entry->attributes->get('name')?->currentValue);
+
+        DB::beginTransaction();
+        $fresh->name = 'Changed';
+        $fresh->save();
+
+        $entryAfterSave = $this->store->findEntry($fresh);
+        $this->assertNotNull($entryAfterSave);
+        $this->assertSame('Changed', $entryAfterSave->attributes->get('name')?->currentValue);
+
+        DB::rollBack();
+
+        $entryAfter = $this->store->findEntry($fresh);
+        $this->assertNotNull($entryAfter);
+        $factAfter = $entryAfter->attributes->get('name');
+        $this->assertNotNull($factAfter);
+        $this->assertSame(
+            'Alice',
+            $factAfter->currentValue,
+            'entry attribute knowledge must be restored, not left in mutated state',
+        );
+        $this->assertSame(
+            'Alice',
+            $factAfter->originalValue,
+            'entry attribute originalValue must be restored',
+        );
+    }
+
+    #[Test]
+    public function rollback_syncs_model_original_so_dirty_state_is_clean(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $userId = $user->id;
+        $this->store->flush();
+
+        $fresh = User::find($userId);
+        $this->assertInstanceOf(User::class, $fresh);
+        $this->assertFalse($fresh->isDirty());
+
+        DB::beginTransaction();
+        $fresh->name = 'Changed';
+        $fresh->save();
+        DB::rollBack();
+
+        $this->assertFalse(
+            $fresh->isDirty(),
+            'after rollback the model must not be dirty — getOriginal() and getAttributes() must agree',
+        );
+        $this->assertSame(
+            'Alice',
+            $fresh->getOriginal('name'),
+            'getOriginal() must return the pre-transaction value after rollback',
+        );
+    }
+
+    #[Test]
+    public function rollback_restores_every_entry_touched_in_transaction(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
+        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => false]);
+        $this->store->flush();
+
+        $aliceFresh = User::find($alice->id);
+        $bobFresh = User::find($bob->id);
+        $this->assertInstanceOf(User::class, $aliceFresh);
+        $this->assertInstanceOf(User::class, $bobFresh);
+
+        DB::beginTransaction();
+        User::where('active', false)->update(['active' => true]);
+        DB::rollBack();
+
+        $this->assertFalse(
+            (bool) $aliceFresh->active,
+            'every entry visited by the mass-update must be restored, not only the first',
+        );
+        $this->assertFalse(
+            (bool) $bobFresh->active,
+            'every entry visited by the mass-update must be restored, not only the first',
+        );
+    }
+
+    #[Test]
+    public function rollback_restores_existing_entries_after_an_in_tx_creation_in_the_journal(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $aliceId = $alice->id;
+        $this->store->flush();
+
+        $aliceFresh = User::find($aliceId);
+        $this->assertInstanceOf(User::class, $aliceFresh);
+
+        DB::beginTransaction();
+        User::create(['name' => 'Charlie', 'email' => 'charlie@example.com']);
+        $aliceFresh->name = 'Modified';
+        $aliceFresh->save();
+        DB::rollBack();
+
+        $this->assertSame(
+            'Alice',
+            $aliceFresh->name,
+            'a journal entry created inside the tx must not short-circuit restoration of later entries',
+        );
+    }
+
+    #[Test]
+    public function store_constructed_without_journal_still_works(): void
+    {
+        $standalone = new IdentityMapStore;
+
+        $user = User::create(['name' => 'Solo', 'email' => 'solo@example.com']);
+        $standalone->remember($user, true);
+
+        $entry = $standalone->findEntry($user);
+        $this->assertNotNull($entry, 'store must function with no journal injected');
+        $fact = $entry->attributes->get('name');
+        $this->assertNotNull($fact);
+        $this->assertSame('Solo', $fact->currentValue);
+    }
 }
