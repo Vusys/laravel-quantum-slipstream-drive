@@ -13,6 +13,7 @@ final readonly class JournalEntry
      */
     public function __construct(
         public string $entryKey,
+        public string $modelClass,
         public ?IdentityEntry $before,
         public bool $wasAbsent,
         public ?array $modelOriginal,

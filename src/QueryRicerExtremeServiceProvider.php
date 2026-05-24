@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
 use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
-use Vusys\QueryRicerExtreme\Store\IdentityEntry;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 use Vusys\QueryRicerExtreme\Store\JournalEntry;
 use Vusys\QueryRicerExtreme\Store\TransactionJournal;
@@ -64,21 +63,21 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
             $this->flushAll();
         });
 
-        Event::listen(TransactionBeginning::class, function (): void {
-            $this->app->make(TransactionJournal::class)->begin();
+        Event::listen(TransactionBeginning::class, function (TransactionBeginning $event): void {
+            $this->app->make(TransactionJournal::class)->begin($event->connectionName);
         });
 
-        Event::listen(TransactionCommitted::class, function (): void {
-            $this->app->make(TransactionJournal::class)->commit();
+        Event::listen(TransactionCommitted::class, function (TransactionCommitted $event): void {
+            $this->app->make(TransactionJournal::class)->commit($event->connectionName);
         });
 
-        Event::listen(TransactionRolledBack::class, function (): void {
+        Event::listen(TransactionRolledBack::class, function (TransactionRolledBack $event): void {
             $journal = $this->app->make(TransactionJournal::class);
             $store = $this->app->make(IdentityMapStore::class);
             $registry = $this->app->make(CoverageRegistry::class);
 
-            $wasActive = $journal->isActive();
-            $entries = $journal->rollback();
+            $wasActive = $journal->isActive($event->connectionName);
+            $entries = $journal->rollback($event->connectionName);
 
             if (! $wasActive) {
                 // Rollback fired without a tracked begin (e.g. package booted mid-transaction).
@@ -92,7 +91,7 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
             $store->restoreFromJournal($entries);
 
             $touchedClasses = array_unique(array_map(
-                static fn (JournalEntry $e): string => $e->before instanceof IdentityEntry ? $e->before->modelClass : '',
+                static fn (JournalEntry $e): string => $e->modelClass,
                 $entries,
             ));
 

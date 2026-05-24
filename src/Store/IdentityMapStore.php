@@ -678,20 +678,33 @@ final class IdentityMapStore
     }
 
     /**
-     * Record the pre-mutation state of $entryKey in the journal, if a transaction is active.
-     * Idempotent within a single transaction level — only the first snapshot per key is kept.
+     * Record the pre-mutation state of $entryKey in the journal, if a transaction is active
+     * on the entry's connection. Idempotent within a single transaction level — only the
+     * first snapshot per key is kept.
      */
     private function snapshotForJournal(string $entryKey): void
     {
-        if (! $this->journal instanceof TransactionJournal || ! $this->journal->isActive()) {
+        if (! $this->journal instanceof TransactionJournal) {
+            return;
+        }
+
+        // entryKey format: "{connection}|{modelClass}|..."
+        $parts = explode('|', $entryKey, 3);
+        if (count($parts) < 2) {
+            return;
+        }
+        [$connection, $modelClass] = $parts;
+
+        if (! $this->journal->isActive($connection)) {
             return;
         }
 
         $existing = $this->entries[$entryKey] ?? null;
         $wasAbsent = isset($this->absent[$entryKey]);
 
-        $this->journal->snapshot(new JournalEntry(
+        $this->journal->snapshot($connection, new JournalEntry(
             entryKey: $entryKey,
+            modelClass: $modelClass,
             before: $existing === null ? null : clone $existing,
             wasAbsent: $wasAbsent,
             modelOriginal: $existing?->model->getRawOriginal(),
@@ -704,6 +717,9 @@ final class IdentityMapStore
      * For each journal entry: restore the absent flag, then either remove the entry
      * (if it didn't exist before the transaction) or replace it with the snapshot
      * and reset the underlying model's raw attributes to their pre-transaction state.
+     * Restored entries are re-indexed in the unique-key index so subsequent
+     * findByUniqueKey() lookups see the restored values; stale in-tx fingerprints
+     * are evicted lazily on lookup.
      *
      * @param  list<JournalEntry>  $entries
      */
@@ -730,6 +746,8 @@ final class IdentityMapStore
                     true,
                 );
             }
+
+            $this->uniqueKeyIndex->index($journalEntry->before, $journalEntry->entryKey);
         }
     }
 

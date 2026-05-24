@@ -6,78 +6,90 @@ namespace Vusys\QueryRicerExtreme\Store;
 
 final class TransactionJournal
 {
-    /** @var list<array<string, JournalEntry>> stack of levels; each level maps entry key → snapshot */
-    private array $stack = [];
+    /** @var array<string, list<array<string, JournalEntry>>> connection → stack of levels; each level maps entry key → snapshot */
+    private array $stacks = [];
 
-    public function isActive(): bool
+    public function isActive(string $connection): bool
     {
-        return $this->stack !== [];
+        return ($this->stacks[$connection] ?? []) !== [];
     }
 
-    public function begin(): void
+    public function begin(string $connection): void
     {
-        $this->stack[] = [];
+        $this->stacks[$connection][] = [];
     }
 
     /**
      * Record the before-state of a map entry before it is modified in the current transaction.
      * Only records the first snapshot per key at each nesting level (idempotent).
      */
-    public function snapshot(JournalEntry $entry): void
+    public function snapshot(string $connection, JournalEntry $entry): void
     {
-        if ($this->stack === []) {
+        $stack = $this->stacks[$connection] ?? [];
+
+        if ($stack === []) {
             return;
         }
 
-        $level = count($this->stack) - 1;
+        $level = count($stack) - 1;
 
-        if (! isset($this->stack[$level][$entry->entryKey])) {
-            $this->stack[$level][$entry->entryKey] = $entry;
+        if (! isset($stack[$level][$entry->entryKey])) {
+            $this->stacks[$connection][$level][$entry->entryKey] = $entry;
         }
     }
 
     /**
-     * Commit the innermost transaction level: merge its journal into the parent level
-     * (the parent now inherits responsibility for any further rollback).
+     * Commit the innermost transaction level on $connection: merge its journal into
+     * the parent level (the parent now inherits responsibility for any further rollback).
      */
-    public function commit(): void
+    public function commit(string $connection): void
     {
-        if ($this->stack === []) {
+        $stack = $this->stacks[$connection] ?? [];
+
+        if ($stack === []) {
             return;
         }
 
-        $committed = array_pop($this->stack);
+        $committed = array_pop($this->stacks[$connection]);
 
-        if ($this->stack !== []) {
-            $parentLevel = count($this->stack) - 1;
+        if ($committed === null) {
+            return;
+        }
+
+        if ($this->stacks[$connection] !== []) {
+            $parentLevel = count($this->stacks[$connection]) - 1;
 
             foreach ($committed as $key => $entry) {
-                $this->stack[$parentLevel][$key] ??= $entry;
+                $this->stacks[$connection][$parentLevel][$key] ??= $entry;
             }
         }
     }
 
     /**
-     * Roll back the innermost level and return the snapshots to restore.
+     * Roll back the innermost level on $connection and return the snapshots to restore.
      *
      * @return list<JournalEntry>
      */
-    public function rollback(): array
+    public function rollback(string $connection): array
     {
-        if ($this->stack === []) {
+        $stack = $this->stacks[$connection] ?? [];
+
+        if ($stack === []) {
             return [];
         }
 
-        return array_values(array_pop($this->stack));
+        $popped = array_pop($this->stacks[$connection]);
+
+        return $popped === null ? [] : array_values($popped);
     }
 
     public function flush(): void
     {
-        $this->stack = [];
+        $this->stacks = [];
     }
 
-    public function depth(): int
+    public function depth(string $connection): int
     {
-        return count($this->stack);
+        return count($this->stacks[$connection] ?? []);
     }
 }

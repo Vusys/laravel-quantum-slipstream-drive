@@ -325,4 +325,73 @@ final class TransactionJournalFeatureTest extends TestCase
         $this->assertNotNull($fact);
         $this->assertSame('Solo', $fact->currentValue);
     }
+
+    #[Test]
+    public function rollback_re_indexes_unique_keys_so_subsequent_lookups_hit_memory(): void
+    {
+        config(['query-ricer-extreme.models' => [
+            User::class => [
+                'unique' => [['email']],
+            ],
+        ]]);
+
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $aliceId = $alice->id;
+        $this->store->flush();
+
+        $loaded = User::find($aliceId);
+        $this->assertInstanceOf(User::class, $loaded);
+
+        DB::beginTransaction();
+        $loaded->email = 'changed@example.com';
+        $loaded->save();
+
+        // Mid-tx lookup for the pre-tx email evicts that fingerprint from the index
+        // (the entry's current email no longer matches the verification step).
+        User::where('email', 'alice@example.com')->first();
+
+        DB::rollBack();
+
+        $sql = $this->countSql(function () use ($loaded): void {
+            $afterRollback = User::where('email', 'alice@example.com')->first();
+            $this->assertSame($loaded, $afterRollback);
+        });
+
+        $this->assertSame(
+            0,
+            $sql,
+            'unique-key index must be refreshed after rollback so the pre-tx email still hits memory',
+        );
+    }
+
+    #[Test]
+    public function rollback_uses_connection_specific_journal_state(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $aliceId = $alice->id;
+        $this->store->flush();
+
+        $fresh = User::find($aliceId);
+        $this->assertInstanceOf(User::class, $fresh);
+
+        $this->journal->begin('other-connection');
+
+        DB::beginTransaction();
+        $fresh->name = 'Changed';
+        $fresh->save();
+        DB::rollBack();
+
+        $this->assertSame(
+            'Alice',
+            $fresh->name,
+            'rollback on the default connection must restore even while another connection has an open level',
+        );
+
+        $this->assertTrue(
+            $this->journal->isActive('other-connection'),
+            'the other connection\'s level must be untouched by the default-connection rollback',
+        );
+
+        $this->journal->flush();
+    }
 }
