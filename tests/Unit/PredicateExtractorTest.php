@@ -372,4 +372,49 @@ final class PredicateExtractorTest extends TestCase
 
         $this->assertNull($node);
     }
+
+    #[Test]
+    public function between_defaults_to_non_negated_when_not_key_missing(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'values' => [18, 65],
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(BetweenNode::class, $node);
+        $this->assertFalse($node->negated);
+    }
+
+    #[Test]
+    public function between_with_associative_values_array_resolves_min_and_max(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'values' => ['from' => 18, 'to' => 65],
+            'not' => false,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(BetweenNode::class, $node);
+        $this->assertSame(18, $node->min);
+        $this->assertSame(65, $node->max);
+    }
+
+    #[Test]
+    public function between_coerces_truthy_non_bool_not_flag(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'between',
+            'column' => 'age',
+            'values' => [18, 65],
+            'not' => 1,
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(BetweenNode::class, $node);
+        $this->assertTrue($node->negated);
+    }
 }

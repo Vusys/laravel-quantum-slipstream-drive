@@ -149,6 +149,26 @@ final class PredicateEvaluatorRangeTest extends TestCase
         $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
     }
 
+    #[Test]
+    #[DataProvider('rangeOperators')]
+    public function range_with_numeric_attribute_and_string_predicate_returns_unknown(string $op): void
+    {
+        $attrs = $this->attributes(['n' => 25]);
+        $node = new ComparisonNode('n', $op, 'eighteen');
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    #[Test]
+    #[DataProvider('rangeOperators')]
+    public function range_with_numeric_attribute_and_numeric_string_predicate_returns_unknown(string $op): void
+    {
+        $attrs = $this->attributes(['n' => 25]);
+        $node = new ComparisonNode('n', $op, '18');
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
     // ---------------------------------------------------------------------
     // BETWEEN
     // ---------------------------------------------------------------------
@@ -222,6 +242,42 @@ final class PredicateEvaluatorRangeTest extends TestCase
     {
         $attrs = $this->attributes(['n' => null]);
         $node = new BetweenNode('n', 10, 30, true);
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    #[Test]
+    public function between_with_non_numeric_min_returns_unknown(): void
+    {
+        $attrs = $this->attributes(['n' => 20]);
+        $node = new BetweenNode('n', 'low', 30, false);
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    #[Test]
+    public function between_with_non_numeric_max_returns_unknown(): void
+    {
+        $attrs = $this->attributes(['n' => 20]);
+        $node = new BetweenNode('n', 10, 'high', false);
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    #[Test]
+    public function between_with_numeric_string_min_returns_unknown(): void
+    {
+        $attrs = $this->attributes(['n' => 20]);
+        $node = new BetweenNode('n', '10', 30, false);
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    #[Test]
+    public function between_with_numeric_string_max_returns_unknown(): void
+    {
+        $attrs = $this->attributes(['n' => 20]);
+        $node = new BetweenNode('n', 10, '30', false);
 
         $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
     }

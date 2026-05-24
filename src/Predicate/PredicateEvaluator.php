@@ -73,6 +73,7 @@ final class PredicateEvaluator
         };
     }
 
+    /** @param '>'|'>='|'<'|'<=' $op */
     private function evaluateNumericComparison(mixed $a, string $op, mixed $b): EvaluationResult
     {
         if (! is_int($a) && ! is_float($a) || ! is_int($b) && ! is_float($b)) {
@@ -84,7 +85,6 @@ final class PredicateEvaluator
             '>=' => $a >= $b ? EvaluationResult::Match : EvaluationResult::Reject,
             '<' => $a < $b ? EvaluationResult::Match : EvaluationResult::Reject,
             '<=' => $a <= $b ? EvaluationResult::Match : EvaluationResult::Reject,
-            default => EvaluationResult::Unknown,
         };
     }
 
