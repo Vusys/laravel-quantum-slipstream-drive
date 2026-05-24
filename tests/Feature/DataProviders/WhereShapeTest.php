@@ -106,10 +106,6 @@ final class WhereShapeTest extends TestCase
     public static function unsupportedOperatorProvider(): array
     {
         return [
-            'less than' => ['<'],
-            'less than or equal' => ['<='],
-            'greater than' => ['>'],
-            'greater than or equal' => ['>='],
             'like' => ['LIKE'],
             'not like' => ['NOT LIKE'],
             'ilike' => ['ILIKE'],
@@ -253,7 +249,6 @@ final class WhereShapeTest extends TestCase
     public static function unsupportedWhereTypeProvider(): array
     {
         return [
-            'Between' => [['type' => 'Between', 'column' => 'id',    'values' => [1, 10], 'boolean' => 'and']],
             'Column' => [['type' => 'Column',  'column' => 'email', 'boolean' => 'and']],
             'Exists' => [['type' => 'Exists',  'column' => 'email', 'boolean' => 'and']],
             'Raw' => [['type' => 'Raw',     'column' => 'email', 'sql' => '1=1',    'boolean' => 'and']],

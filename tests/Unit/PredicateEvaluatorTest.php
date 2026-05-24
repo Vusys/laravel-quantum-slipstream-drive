@@ -148,8 +148,8 @@ final class PredicateEvaluatorTest extends TestCase
     #[Test]
     public function unsupported_operator_returns_unknown(): void
     {
-        $attrs = $this->attributes(['age' => 25]);
-        $node = new ComparisonNode('age', '>', 18);
+        $attrs = $this->attributes(['name' => 'Alice']);
+        $node = new ComparisonNode('name', 'like', 'A%');
 
         $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
     }
