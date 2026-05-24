@@ -21,7 +21,7 @@ final class QueryCorrectnessTest extends FuzzerTestCase
 
         $this->eachSeed(function (int $seed, int $step) use (&$population): void {
             if ($step === 0) {
-                $population = $this->buildPopulation($seed, $step);
+                $population = $this->buildPopulation();
             }
 
             IdentityMap::flush();
@@ -53,7 +53,7 @@ final class QueryCorrectnessTest extends FuzzerTestCase
 
         $this->eachSeed(function (int $seed, int $step) use (&$population): void {
             if ($step === 0) {
-                $population = $this->buildPopulation($seed, $step);
+                $population = $this->buildPopulation();
             }
 
             IdentityMap::flush();
@@ -92,7 +92,7 @@ final class QueryCorrectnessTest extends FuzzerTestCase
 
         $this->eachSeed(function (int $seed, int $step) use (&$population): void {
             if ($step === 0) {
-                $population = $this->buildPopulation($seed, $step);
+                $population = $this->buildPopulation();
             }
 
             if ($population === []) {
@@ -133,19 +133,13 @@ final class QueryCorrectnessTest extends FuzzerTestCase
     }
 
     /** @return list<User> */
-    private function buildPopulation(int $seed, int $step): array
+    private function buildPopulation(): array
     {
-        $count = mt_rand(1, 5);
         $users = [];
 
-        for ($i = 0; $i < $count; $i++) {
-            $user = User::create([
-                'name' => 'FuzzUser'.$i,
-                'email' => sprintf('fuzz-%d-%d-%d@fuzz.test', $seed, $step, $i),
-                'active' => (bool) mt_rand(0, 1),
-            ]);
+        for ($i = 0, $count = mt_rand(1, 5); $i < $count; $i++) {
+            $user = User::factory()->create(['active' => (bool) mt_rand(0, 1)]);
 
-            // 30 % chance to soft-delete
             if (mt_rand(0, 9) < 3) {
                 $user->delete();
             }

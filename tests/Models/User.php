@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Vusys\QueryRicerExtreme\HasIdentityMap;
 use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
+use Vusys\QueryRicerExtreme\Tests\Factories\UserFactory;
 
 /**
  * @property int $id
@@ -21,9 +23,17 @@ use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
  */
 final class User extends Model
 {
+    /** @use HasFactory<UserFactory> */
+    use HasFactory;
+
     use HasIdentityMap;
     use SoftDeletes;
     use UsesContextConnection;
+
+    protected static function newFactory(): UserFactory
+    {
+        return UserFactory::new();
+    }
 
     /** @var list<string> */
     protected $fillable = ['name', 'email', 'active'];

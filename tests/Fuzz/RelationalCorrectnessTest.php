@@ -32,7 +32,7 @@ final class RelationalCorrectnessTest extends DualDatabaseTestCase
         $this->eachSeed(function (int $seed, int $step): void {
             IdentityMap::flush();
 
-            $graph = $this->seedGraph($seed, $step);
+            $graph = $this->seedGraph();
             $userIds = array_column($graph['users'], 'id');
 
             // Warm a random prefix so the map has partial hits
@@ -57,7 +57,7 @@ final class RelationalCorrectnessTest extends DualDatabaseTestCase
         $this->eachSeed(function (int $seed, int $step): void {
             IdentityMap::flush();
 
-            $graph = $this->seedGraph($seed, $step);
+            $graph = $this->seedGraph();
             $userIds = array_column($graph['users'], 'id');
 
             // Warm all users on test_a so relations may be served from memory
@@ -81,7 +81,7 @@ final class RelationalCorrectnessTest extends DualDatabaseTestCase
         $this->eachSeed(function (int $seed, int $step): void {
             IdentityMap::flush();
 
-            $graph = $this->seedGraph($seed, $step);
+            $graph = $this->seedGraph();
             $userIds = array_column($graph['users'], 'id');
 
             // Warm all users — ensures every entry is cached before mutations
@@ -128,21 +128,17 @@ final class RelationalCorrectnessTest extends DualDatabaseTestCase
      *     comments: list<array{id: int, commentable_type: string, commentable_id: int, body: string}>
      * }
      */
-    private function seedGraph(int $seed, int $step): array
+    private function seedGraph(): array
     {
         $users = [];
         for ($i = 0, $count = mt_rand(2, 5); $i < $count; $i++) {
-            $user = User::create([
-                'name' => "RCT-User{$i}",
-                'email' => "rct-{$seed}-{$step}-{$i}@test.test",
-                'active' => (bool) mt_rand(0, 1),
-            ]);
+            $user = User::factory()->create(['active' => (bool) mt_rand(0, 1)]);
             $users[] = ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'active' => $user->active];
         }
 
         $tags = [];
         for ($i = 0, $count = mt_rand(1, 3); $i < $count; $i++) {
-            $tag = Tag::create(['name' => "Tag{$i}-{$seed}-{$step}"]);
+            $tag = Tag::factory()->create();
             $tags[] = ['id' => $tag->id, 'name' => $tag->name];
         }
 
@@ -150,10 +146,9 @@ final class RelationalCorrectnessTest extends DualDatabaseTestCase
         for ($i = 0, $count = mt_rand(1, 4); $i < $count; $i++) {
             $userId = $users[mt_rand(0, count($users) - 1)]['id'];
             $tagId = mt_rand(0, 1) === 1 ? $tags[mt_rand(0, count($tags) - 1)]['id'] : null;
-            $post = Post::create([
+            $post = Post::factory()->create([
                 'user_id' => $userId,
                 'tag_id' => $tagId,
-                'title' => "Post{$i}-{$seed}-{$step}",
                 'published' => (bool) mt_rand(0, 1),
             ]);
             $posts[] = ['id' => $post->id, 'user_id' => $post->user_id, 'tag_id' => $post->tag_id, 'title' => $post->title, 'published' => $post->published];

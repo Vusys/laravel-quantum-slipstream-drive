@@ -92,18 +92,9 @@ final class QuerySavingsTest extends FuzzerTestCase
         return $count;
     }
 
-    /** @return list<User> */
+    /** @return array<int, User> */
     private function buildPopulation(int $count): array
     {
-        $users = [];
-        for ($i = 0; $i < $count; $i++) {
-            $users[] = User::create([
-                'name' => 'SavingsUser'.$i,
-                'email' => sprintf('savings-%d-%d@fuzz.test', mt_rand(), $i),
-                'active' => (bool) mt_rand(0, 1),
-            ]);
-        }
-
-        return $users;
+        return User::factory()->count($count)->create()->all();
     }
 }
