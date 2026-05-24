@@ -20,6 +20,7 @@ use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
 use Vusys\QueryRicerExtreme\Enums\LifecycleState;
 use Vusys\QueryRicerExtreme\Enums\PlanType;
 use Vusys\QueryRicerExtreme\Explanation;
+use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
 use Vusys\QueryRicerExtreme\Predicate\AndNode;
 use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
 use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
@@ -1054,6 +1055,7 @@ class IdentityMapBuilder extends Builder
     {
         $store = resolve(IdentityMapStore::class);
         $registry = resolve(CoverageRegistry::class);
+        $graph = resolve(IdentityGraph::class);
         $modelClass = $this->getModel()::class;
 
         $predicate = $store->isDisabled()
@@ -1074,6 +1076,8 @@ class IdentityMapBuilder extends Builder
             $registry->flushModelClass($modelClass);
         }
 
+        $graph->invalidateModelClass($modelClass);
+
         return $result;
     }
 
@@ -1082,6 +1086,7 @@ class IdentityMapBuilder extends Builder
     {
         $store = resolve(IdentityMapStore::class);
         $registry = resolve(CoverageRegistry::class);
+        $graph = resolve(IdentityGraph::class);
         $modelClass = $this->getModel()::class;
         $usesSoftDeletes = in_array(SoftDeletes::class, class_uses_recursive($modelClass), true);
 
@@ -1098,6 +1103,7 @@ class IdentityMapBuilder extends Builder
         }
 
         $registry->flushModelClass($modelClass);
+        $graph->invalidateModelClass($modelClass);
 
         return $result;
     }
@@ -1107,12 +1113,14 @@ class IdentityMapBuilder extends Builder
     {
         $store = resolve(IdentityMapStore::class);
         $registry = resolve(CoverageRegistry::class);
+        $graph = resolve(IdentityGraph::class);
         $modelClass = $this->getModel()::class;
 
         $result = parent::forceDelete();
 
         $store->flush($modelClass);
         $registry->flushModelClass($modelClass);
+        $graph->invalidateModelClass($modelClass);
 
         return $result;
     }

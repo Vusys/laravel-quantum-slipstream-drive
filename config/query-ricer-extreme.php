@@ -67,6 +67,25 @@ return [
     ],
 
     /*
+     * Identity graph: tracks model-to-model relation edges so that relation
+     * queries can be answered from memory when coverage is complete.
+     *
+     *   enabled                        — turn the graph on or off entirely.
+     *   sync_loaded_inverse_relations  — when a belongsTo association mutates,
+     *                                    keep the old/new parent's loaded
+     *                                    relation collections in sync.
+     *   max_edges / max_coverage_entries — hard caps; when exceeded the graph
+     *                                    is flushed entirely (safest).
+     */
+    'relation_graph' => [
+        'enabled' => (bool) env('IDENTITY_MAP_RELATION_GRAPH_ENABLED', true),
+        'sync_loaded_inverse_relations' => (bool) env('IDENTITY_MAP_RELATION_GRAPH_SYNC_INVERSE', true),
+        'max_edges' => (int) env('IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES', 50000),
+        'max_coverage_entries' => (int) env('IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE', 5000),
+        'eviction' => 'flush_scope',
+    ],
+
+    /*
      * Observability and debugging. Only enable in non-production environments.
      *
      *   enabled            — log identity-map decisions to the configured channel.
