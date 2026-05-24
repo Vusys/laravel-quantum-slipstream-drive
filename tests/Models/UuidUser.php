@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Vusys\QueryRicerExtreme\HasIdentityMap;
+use Vusys\QueryRicerExtreme\Tests\Factories\UuidUserFactory;
 
 /**
  * @property string $id
@@ -18,8 +20,16 @@ use Vusys\QueryRicerExtreme\HasIdentityMap;
  */
 final class UuidUser extends Model
 {
+    /** @use HasFactory<UuidUserFactory> */
+    use HasFactory;
+
     use HasIdentityMap;
     use SoftDeletes;
+
+    protected static function newFactory(): UuidUserFactory
+    {
+        return UuidUserFactory::new();
+    }
 
     protected $table = 'uuid_users';
 

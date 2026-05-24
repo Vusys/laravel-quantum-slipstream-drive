@@ -1042,6 +1042,52 @@ final class UniqueKeyTest extends TestCase
     }
 
     // -----------------------------------------------------------------------
+    // IdentityMapStore — full (no-arg) flush clears unique index and absent maps
+    // -----------------------------------------------------------------------
+
+    #[Test]
+    public function full_flush_clears_unique_key_absence_records(): void
+    {
+        // Record a unique-key absence
+        $first = User::where('email', 'ghost@example.com')->first();
+        $this->assertNull($first);
+
+        $queryCount = 0;
+        DB::listen(function () use (&$queryCount): void {
+            $queryCount++;
+        });
+
+        // Full flush must clear UniqueKeyIndex::$absent, not just IdentityMapStore::$absent
+        $this->store->flush();
+
+        // After flush the absence record is gone — next lookup must hit SQL
+        $second = User::where('email', 'ghost@example.com')->first();
+        $this->assertNull($second);
+        $this->assertSame(1, $queryCount, 'Full flush must clear unique-key absence so next lookup issues SQL');
+    }
+
+    #[Test]
+    public function full_flush_clears_unique_key_index_entries(): void
+    {
+        $alice = $this->createFresh('Alice', 'alice@example.com');
+        User::find($alice->id); // populates uniqueIndex
+
+        // Record a unique-key absence to populate uniqueAbsent
+        User::where('email', 'nobody@example.com')->first();
+
+        $statsBefore = $this->store->debugStats();
+        $this->assertGreaterThan(0, $statsBefore['unique_index'], 'uniqueIndex must be populated before flush');
+        $this->assertGreaterThan(0, $statsBefore['unique_absent'], 'uniqueAbsent must be populated before flush');
+
+        // Full flush (no model-class arg) must clear both maps
+        $this->store->flush();
+
+        $statsAfter = $this->store->debugStats();
+        $this->assertSame(0, $statsAfter['unique_index'], 'Full flush must clear uniqueIndex');
+        $this->assertSame(0, $statsAfter['unique_absent'], 'Full flush must clear uniqueAbsent');
+    }
+
+    // -----------------------------------------------------------------------
     // IdentityMapStore — per-class flush clears unique index and absent maps
     // -----------------------------------------------------------------------
 
