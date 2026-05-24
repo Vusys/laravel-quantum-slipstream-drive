@@ -14,6 +14,7 @@ use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
+use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
 use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 use Vusys\QueryRicerExtreme\Store\JournalEntry;
@@ -30,6 +31,15 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         $this->app->singleton(IdentityMapStore::class);
         $this->app->singleton(CoverageRegistry::class);
         $this->app->singleton(SchemaDiscovery::class);
+        $this->app->singleton(IdentityGraph::class, function (): IdentityGraph {
+            $maxEdges = config('query-ricer-extreme.relation_graph.max_edges');
+            $maxCoverage = config('query-ricer-extreme.relation_graph.max_coverage_entries');
+
+            return new IdentityGraph(
+                maxEdges: is_int($maxEdges) ? $maxEdges : null,
+                maxCoverage: is_int($maxCoverage) ? $maxCoverage : null,
+            );
+        });
     }
 
     public function boot(): void
@@ -75,6 +85,7 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
             $journal = $this->app->make(TransactionJournal::class);
             $store = $this->app->make(IdentityMapStore::class);
             $registry = $this->app->make(CoverageRegistry::class);
+            $graph = $this->app->make(IdentityGraph::class);
 
             $wasActive = $journal->isActive($event->connectionName);
             $entries = $journal->rollback($event->connectionName);
@@ -84,6 +95,7 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
                 // Safe fallback: wipe everything.
                 $store->flush();
                 $registry->flush();
+                $graph->flush();
 
                 return;
             }
@@ -97,6 +109,7 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
 
             foreach (array_filter($touchedClasses) as $class) {
                 $registry->flushModelClass($class);
+                $graph->invalidateModelClass($class);
             }
         });
     }
@@ -107,5 +120,6 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         $this->app->make(CoverageRegistry::class)->flush();
         $this->app->make(TransactionJournal::class)->flush();
         $this->app->make(SchemaDiscovery::class)->flush();
+        $this->app->make(IdentityGraph::class)->flush();
     }
 }
