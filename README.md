@@ -22,7 +22,7 @@ A scoped Eloquent identity map, process-truth engine, and query-elision planner 
   - [Unique-key lookups](#unique-key-lookups)
   - [Explain a query decision](#explain-a-query-decision)
   - [Supported in-memory predicates](#supported-in-memory-predicates)
-  - [Relation optimisations](#relation-optimisations)
+  - [Relation optimizations](#relation-optimizations)
 - [Architecture and internals](#architecture-and-internals)
   - [High-level data flow](#high-level-data-flow)
   - [Opt-in mechanism: HasIdentityMap](#opt-in-mechanism-hasidentitymap)
@@ -270,7 +270,7 @@ The following are evaluated against cached attributes without touching the datab
 
 Anything the package cannot evaluate in memory falls through to SQL unchanged — unsupported operators (`>`, `<`, `LIKE`, `BETWEEN`), raw `whereRaw` clauses, `orWhere` conditions, and attributes not present on a partially loaded model. See [Predicate evaluation](#predicate-evaluation) for how the engine decides.
 
-### Relation optimisations
+### Relation optimizations
 
 When `HasIdentityMap` is applied, four relation types gain memory-backed implementations. They fall back to SQL transparently on any condition the package cannot safely evaluate in memory.
 
@@ -521,13 +521,13 @@ Enable debug logging in non-production environments to understand which queries 
 
 ### Overview
 
-The package has five test layers, each targeting a distinct risk surface. Together they provide defence in depth: logic bugs, integration failures, configuration-space gaps, random edge cases, and performance regressions are all caught by different layers — often before any other layer would notice them.
+The package has six test layers, each targeting a distinct risk surface. Together they provide defence in depth: logic bugs, integration failures, configuration-space gaps, random edge cases, and performance regressions are all caught by different layers — often before any other layer would notice them.
 
 | Suite | Command | Included in CI |
 |---|---|---|
 | Unit + Feature + DataProviders | `composer test` | Yes |
 | Performance | `vendor/bin/phpunit --testsuite Performance` | Yes (Bencher) |
-| Fuzz | `composer fuzz` | Opt-in |
+| Fuzz | `composer fuzz` | Yes (`comprehensive` job, 4-DB matrix) |
 | Mutation | `composer mutate` | Yes (Stryker dashboard) |
 
 CI runs the full matrix: PHP 8.3, 8.4, 8.5 × Laravel 11, 12, 13 × SQLite, MySQL, MariaDB, PostgreSQL — 36 cells total.
@@ -589,22 +589,31 @@ The Cartesian suite catches bugs that only surface in specific combinations — 
 
 ### Fuzz tests
 
-**Location:** `tests/Fuzz/` (1 file, 3 test methods)  
-**Command:** `composer fuzz` (PHPUnit group `fuzzer`, excluded from the default suite)
+**Location:** `tests/Fuzz/` (3 test files)  
+**Command:** `composer fuzz` (PHPUnit group `fuzzer`)  
+**CI:** runs in the `comprehensive` job against all four database backends
 
-The fuzz suite uses differential testing: it runs the same query through both the identity-map path and the `IdentityMap::disabled()` oracle, then asserts that the two results are identical. Any divergence — a model returned from memory that the database would not return, or a model excluded from memory that the database would include — is a correctness bug.
+The fuzz suite uses seeded randomness so failures are reproducible. Each test method runs across multiple seeds × steps (default 3 × 20 = 60 iterations per method). When a test fails, the output includes `[seed=N step=M]`. Exact replay: `FUZZER_SEEDS=N FUZZER_STEPS=$((M+1)) composer fuzz`.
 
-Each test method runs across multiple seeds. The default configuration is 3 seeds × 20 steps = 60 iterations per method. Each step builds up random model state (creates users, soft-deletes some, warms the cache for a random subset of keys) then runs a query and compares the two paths.
+**`QueryCorrectnessTest`** — differential (oracle) testing. Runs the same query through both the identity-map path and `IdentityMap::disabled()`, then asserts the two results are identical. Three methods:
 
-The three test methods cover:
+- `test_find_by_primary_key_matches_oracle` — `find()` with 60/40 known/absent key ratio.
+- `test_where_key_collection_matches_oracle` — `whereKey()->get()` with random key subset and guaranteed-unknown IDs mixed in.
+- `test_active_predicate_via_key_set_matches_oracle` — `whereKey()->where('active', ...)->get()` with partial warm state and predicate pruning.
 
-- **`test_find_by_primary_key_matches_oracle`** — `find()` with 60/40 known/absent key ratio.
-- **`test_where_key_collection_matches_oracle`** — `whereKey()->get()` with a random key subset and guaranteed-unknown IDs mixed in.
-- **`test_active_predicate_via_key_set_matches_oracle`** — `whereKey()->where('active', ...)->get()` with partial warm state and predicate pruning.
+**`QuerySavingsTest`** — property-based SQL-count testing. Rather than checking equivalence, it asserts that the identity-map path fires *fewer* SQL queries than the oracle. Three methods:
 
-When a test fails, the output includes `[seed=N step=M]`. Exact replay: `FUZZER_SEEDS=N FUZZER_STEPS=$((M+1)) composer fuzz`.
+- `test_find_warm_entry_fires_no_sql` — `find()` on an already-cached ID must issue 0 SQL (oracle: 1).
+- `test_where_key_all_warm_fires_no_sql` — `whereKey()` on a fully-warm key set must issue 0 SQL (oracle: 1).
+- `test_absent_tracking_fires_no_sql_on_repeat` — a second `find()` on a confirmed-absent ID must issue 0 SQL.
 
-The fuzz suite catches behavioral divergence that no hand-crafted test anticipated — rare combinations of absent-key state, soft-delete scope, and predicate evaluation that individually pass but interact incorrectly.
+**`RelationalCorrectnessTest`** — dual-database relational correctness. Uses a secondary isolated database connection as the oracle so relation traversal and write→read consistency are verified against a real second database, not just the disabled-flag path. Three methods:
+
+- `test_keyset_reads_match_oracle` — partial-hit keyset reads via `whereKey()->get()`.
+- `test_relation_traversal_matches_oracle` — `user→posts→tag` and `user→comments` relation chains.
+- `test_mutation_read_consistency_matches_oracle` — save/delete/restore then re-read; detects stale-cache bugs the oracle would expose as a mismatch.
+
+Together the three files cover two orthogonal properties — *correctness* (results match the database) and *savings* (SQL count is reduced) — and extend correctness testing to relation traversal and write consistency across every supported DB engine.
 
 ### Performance tests
 
