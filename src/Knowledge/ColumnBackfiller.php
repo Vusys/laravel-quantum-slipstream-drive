@@ -154,11 +154,12 @@ final readonly class ColumnBackfiller
         foreach ($freshAttrs as $column => $fetchedValue) {
             $column = (string) $column;
             $isDirty = array_key_exists($column, $dirtyOverrides);
+            $currentValue = $isDirty ? $dirtyOverrides[$column] : $fetchedValue;
             $existing = $entry->attributes->get($column);
 
             if ($existing instanceof AttributeFact) {
                 $existing->originalValue = $fetchedValue;
-                $existing->currentValue = $isDirty ? ($dirtyOverrides[$column] ?? $fetchedValue) : $fetchedValue;
+                $existing->currentValue = $currentValue;
                 $existing->isDirty = $isDirty;
                 $existing->confidence = FactConfidence::Certain;
                 $existing->source = FactSource::HydratedFromDatabase;
@@ -166,7 +167,7 @@ final readonly class ColumnBackfiller
                 $entry->attributes->set($column, new AttributeFact(
                     column: $column,
                     originalValue: $fetchedValue,
-                    currentValue: $isDirty ? ($dirtyOverrides[$column] ?? $fetchedValue) : $fetchedValue,
+                    currentValue: $currentValue,
                     isDirty: $isDirty,
                     confidence: FactConfidence::Certain,
                     source: FactSource::HydratedFromDatabase,

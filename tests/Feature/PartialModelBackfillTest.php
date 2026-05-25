@@ -184,6 +184,28 @@ final class PartialModelBackfillTest extends TestCase
         $this->assertSame('alice@example.com', $loaded->getRawOriginal('email'));
     }
 
+    #[Test]
+    public function backfill_preserves_dirty_null_value(): void
+    {
+        $alice = User::create([
+            'name' => 'Alice',
+            'email' => 'alice@example.com',
+            'active' => true,
+            'bio' => 'original biography',
+        ]);
+        $this->store->flush();
+
+        $loaded = User::select('id', 'name')->whereKey($alice->id)->first();
+        $this->assertNotNull($loaded);
+        $loaded->bio = null;
+
+        User::find($alice->id, ['id', 'bio']);
+
+        $this->assertNull($loaded->bio);
+        $this->assertTrue($loaded->isDirty('bio'));
+        $this->assertSame('original biography', $loaded->getRawOriginal('bio'));
+    }
+
     // ---------------------------------------------------------------------
     // unique-key entry path triggers backfill too
     // ---------------------------------------------------------------------
