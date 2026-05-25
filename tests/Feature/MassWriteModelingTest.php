@@ -662,6 +662,62 @@ final class MassWriteModelingTest extends TestCase
     }
 
     #[Test]
+    public function mass_increment_invalidates_cached_entries(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'score' => 10]);
+        User::find($alice->id); // warm entry
+
+        User::where('id', $alice->id)->increment('score');
+
+        $aliceAfter = User::find($alice->id);
+        $this->assertInstanceOf(User::class, $aliceAfter);
+        $this->assertSame(11, (int) $aliceAfter->score, 'cache must reflect the incremented value');
+    }
+
+    #[Test]
+    public function mass_decrement_invalidates_cached_entries(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'score' => 10]);
+        User::find($alice->id);
+
+        User::where('id', $alice->id)->decrement('score', 3);
+
+        $aliceAfter = User::find($alice->id);
+        $this->assertInstanceOf(User::class, $aliceAfter);
+        $this->assertSame(7, (int) $aliceAfter->score);
+    }
+
+    #[Test]
+    public function mass_increment_each_invalidates_cached_entries(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'score' => 10]);
+        User::find($alice->id);
+
+        User::where('id', $alice->id)->incrementEach(['score' => 5]);
+
+        $aliceAfter = User::find($alice->id);
+        $this->assertInstanceOf(User::class, $aliceAfter);
+        $this->assertSame(15, (int) $aliceAfter->score);
+    }
+
+    #[Test]
+    public function upsert_invalidates_cached_entries_for_overlapping_rows(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'score' => 10]);
+        User::find($alice->id);
+
+        User::upsert(
+            [['name' => 'Alice', 'email' => 'alice@example.com', 'score' => 99]],
+            ['email'],
+            ['score'],
+        );
+
+        $aliceAfter = User::find($alice->id);
+        $this->assertInstanceOf(User::class, $aliceAfter);
+        $this->assertSame(99, (int) $aliceAfter->score, 'cache must reflect the upserted score');
+    }
+
+    #[Test]
     public function mass_update_keeps_cached_updated_at_in_sync_with_database(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);

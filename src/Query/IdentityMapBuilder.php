@@ -1370,6 +1370,89 @@ class IdentityMapBuilder extends Builder
         return [$column => $timestamp] + $values;
     }
 
+    /**
+     * Increment, decrement, and upsert bypass model events and may touch rows the
+     * cache cannot reason about (the predicate can match entries we don't have
+     * loaded, or upsert may insert wholly new rows under unique keys we already
+     * indexed). The conservative choice is to flush the cache for the affected
+     * model class after the SQL ran.
+     */
+    private function flushAfterBulkWrite(): void
+    {
+        $modelClass = $this->getModel()::class;
+        resolve(IdentityMapStore::class)->flush($modelClass);
+        resolve(CoverageRegistry::class)->flushModelClass($modelClass);
+        resolve(IdentityGraph::class)->invalidateModelClass($modelClass);
+    }
+
+    /**
+     * @param  string|Expression  $column
+     * @param  float|int  $amount
+     * @param  array<string, mixed>  $extra
+     */
+    #[\Override]
+    public function increment($column, $amount = 1, array $extra = []): int
+    {
+        $result = parent::increment($column, $amount, $extra);
+        $this->flushAfterBulkWrite();
+
+        return $result;
+    }
+
+    /**
+     * @param  string|Expression  $column
+     * @param  float|int  $amount
+     * @param  array<string, mixed>  $extra
+     */
+    #[\Override]
+    public function decrement($column, $amount = 1, array $extra = []): int
+    {
+        $result = parent::decrement($column, $amount, $extra);
+        $this->flushAfterBulkWrite();
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, float|int|numeric-string>  $columns
+     * @param  array<string, mixed>  $extra
+     */
+    #[\Override]
+    public function incrementEach(array $columns, array $extra = []): int
+    {
+        $result = parent::incrementEach($columns, $extra);
+        $this->flushAfterBulkWrite();
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, float|int|numeric-string>  $columns
+     * @param  array<string, mixed>  $extra
+     */
+    #[\Override]
+    public function decrementEach(array $columns, array $extra = []): int
+    {
+        $result = parent::decrementEach($columns, $extra);
+        $this->flushAfterBulkWrite();
+
+        return $result;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $values
+     * @param  array<int, string>|string  $uniqueBy
+     * @param  array<int, string>|null  $update
+     */
+    #[\Override]
+    public function upsert(array $values, $uniqueBy, $update = null): int
+    {
+        $result = parent::upsert($values, $uniqueBy, $update);
+        $this->flushAfterBulkWrite();
+
+        return $result;
+    }
+
     #[\Override]
     public function delete(): mixed
     {
