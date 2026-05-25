@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -16,6 +17,7 @@ use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
 use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
 use Vusys\QueryRicerExtreme\Query\IdentityMapBuilder;
 use Vusys\QueryRicerExtreme\Relations\MemoryBelongsTo;
+use Vusys\QueryRicerExtreme\Relations\MemoryBelongsToMany;
 use Vusys\QueryRicerExtreme\Relations\MemoryHasMany;
 use Vusys\QueryRicerExtreme\Relations\MemoryMorphMany;
 use Vusys\QueryRicerExtreme\Relations\MemoryMorphTo;
@@ -57,6 +59,28 @@ trait HasIdentityMap
         $name = is_string($callerFrame['function'] ?? null) ? $callerFrame['function'] : null;
 
         return (new MemoryMorphMany($query, $parent, $type, $id, $localKey))->withRelationName($name);
+    }
+
+    protected function newBelongsToMany(
+        Builder $query,
+        Model $parent,
+        $table,
+        $foreignPivotKey,
+        $relatedPivotKey,
+        $parentKey,
+        $relatedKey,
+        $relationName = null,
+    ): BelongsToMany {
+        return new MemoryBelongsToMany(
+            $query,
+            $parent,
+            $table,
+            $foreignPivotKey,
+            $relatedPivotKey,
+            $parentKey,
+            $relatedKey,
+            $relationName,
+        );
     }
 
     protected static function bootHasIdentityMap(): void
