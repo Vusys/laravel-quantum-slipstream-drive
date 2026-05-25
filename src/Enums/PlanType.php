@@ -27,4 +27,6 @@ enum PlanType: string
     case ReturnMinFromCoverage = 'return_min_from_coverage';
     case ReturnMaxFromCoverage = 'return_max_from_coverage';
     case ReturnAvgFromCoverage = 'return_avg_from_coverage';
+    case BelongsToManyFromGraph = 'belongs_to_many_from_graph';
+    case WherePivotInMemory = 'where_pivot_in_memory';
 }

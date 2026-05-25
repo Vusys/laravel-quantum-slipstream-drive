@@ -82,6 +82,7 @@ abstract class DualDatabaseTestCase extends FuzzerTestCase
 
     private function migrateSecondaryDatabase(): void
     {
+        Schema::connection('test_b')->dropIfExists('post_tag');
         Schema::connection('test_b')->dropIfExists('comments');
         Schema::connection('test_b')->dropIfExists('posts');
         Schema::connection('test_b')->dropIfExists('tags');
@@ -125,10 +126,21 @@ abstract class DualDatabaseTestCase extends FuzzerTestCase
             $table->unsignedBigInteger('likes')->default(0);
             $table->timestamps();
         });
+
+        Schema::connection('test_b')->create('post_tag', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('post_id');
+            $table->unsignedBigInteger('tag_id');
+            $table->boolean('active')->default(true);
+            $table->unsignedInteger('priority')->default(0);
+            $table->timestamps();
+            $table->unique(['post_id', 'tag_id']);
+        });
     }
 
     private function dropSecondaryTables(): void
     {
+        Schema::connection('test_b')->dropIfExists('post_tag');
         Schema::connection('test_b')->dropIfExists('comments');
         Schema::connection('test_b')->dropIfExists('posts');
         Schema::connection('test_b')->dropIfExists('tags');
