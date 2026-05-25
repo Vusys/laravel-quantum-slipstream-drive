@@ -1418,12 +1418,14 @@ class IdentityMapBuilder extends Builder
      * Builder in some Laravel versions (Eloquent\Builder picks them up via
      * __call). Routing through toBase() lets us flush regardless of where the
      * method lives, and avoids the `#[\Override]` attribute fataling on
-     * Laravel versions that don't expose them on the parent class.
+     * Laravel versions that don't expose them on the parent class. Same goes
+     * for the other write paths we override on this class — Rector's
+     * AddOverrideAttributeToOverriddenMethodsRector is skipped for this file
+     * in rector.php precisely to keep the matrix green.
      *
      * @param  array<string, float|int|numeric-string>  $columns
      * @param  array<string, mixed>  $extra
      */
-    #[\Override]
     public function incrementEach(array $columns, array $extra = []): int
     {
         $result = $this->toBase()->incrementEach($columns, $this->addUpdatedAtColumn($extra));
@@ -1436,7 +1438,6 @@ class IdentityMapBuilder extends Builder
      * @param  array<string, float|int|numeric-string>  $columns
      * @param  array<string, mixed>  $extra
      */
-    #[\Override]
     public function decrementEach(array $columns, array $extra = []): int
     {
         $result = $this->toBase()->decrementEach($columns, $this->addUpdatedAtColumn($extra));
