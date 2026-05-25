@@ -102,16 +102,14 @@ final class BelongsToManyHardeningTest extends TestCase
         $post->tags()->get();
 
         // The query may error on strict-mode backends (ONLY_FULL_GROUP_BY); we only
-        // care that SQL was issued, which proves the memory path was bypassed.
-        $n = $this->countQueries(function () use ($post): void {
-            try {
-                $post->tags()->groupBy('tags.id')->get();
-            } catch (QueryException) {
-                // strict-grouping rejection from MySQL/Postgres — still proves SQL was issued
-            }
+        // care that SQL was attempted, which proves the memory path was bypassed.
+        // On strict backends DB::listen does not fire for failed queries, so the
+        // thrown QueryException is the alternative signal.
+        $sqlAttempted = $this->sqlWasAttempted(function () use ($post): void {
+            $post->tags()->groupBy('tags.id')->get();
         });
 
-        $this->assertGreaterThan(0, $n, 'group by must be a hazard');
+        $this->assertTrue($sqlAttempted, 'group by must be a hazard');
     }
 
     #[Test]
@@ -120,15 +118,27 @@ final class BelongsToManyHardeningTest extends TestCase
         $post = $this->makePostWithTags(3);
         $post->tags()->get();
 
-        $n = $this->countQueries(function () use ($post): void {
-            try {
-                $post->tags()->groupBy('tags.id')->having('tags.id', '>', 0)->get();
-            } catch (QueryException) {
-                // see group_by_is_a_hazard_and_falls_back_to_sql
-            }
+        $sqlAttempted = $this->sqlWasAttempted(function () use ($post): void {
+            $post->tags()->groupBy('tags.id')->having('tags.id', '>', 0)->get();
         });
 
-        $this->assertGreaterThan(0, $n);
+        $this->assertTrue($sqlAttempted, 'having must be a hazard');
+    }
+
+    private function sqlWasAttempted(callable $cb): bool
+    {
+        $n = 0;
+        DB::listen(function () use (&$n): void {
+            $n++;
+        });
+
+        try {
+            $cb();
+        } catch (QueryException) {
+            return true;
+        }
+
+        return $n > 0;
     }
 
     #[Test]
