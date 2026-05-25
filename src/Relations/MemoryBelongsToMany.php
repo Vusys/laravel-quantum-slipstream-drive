@@ -310,6 +310,38 @@ final class MemoryBelongsToMany extends BelongsToMany
     }
 
     /**
+     * @param  mixed  $id
+     * @param  array<string, mixed>  $attributes
+     * @return int
+     */
+    #[\Override]
+    public function updateExistingPivot($id, array $attributes, $touch = true)
+    {
+        $updated = parent::updateExistingPivot($id, $attributes, $touch);
+
+        if (! $this->isGraphEnabled()) {
+            return $updated;
+        }
+
+        $parentIdentity = ModelIdentity::fromModel($this->parent);
+        $relationName = $this->getRelationName();
+
+        if (! $parentIdentity instanceof ModelIdentity || $relationName === '') {
+            return $updated;
+        }
+
+        // The DB row now has new pivot attribute values, but cached PivotEdge
+        // objects still hold the old ones. We could surgically patch the
+        // matching edge, but a relation-scoped flush is simpler and safe: the
+        // next read repopulates from SQL with the fresh values.
+        $graph = resolve(IdentityGraph::class);
+        $graph->forgetPivotCoverage($parentIdentity, $relationName);
+        $graph->clearPivotEdgesFor($parentIdentity, $relationName);
+
+        return $updated;
+    }
+
+    /**
      * @param  list<PredicateNode>  $relatedNodes
      * @param  list<PredicateNode>  $pivotNodes
      * @param  list<string>  $pivotColumnsRequested
