@@ -105,7 +105,7 @@ final class MemoryHasMany extends HasMany
         $parentEntry = $store->findEntry($this->parent);
         $fact = $parentEntry?->relations->get($this->relationName);
 
-        if ($fact === null || ! $fact->complete) {
+        if ($fact === null || ! $fact->complete || ! $this->graphCoverageStillValid()) {
             /** @var Collection<int, TRelatedModel> $r */
             $r = $this->query->get($columns);
 
@@ -546,5 +546,31 @@ final class MemoryHasMany extends HasMany
     private function isGraphEnabled(): bool
     {
         return (bool) config('query-ricer-extreme.relation_graph.enabled', true);
+    }
+
+    /**
+     * The relation fact on the parent's entry says "this collection is fully
+     * loaded", but it doesn't track invalidation when a sibling row is created
+     * elsewhere. The graph coverage does — `invalidateModelClass(Child)` drops
+     * the coverage entry whose relatedModelClass matches. Cross-checking the
+     * graph here turns those drops into a fall-through to SQL so newly-created
+     * rows surface on the next query.
+     */
+    private function graphCoverageStillValid(): bool
+    {
+        if (! $this->isGraphEnabled() || $this->relationName === null) {
+            // With the graph off, fall back to RelationFact alone.
+            return true;
+        }
+
+        $parentIdentity = ModelIdentity::fromModel($this->parent);
+
+        if (! $parentIdentity instanceof ModelIdentity) {
+            return true;
+        }
+
+        $coverage = resolve(IdentityGraph::class)->coverageFor($parentIdentity, $this->relationName);
+
+        return $coverage instanceof RelationCoverage && $coverage->complete;
     }
 }
