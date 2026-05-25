@@ -34,13 +34,12 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
         /** @var Model $instance */
         $instance = new $modelClass;
         $connectionName = $instance->getConnectionName();
-        $cacheKey = $this->cacheKey($modelClass, $connectionName);
+        $table = $instance->getTable();
+        $cacheKey = $this->cacheKey($modelClass, $connectionName, $table);
 
         if (isset($this->uniqueIndexCache[$cacheKey])) {
             return $this->uniqueIndexCache[$cacheKey];
         }
-
-        $table = $instance->getTable();
 
         try {
             $indexes = $this->introspectIndexes($connectionName, $table);
@@ -107,13 +106,13 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
 
         $connection = $model->getConnection();
         $connectionName = $connection->getName();
-        $cacheKey = $this->cacheKey($model::class, $connectionName);
+        $table = $model->getTable();
+        $cacheKey = $this->cacheKey($model::class, $connectionName, $table);
 
         if (isset($this->columnSemanticsCache[$cacheKey])) {
             return $this->columnSemanticsCache[$cacheKey];
         }
 
-        $table = $model->getTable();
         $driver = $connection->getDriverName();
 
         try {
@@ -145,9 +144,9 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
         return $this->columnSemanticsCache[$cacheKey] = $semantics;
     }
 
-    private function cacheKey(string $modelClass, ?string $connectionName): string
+    private function cacheKey(string $modelClass, ?string $connectionName, string $table): string
     {
-        return $modelClass.'@'.($connectionName ?? '__default__');
+        return $modelClass.'@'.($connectionName ?? '__default__').':'.$table;
     }
 
     /**
