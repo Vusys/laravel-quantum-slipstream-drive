@@ -1290,18 +1290,27 @@ class IdentityMapBuilder extends Builder
         $graph = resolve(IdentityGraph::class);
         $modelClass = $this->getModel()::class;
 
-        $predicate = $store->isDisabled()
+        // Pre-compute the unqualified updated_at value (if any) so the cache mirror
+        // and the SQL UPDATE share the same timestamp. Eloquent's own
+        // addUpdatedAtColumn qualifies the column name (e.g. users.updated_at) which
+        // is not a valid attribute key in the identity-map facts; we have to inject
+        // it unqualified ourselves before parent::update is called.
+        $augmentedValues = $this->addUnqualifiedUpdatedAtColumn($values);
+
+        $predicate = $store->isDisabled() || $this->hasNonScalarValue($augmentedValues)
             ? null
             : (new QueryPatternExtractor($this))->extractFullPredicate();
 
-        $result = parent::update($values);
+        // parent::update sees updated_at already present and skips its own
+        // augmentation, so the SQL UPDATE uses the same timestamp we cached.
+        $result = parent::update($augmentedValues);
 
         if ($predicate instanceof PredicateNode) {
-            $hadEvictions = $store->applyMassUpdate($modelClass, $predicate, $values, PredicateEvaluator::forModel($this->getModel()));
+            $hadEvictions = $store->applyMassUpdate($modelClass, $predicate, $augmentedValues, PredicateEvaluator::forModel($this->getModel()));
             if ($hadEvictions) {
                 $registry->flushModelClass($modelClass);
             } else {
-                $registry->flushByColumns($modelClass, array_keys($values));
+                $registry->flushByColumns($modelClass, array_keys($augmentedValues));
             }
         } else {
             $store->flush($modelClass);
@@ -1311,6 +1320,54 @@ class IdentityMapBuilder extends Builder
         $graph->invalidateModelClass($modelClass);
 
         return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function hasNonScalarValue(array $values): bool
+    {
+        foreach ($values as $val) {
+            if ($val !== null && ! is_scalar($val)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function addUnqualifiedUpdatedAtColumn(array $values): array
+    {
+        $model = $this->getModel();
+
+        if (! $model->usesTimestamps()) {
+            return $values;
+        }
+
+        $column = $model->getUpdatedAtColumn();
+
+        if (! is_string($column) || array_key_exists($column, $values)) {
+            return $values;
+        }
+
+        $timestamp = $model->freshTimestampString();
+
+        if (
+            $model->hasSetMutator($column)
+            || $model->hasAttributeSetMutator($column)
+            || $model->hasCast($column)
+        ) {
+            $applied = $model->newInstance()->forceFill([$column => $timestamp])->getAttributes()[$column] ?? null;
+            if (is_string($applied) || is_int($applied) || is_float($applied) || is_bool($applied)) {
+                $timestamp = $applied;
+            }
+        }
+
+        return [$column => $timestamp] + $values;
     }
 
     #[\Override]

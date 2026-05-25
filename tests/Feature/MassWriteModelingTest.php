@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QueryRicerExtreme\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Sleep;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
 use Vusys\QueryRicerExtreme\Predicate\AndNode;
@@ -638,5 +639,50 @@ final class MassWriteModelingTest extends TestCase
         // name='Alice' entry flushed by HasIdentityMap::saved line 75; active=true preserved.
         $this->assertSame(1, $this->registry->entryCount(),
             'Only the coverage entry referencing name must be flushed');
+    }
+
+    // =========================================================================
+    // Non-scalar update values (DB::raw, etc.) must fall through to a safe flush
+    // rather than caching the Expression as the new column value.
+    // =========================================================================
+
+    #[Test]
+    public function mass_update_with_db_raw_expression_evicts_entries(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'score' => 10]);
+        User::find($alice->id); // warm entry
+
+        $this->assertSame(1, $this->store->debugStats()['entries']);
+
+        User::where('score', 10)->update(['score' => DB::raw('score + 1')]);
+
+        $aliceAfter = User::find($alice->id);
+        $this->assertInstanceOf(User::class, $aliceAfter);
+        $this->assertSame(11, (int) $aliceAfter->score, 'cache must not retain a DB::raw Expression as the column value');
+    }
+
+    #[Test]
+    public function mass_update_keeps_cached_updated_at_in_sync_with_database(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
+        User::find($alice->id); // warm entry
+
+        $originalUpdatedAt = (string) $alice->updated_at;
+        Sleep::sleep(1); // ensure freshTimestampString changes
+
+        User::where('active', false)->update(['active' => true]);
+
+        $aliceAfter = User::find($alice->id);
+        $this->assertInstanceOf(User::class, $aliceAfter);
+
+        $fromDb = User::withoutIdentityMap()->find($alice->id);
+        $this->assertInstanceOf(User::class, $fromDb);
+
+        $this->assertNotSame($originalUpdatedAt, (string) $fromDb->updated_at, 'DB updated_at must have advanced');
+        $this->assertSame(
+            (string) $fromDb->updated_at,
+            (string) $aliceAfter->updated_at,
+            'cache updated_at must match the SQL UPDATE that just ran',
+        );
     }
 }
