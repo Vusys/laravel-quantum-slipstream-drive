@@ -20,13 +20,13 @@ final class ProcessTruthTest extends TestCase
         parent::setUp();
         $this->store = resolve(IdentityMapStore::class);
         $this->store->flush();
-        config(['query-ricer-extreme.attribute_truth' => 'process_truth']);
+        config(['query-ricer-extreme.mode' => 'process_truth']);
     }
 
     #[\Override]
     protected function tearDown(): void
     {
-        config(['query-ricer-extreme.attribute_truth' => 'database_only']);
+        config(['query-ricer-extreme.mode' => 'default']);
         parent::tearDown();
     }
 
@@ -109,13 +109,13 @@ final class ProcessTruthTest extends TestCase
     }
 
     // -----------------------------------------------------------------------
-    // database_only mode — dirty changes must NOT affect evaluation
+    // default mode — dirty changes must NOT affect evaluation
     // -----------------------------------------------------------------------
 
     #[Test]
-    public function database_only_mode_ignores_dirty_changes(): void
+    public function default_mode_ignores_dirty_changes(): void
     {
-        config(['query-ricer-extreme.attribute_truth' => 'database_only']);
+        config(['query-ricer-extreme.mode' => 'default']);
 
         $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
 
@@ -131,7 +131,7 @@ final class ProcessTruthTest extends TestCase
         $result = User::whereKey([$alice->id])->where('active', true)->get();
 
         $this->assertSame(0, $queryCount, 'Original value is true — no SQL needed');
-        $this->assertCount(1, $result, 'database_only: original value used, dirty ignored');
+        $this->assertCount(1, $result, 'default mode: original value used, dirty ignored');
     }
 
     // -----------------------------------------------------------------------
@@ -254,9 +254,9 @@ final class ProcessTruthTest extends TestCase
     }
 
     #[Test]
-    public function database_only_mode_ignores_dirty_in_coverage_filter(): void
+    public function default_mode_ignores_dirty_in_coverage_filter(): void
     {
-        config(['query-ricer-extreme.attribute_truth' => 'database_only']);
+        config(['query-ricer-extreme.mode' => 'default']);
 
         $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
         $this->createFresh('Bob', 'bob@example.com', active: true);
@@ -275,7 +275,7 @@ final class ProcessTruthTest extends TestCase
         $result = User::where('active', true)->get();
 
         $this->assertSame(0, $queryCount, 'Coverage hit — no SQL');
-        $this->assertCount(2, $result, 'database_only: dirty mutation ignored, both models returned');
+        $this->assertCount(2, $result, 'default mode: dirty mutation ignored, both models returned');
     }
 
     // -----------------------------------------------------------------------
