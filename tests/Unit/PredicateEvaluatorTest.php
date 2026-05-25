@@ -201,6 +201,33 @@ final class PredicateEvaluatorTest extends TestCase
         $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
     }
 
+    #[Test]
+    public function in_unknown_when_column_value_is_null(): void
+    {
+        $attrs = $this->attributes(['status' => null]);
+        $node = new InNode('status', ['active'], false);
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    #[Test]
+    public function in_with_null_in_list_skips_null_and_matches_other_value(): void
+    {
+        $attrs = $this->attributes(['status' => 'active']);
+        $node = new InNode('status', [null, 'active'], false);
+
+        $this->assertSame(EvaluationResult::Match, $this->evaluator->evaluate($attrs, $node));
+    }
+
+    #[Test]
+    public function in_with_null_in_list_returns_unknown_when_not_found(): void
+    {
+        $attrs = $this->attributes(['status' => 'unmatched']);
+        $node = new InNode('status', [null, 'active'], false);
+
+        $this->assertSame(EvaluationResult::Unknown, $this->evaluator->evaluate($attrs, $node));
+    }
+
     // --- NullNode ---
 
     #[Test]

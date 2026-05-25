@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
 use Vusys\QueryRicerExtreme\Driver\ConservativeSemantics;
+use Vusys\QueryRicerExtreme\Driver\NullOrdering;
 use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
 
 final class ConservativeSemanticsTest extends TestCase
@@ -63,5 +64,22 @@ final class ConservativeSemanticsTest extends TestCase
         self::assertSame(0, $s->compareForOrder(2, 2, ColumnSemantics::unknown()));
         self::assertSame(1, $s->compareForOrder(2, 1, ColumnSemantics::unknown()));
         self::assertNull($s->compareForOrder('a', 'b', ColumnSemantics::unknown()));
+    }
+
+    #[Test]
+    public function null_ordering_asc_is_last_desc_is_first(): void
+    {
+        $s = new ConservativeSemantics;
+        self::assertSame(NullOrdering::NullsLast, $s->nullOrdering('asc'));
+        self::assertSame(NullOrdering::NullsFirst, $s->nullOrdering('desc'));
+        self::assertSame(NullOrdering::NullsFirst, $s->nullOrdering('DESC'));
+    }
+
+    #[Test]
+    public function null_compared_to_anything_returns_unknown(): void
+    {
+        $s = new ConservativeSemantics;
+        self::assertSame(EvaluationResult::Unknown, $s->compare(null, '=', 'x', ColumnSemantics::unknown()));
+        self::assertSame(EvaluationResult::Unknown, $s->compare('x', '=', null, ColumnSemantics::unknown()));
     }
 }

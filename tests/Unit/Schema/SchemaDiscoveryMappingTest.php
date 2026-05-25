@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Unit\Schema;
 
+use Illuminate\Config\Repository;
+use Illuminate\Container\Container;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -81,5 +83,74 @@ final class SchemaDiscoveryMappingTest extends TestCase
     {
         $method = (new ReflectionClass(SchemaDiscovery::class))->getMethod('modeFromCollation');
         self::assertSame($expected, $method->invoke(new SchemaDiscovery, $collation));
+    }
+
+    #[Test]
+    public function resolve_string_mode_citext_is_case_insensitive(): void
+    {
+        $method = (new ReflectionClass(SchemaDiscovery::class))->getMethod('resolveStringMode');
+        self::assertSame(
+            StringComparisonMode::CaseInsensitive,
+            $method->invoke(new SchemaDiscovery, 'pgsql', 'citext', null, 'database_collation'),
+        );
+    }
+
+    #[Test]
+    public function resolve_string_mode_uses_collation_when_provided(): void
+    {
+        $method = (new ReflectionClass(SchemaDiscovery::class))->getMethod('resolveStringMode');
+        self::assertSame(
+            StringComparisonMode::CaseInsensitive,
+            $method->invoke(new SchemaDiscovery, 'mysql', 'varchar', 'utf8mb4_unicode_ci', 'database_collation'),
+        );
+        self::assertSame(
+            StringComparisonMode::CaseSensitive,
+            $method->invoke(new SchemaDiscovery, 'mysql', 'varchar', 'utf8mb4_bin', 'database_collation'),
+        );
+    }
+
+    #[Test]
+    public function resolve_string_mode_defaults_to_driver_default_when_collation_missing(): void
+    {
+        $method = (new ReflectionClass(SchemaDiscovery::class))->getMethod('resolveStringMode');
+        self::assertSame(
+            StringComparisonMode::CaseSensitive,
+            $method->invoke(new SchemaDiscovery, 'sqlite', 'varchar', null, 'database_collation'),
+        );
+        self::assertSame(
+            StringComparisonMode::Unknown,
+            $method->invoke(new SchemaDiscovery, 'mysql', 'varchar', null, 'database_collation'),
+        );
+    }
+
+    #[Test]
+    public function resolve_string_mode_returns_unknown_for_non_string_type(): void
+    {
+        $method = (new ReflectionClass(SchemaDiscovery::class))->getMethod('resolveStringMode');
+        self::assertSame(
+            StringComparisonMode::Unknown,
+            $method->invoke(new SchemaDiscovery, 'mysql', 'int', null, 'database_collation'),
+        );
+    }
+
+    #[Test]
+    public function configured_string_mode_rejects_unknown_value(): void
+    {
+        $container = new Container;
+        Container::setInstance($container);
+        $container->instance('config', new Repository([
+            'query-ricer-extreme' => [
+                'database_semantics' => [
+                    'mysql' => ['string_comparisons' => 'nonsense'],
+                ],
+            ],
+        ]));
+
+        try {
+            $method = (new ReflectionClass(SchemaDiscovery::class))->getMethod('configuredStringMode');
+            self::assertSame('conservative_unknown', $method->invoke(new SchemaDiscovery, 'mysql'));
+        } finally {
+            Container::setInstance();
+        }
     }
 }

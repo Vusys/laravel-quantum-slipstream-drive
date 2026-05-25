@@ -66,21 +66,12 @@ abstract class AbstractDriverSemantics implements DriverSemantics
     abstract protected function compareStrings(string $left, string $right, ColumnSemantics $column): ?bool;
 
     /**
-     * Driver-specific string ordering. Default: only when the strings are
-     * byte-identical (cmp = 0) or the column is known to be case-sensitive.
+     * Driver-specific string ordering. Implementations return a spaceship
+     * result when the database would compare under the column's semantics
+     * confidently, or null when the answer depends on metadata not available
+     * to the resolver.
      */
-    protected function orderStrings(string $left, string $right, ColumnSemantics $column): ?int
-    {
-        if ($left === $right) {
-            return 0;
-        }
-
-        if ($column->stringComparison === StringComparisonMode::CaseSensitive) {
-            return strcmp($left, $right) <=> 0;
-        }
-
-        return null;
-    }
+    abstract protected function orderStrings(string $left, string $right, ColumnSemantics $column): ?int;
 
     private function equals(mixed $left, mixed $right, ColumnSemantics $column): ?bool
     {

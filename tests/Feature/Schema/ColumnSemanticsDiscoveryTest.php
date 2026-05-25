@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Feature\Schema;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Driver\ColumnType;
@@ -44,6 +45,30 @@ final class ColumnSemanticsDiscoveryTest extends TestCase
         $semantics = $this->discovery->for(User::class, 'nonexistent_column');
         self::assertSame(ColumnType::Unknown, $semantics->type);
         self::assertSame(StringComparisonMode::Unknown, $semantics->stringComparison);
+    }
+
+    #[Test]
+    public function disabled_schema_discovery_returns_unknown_for_every_column(): void
+    {
+        config()->set('query-ricer-extreme.schema_discovery.enabled', false);
+        $this->discovery->flush();
+
+        $semantics = $this->discovery->for(User::class, 'email');
+        self::assertSame(ColumnType::Unknown, $semantics->type);
+    }
+
+    #[Test]
+    public function introspection_failure_does_not_crash(): void
+    {
+        $orphanModel = new class extends Model
+        {
+            protected $table = 'no_such_table_anywhere';
+
+            public $timestamps = false;
+        };
+
+        $semantics = $this->discovery->for($orphanModel::class, 'anything');
+        self::assertSame(ColumnType::Unknown, $semantics->type);
     }
 
     #[Test]
