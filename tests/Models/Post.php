@@ -7,6 +7,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Vusys\QueryRicerExtreme\HasIdentityMap;
 use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
 use Vusys\QueryRicerExtreme\Tests\Factories\PostFactory;
@@ -60,5 +61,13 @@ final class Post extends Model
     public function label(): BelongsTo
     {
         return $this->belongsTo(Label::class);
+    }
+
+    /** @return BelongsToMany<Tag, $this> */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class)
+            ->withPivot(['active', 'priority'])
+            ->withTimestamps();
     }
 }

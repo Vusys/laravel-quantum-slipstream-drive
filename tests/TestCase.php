@@ -21,6 +21,7 @@ abstract class TestCase extends OrchestraTestCase
     #[\Override]
     protected function defineDatabaseMigrations(): void
     {
+        Schema::dropIfExists('post_tag');
         Schema::dropIfExists('comments');
         Schema::dropIfExists('posts');
         Schema::dropIfExists('tags');
@@ -81,11 +82,22 @@ abstract class TestCase extends OrchestraTestCase
             $table->unsignedBigInteger('likes')->default(0);
             $table->timestamps();
         });
+
+        Schema::create('post_tag', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('post_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
+            $table->boolean('active')->default(true);
+            $table->unsignedInteger('priority')->default(0);
+            $table->timestamps();
+            $table->unique(['post_id', 'tag_id']);
+        });
     }
 
     #[\Override]
     protected function tearDown(): void
     {
+        Schema::dropIfExists('post_tag');
         Schema::dropIfExists('comments');
         Schema::dropIfExists('posts');
         Schema::dropIfExists('tags');

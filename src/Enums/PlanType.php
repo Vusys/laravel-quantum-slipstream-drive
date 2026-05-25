@@ -29,4 +29,6 @@ enum PlanType: string
     case ReturnAvgFromCoverage = 'return_avg_from_coverage';
     case WhereHasFromGraph = 'where_has_from_graph';
     case WhereDoesntHaveFromGraph = 'where_doesnt_have_from_graph';
+    case BelongsToManyFromGraph = 'belongs_to_many_from_graph';
+    case WherePivotInMemory = 'where_pivot_in_memory';
 }

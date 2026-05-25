@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Vusys\QueryRicerExtreme\Tests\Fuzz;
 
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\UniqueConstraintViolationException;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Group;
 use Vusys\QueryRicerExtreme\IdentityMap;
@@ -125,6 +127,129 @@ final class RelationalCorrectnessTest extends DualDatabaseTestCase
 
             $this->assertSame($oracle, $actual, "mutation consistency [seed={$seed} step={$step}]");
         });
+    }
+
+    // -------------------------------------------------------------------------
+    // Test 4 — belongsToMany pivot mutations vs oracle
+    // -------------------------------------------------------------------------
+
+    public function test_pivot_mutation_read_consistency_matches_oracle(): void
+    {
+        $this->eachSeed(function (int $seed, int $step): void {
+            IdentityMap::flush();
+
+            $graph = $this->seedGraph();
+            $postIds = array_column($graph['posts'], 'id');
+            $tagIds = array_column($graph['tags'], 'id');
+
+            if ($postIds === [] || $tagIds === []) {
+                return;
+            }
+
+            $plan = $this->buildPivotPlan($postIds, $tagIds);
+
+            // Apply on primary (identity map active)
+            foreach ($plan as $planStep) {
+                $this->applyPivotStep($planStep);
+            }
+
+            // Mirror to secondary with identity map disabled
+            IdentityMap::disabled(function () use ($plan): void {
+                ConnectionContext::using('test_b', function () use ($plan): void {
+                    foreach ($plan as $planStep) {
+                        $this->applyPivotStep($planStep);
+                    }
+                });
+            });
+
+            $actual = $this->snapshotPivots($postIds);
+            $oracle = IdentityMap::disabled(fn (): array => ConnectionContext::using('test_b', fn (): array => $this->snapshotPivots($postIds)));
+
+            $this->assertSame($oracle, $actual, "pivot mutations [seed={$seed} step={$step}]");
+        });
+    }
+
+    /**
+     * @param  list<int>  $postIds
+     * @param  list<int>  $tagIds
+     * @return list<array{op: string, post_id: int, tag_id: int, active: bool, priority: int}>
+     */
+    private function buildPivotPlan(array $postIds, array $tagIds): array
+    {
+        $ops = ['attach', 'detach-one', 'detach-all', 'sync', 'sync-without-detaching'];
+        $plan = [];
+
+        for ($i = 0, $count = mt_rand(2, 6); $i < $count; $i++) {
+            $op = $ops[mt_rand(0, 4)];
+            $plan[] = [
+                'op' => $op,
+                'post_id' => $postIds[mt_rand(0, count($postIds) - 1)],
+                'tag_id' => $tagIds[mt_rand(0, count($tagIds) - 1)],
+                'active' => (bool) mt_rand(0, 1),
+                'priority' => mt_rand(0, 9),
+            ];
+        }
+
+        return $plan;
+    }
+
+    /** @param array{op: string, post_id: int, tag_id: int, active: bool, priority: int} $step */
+    private function applyPivotStep(array $step): void
+    {
+        $post = Post::find($step['post_id']);
+        if (! $post instanceof Post) {
+            return;
+        }
+
+        // Pivot uses unique(post_id, tag_id) — duplicate-attach throws and both
+        // backends see the same exception (DB-level), so the resulting state stays
+        // identical. Suppress so the fuzz can continue.
+        try {
+            match ($step['op']) {
+                'attach' => $post->tags()->attach($step['tag_id'], ['active' => $step['active'], 'priority' => $step['priority']]),
+                'detach-one' => $post->tags()->detach($step['tag_id']),
+                'detach-all' => $post->tags()->detach(),
+                'sync' => $post->tags()->sync([$step['tag_id'] => ['active' => $step['active'], 'priority' => $step['priority']]]),
+                'sync-without-detaching' => $post->tags()->syncWithoutDetaching([$step['tag_id'] => ['active' => $step['active'], 'priority' => $step['priority']]]),
+                default => null,
+            };
+        } catch (UniqueConstraintViolationException) {
+            // duplicate-attach — both backends raise; final state still matches
+        }
+    }
+
+    /**
+     * @param  list<int>  $postIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    private function snapshotPivots(array $postIds): array
+    {
+        $out = [];
+
+        foreach ($postIds as $postId) {
+            $post = Post::find($postId);
+            if (! $post instanceof Post) {
+                $out[$postId] = [];
+
+                continue;
+            }
+
+            $tags = $post->tags()->orderBy('tags.id')->get();
+            $rows = [];
+            foreach ($tags as $tag) {
+                $pivot = $tag->getRelation('pivot');
+                $rows[] = [
+                    'tag_id' => $tag->id,
+                    'tag_name' => $tag->name,
+                    'active' => $pivot instanceof Model ? (bool) $pivot->getAttribute('active') : null,
+                    'priority' => $pivot instanceof Model ? (is_numeric($pivot->getAttribute('priority')) ? (int) $pivot->getAttribute('priority') : null) : null,
+                ];
+            }
+
+            $out[$postId] = $rows;
+        }
+
+        return $out;
     }
 
     // -------------------------------------------------------------------------

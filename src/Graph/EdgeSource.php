@@ -9,4 +9,5 @@ enum EdgeSource: string
     case LoadedRelation = 'loaded_relation';
     case ForeignKeyFact = 'foreign_key_fact';
     case AssociationMutation = 'association_mutation';
+    case Pivot = 'pivot';
 }
