@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Feature\Graph;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Graph\EdgeConfidence;
@@ -100,8 +101,14 @@ final class BelongsToManyHardeningTest extends TestCase
         $post = $this->makePostWithTags(3);
         $post->tags()->get();
 
+        // The query may error on strict-mode backends (ONLY_FULL_GROUP_BY); we only
+        // care that SQL was issued, which proves the memory path was bypassed.
         $n = $this->countQueries(function () use ($post): void {
-            $post->tags()->groupBy('tags.id')->get();
+            try {
+                $post->tags()->groupBy('tags.id')->get();
+            } catch (QueryException) {
+                // strict-grouping rejection from MySQL/Postgres — still proves SQL was issued
+            }
         });
 
         $this->assertGreaterThan(0, $n, 'group by must be a hazard');
@@ -114,7 +121,11 @@ final class BelongsToManyHardeningTest extends TestCase
         $post->tags()->get();
 
         $n = $this->countQueries(function () use ($post): void {
-            $post->tags()->groupBy('tags.id')->having('tags.id', '>', 0)->get();
+            try {
+                $post->tags()->groupBy('tags.id')->having('tags.id', '>', 0)->get();
+            } catch (QueryException) {
+                // see group_by_is_a_hazard_and_falls_back_to_sql
+            }
         });
 
         $this->assertGreaterThan(0, $n);
