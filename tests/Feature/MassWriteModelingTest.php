@@ -701,6 +701,29 @@ final class MassWriteModelingTest extends TestCase
     }
 
     #[Test]
+    public function insert_invalidates_coverage_for_model_class(): void
+    {
+        // Pre-warm coverage: AND([]) over Post with PKs from the seeded rows.
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Post::create(['user_id' => $alice->id, 'title' => 'P1', 'published' => true]);
+        $countBefore = Post::count();
+        $this->assertSame(1, $countBefore);
+
+        // Warm coverage region (Post::all-equivalent).
+        $coveredBefore = Post::where('published', true)->get();
+        $this->assertCount(1, $coveredBefore);
+
+        // Raw insert via Eloquent Builder — no model events fire.
+        Post::insert([
+            ['user_id' => $alice->id, 'title' => 'P2', 'published' => true, 'view_count' => 0],
+        ]);
+
+        // The new row must appear in the next query, not the stale coverage list.
+        $coveredAfter = Post::where('published', true)->get();
+        $this->assertCount(2, $coveredAfter, 'coverage must be invalidated by raw insert');
+    }
+
+    #[Test]
     public function upsert_invalidates_cached_entries_for_overlapping_rows(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'score' => 10]);

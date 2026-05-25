@@ -1453,6 +1453,93 @@ class IdentityMapBuilder extends Builder
         return $result;
     }
 
+    /**
+     * Bulk raw insert paths bypass Eloquent model events, so HasIdentityMap's
+     * saved hook never fires and previously-recorded coverage / graph entries
+     * stay believing they're complete. We can't see the inserted rows in
+     * advance, so the safest response is to flush the cache for the model
+     * class once the SQL has run.
+     *
+     * These methods exist only on the underlying Query Builder (Eloquent\Builder
+     * forwards via __call) so we cannot use parent::; we dispatch through the
+     * underlying query directly.
+     *
+     * insert() and insertGetId() are also called by Model::performInsert for a
+     * single new row — that path fires the saved event which adds the row to
+     * the store, so we must not flush. We distinguish by shape: a list of
+     * arrays is a true bulk insert; a flat assoc array is Model::create.
+     *
+     * @param  array<int|string, mixed>  $values
+     */
+    public function insert(array $values): bool
+    {
+        $result = $this->toBase()->insert($values);
+
+        if ($this->isBulkInsertShape($values)) {
+            $this->flushAfterBulkWrite();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $values
+     */
+    public function insertOrIgnore(array $values): int
+    {
+        $result = $this->toBase()->insertOrIgnore($values);
+        $this->flushAfterBulkWrite();
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @param  string|null  $sequence
+     */
+    public function insertGetId(array $values, $sequence = null): int
+    {
+        $result = $this->toBase()->insertGetId($values, $sequence);
+
+        if ($this->isBulkInsertShape($values)) {
+            $this->flushAfterBulkWrite();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<int, string>  $columns
+     * @param  Builder<Model>|QueryBuilder|Closure  $query
+     */
+    public function insertUsing(array $columns, $query): int
+    {
+        $result = $this->toBase()->insertUsing($columns, $query);
+        $this->flushAfterBulkWrite();
+
+        return $result;
+    }
+
+    /**
+     * Distinguish a true bulk insert (`Post::insert([['col' => 'v'], ...])`) from
+     * a single-row insert dispatched by Model::performInsert
+     * (`Post::create([...])` produces a flat assoc array). The QueryBuilder
+     * itself uses the same heuristic — `is_array(reset($values))` — to detect
+     * bulk shape.
+     *
+     * @param  array<int|string, mixed>  $values
+     */
+    private function isBulkInsertShape(array $values): bool
+    {
+        if ($values === []) {
+            return false;
+        }
+
+        $first = reset($values);
+
+        return is_array($first);
+    }
+
     #[\Override]
     public function delete(): mixed
     {
