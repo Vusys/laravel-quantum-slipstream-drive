@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QueryRicerExtreme\Tests\Feature\Graph;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
@@ -513,6 +514,81 @@ final class BelongsToManyHardeningTest extends TestCase
         $identity = ModelIdentity::fromModel($post);
         $this->assertNotNull($identity);
         $this->assertCount(1, $this->graph->pivotEdgesFrom($identity, 'tags'));
+    }
+
+    // ------------------------------------------------------------------
+    // pivot must not leak: serving two parents from memory that share a related
+    // Tag must NOT mutate the canonical identity-map instance.
+    // ------------------------------------------------------------------
+
+    #[Test]
+    public function memory_served_get_does_not_mutate_canonical_related_instance(): void
+    {
+        $tag = Tag::create(['name' => 'shared']);
+
+        $user1 = User::create(['name' => 'U1', 'email' => 'shared1@example.com']);
+        $post1 = Post::create(['user_id' => $user1->id, 'title' => 'P1']);
+        $post1->tags()->attach($tag, ['active' => true, 'priority' => 11]);
+
+        $user2 = User::create(['name' => 'U2', 'email' => 'shared2@example.com']);
+        $post2 = Post::create(['user_id' => $user2->id, 'title' => 'P2']);
+        $post2->tags()->attach($tag, ['active' => false, 'priority' => 99]);
+
+        // Prime both posts' pivot coverage from SQL.
+        $post1->tags()->get();
+        $post2->tags()->get();
+
+        // Serve from memory for post1, then post2 — each must return distinct pivot.
+        // Cannot use `->first()` on the relation: that bypasses our `get()` override.
+        $this->assertSame(11, $this->priorityOfFirstTagPivot($post1));
+        $this->assertSame(99, $this->priorityOfFirstTagPivot($post2));
+
+        // Re-read post1 — pivot must still reflect post1's edge, NOT be overwritten
+        // by the post2 read above.
+        $this->assertSame(
+            11,
+            $this->priorityOfFirstTagPivot($post1),
+            'serving post2 must not have mutated the canonical Tag instance held in the identity map',
+        );
+    }
+
+    private function priorityOfFirstTagPivot(Post $post): ?int
+    {
+        $tags = $post->tags()->get();
+        foreach ($tags as $tag) {
+            $pivot = $tag->getRelation('pivot');
+            if (! $pivot instanceof Model) {
+                return null;
+            }
+            $val = $pivot->getAttribute('priority');
+
+            return is_numeric($val) ? (int) $val : null;
+        }
+
+        return null;
+    }
+
+    // ------------------------------------------------------------------
+    // detach by Illuminate Collection input is parsed the same as parent::detach
+    // ------------------------------------------------------------------
+
+    #[Test]
+    public function detach_by_eloquent_collection_removes_those_edges(): void
+    {
+        $post = $this->makePostWithTags(3);
+        $post->tags()->get();
+        $identity = ModelIdentity::fromModel($post);
+        $this->assertNotNull($identity);
+        $this->assertSame(3, $this->graph->pivotEdgeCount());
+
+        $tagsToDetach = $post->tags()->limit(2)->get();
+        $post->tags()->detach($tagsToDetach);
+
+        $this->assertSame(
+            1,
+            $this->graph->pivotEdgeCount(),
+            'detach by Collection must remove edges through the graph (parseIds delegation)',
+        );
     }
 
     // ------------------------------------------------------------------

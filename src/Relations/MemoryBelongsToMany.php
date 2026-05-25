@@ -193,7 +193,13 @@ final class MemoryBelongsToMany extends BelongsToMany
             return $detached;
         }
 
-        foreach ($this->normalizeDetachIds($ids) as $relatedKey) {
+        // Delegate to the same parser parent::detach() used so we accept Model,
+        // EloquentCollection, BaseCollection, array, or scalar identically.
+        foreach ($this->parseIds($ids) as $relatedKey) {
+            if (! is_int($relatedKey) && ! is_string($relatedKey)) {
+                continue;
+            }
+
             $relatedIdentity = $this->relatedIdentityFromKey($relatedKey);
             $graph->removePivotEdge($parentIdentity, $relationName, $relatedIdentity);
         }
@@ -381,8 +387,11 @@ final class MemoryBelongsToMany extends BelongsToMany
                 }
             }
 
+            // Clone before attaching the pivot so we never mutate the shared
+            // canonical instance held by the identity map — otherwise pivot
+            // attributes from one parent would leak into reads for another.
             /** @var TRelatedModel $typed */
-            $typed = $relatedEntry->model;
+            $typed = clone $relatedEntry->model;
             $this->attachPivotToModel($typed, $pivotEdge->pivotAttributes);
             $filtered[] = $typed;
         }
@@ -848,43 +857,6 @@ final class MemoryBelongsToMany extends BelongsToMany
         }
 
         return array_values(array_unique($columns));
-    }
-
-    /**
-     * @param  mixed  $ids
-     * @return list<int|string>
-     */
-    private function normalizeDetachIds($ids): array
-    {
-        if ($ids instanceof Model) {
-            $key = $ids->getKey();
-
-            return (is_int($key) || is_string($key)) ? [$key] : [];
-        }
-
-        if (is_int($ids) || is_string($ids)) {
-            return [$ids];
-        }
-
-        if (! is_array($ids)) {
-            return [];
-        }
-
-        $out = [];
-
-        foreach ($ids as $v) {
-            if (is_int($v) || is_string($v)) {
-                $out[] = $v;
-            } elseif ($v instanceof Model) {
-                $key = $v->getKey();
-
-                if (is_int($key) || is_string($key)) {
-                    $out[] = $key;
-                }
-            }
-        }
-
-        return $out;
     }
 
     /**

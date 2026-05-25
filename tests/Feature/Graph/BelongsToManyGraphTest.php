@@ -302,7 +302,7 @@ final class BelongsToManyGraphTest extends TestCase
     }
 
     #[Test]
-    public function single_save_of_new_tag_does_not_invalidate_pivot_coverage(): void
+    public function single_save_of_new_tag_invalidates_pivot_coverage(): void
     {
         $post = $this->postWithTags(2);
         $post->tags()->get();
@@ -310,13 +310,12 @@ final class BelongsToManyGraphTest extends TestCase
         $this->assertNotNull($identity);
         $this->assertNotNull($this->graph->pivotCoverageFor($identity, 'tags'));
 
-        // Creating a new Tag (not attached to this post) currently invalidates the parent
-        // class for that model in HasIdentityMap.bootHasIdentityMap; pivot coverage
-        // hangs off Post side. Document the current observable behaviour.
+        // HasIdentityMap's `saved` listener flushes by *related* model class on
+        // wasRecentlyCreated, so creating any Tag — even one unrelated to this
+        // post — invalidates the post's pivot coverage. Overly conservative
+        // but safe; documenting the current observable behaviour.
         Tag::create(['name' => 'unrelated']);
 
-        // The hook flushes by *related* model class — so coverage IS invalidated.
-        // This is overly conservative but safe.
         $this->assertNull($this->graph->pivotCoverageFor($identity, 'tags'));
     }
 }
