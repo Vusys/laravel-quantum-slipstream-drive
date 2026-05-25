@@ -86,6 +86,39 @@ return [
     ],
 
     /*
+     * Per-driver comparison semantics. Controls how the predicate evaluator
+     * resolves string equality when no schema collation information is available.
+     *
+     *   database_collation    — trust the database collation reported by
+     *                           Schema::getColumns(); fall back to the driver
+     *                           default (case-sensitive for SQLite/Postgres,
+     *                           Unknown for MySQL/MariaDB) when collation is
+     *                           missing.
+     *   php_strict            — treat every string column as case-sensitive
+     *                           byte-equality. Fast, but wrong on MySQL with
+     *                           case-insensitive collations.
+     *   conservative_unknown  — return Unknown for string comparisons and let
+     *                           SQL handle it. Safest default.
+     *
+     * Integer, boolean, UUID, and null comparisons are always resolved
+     * confidently — this setting only affects string semantics.
+     */
+    'database_semantics' => [
+        'sqlite' => [
+            'string_comparisons' => env('IDENTITY_MAP_SQLITE_STRING_COMPARISONS', 'conservative_unknown'),
+        ],
+        'mysql' => [
+            'string_comparisons' => env('IDENTITY_MAP_MYSQL_STRING_COMPARISONS', 'conservative_unknown'),
+        ],
+        'mariadb' => [
+            'string_comparisons' => env('IDENTITY_MAP_MARIADB_STRING_COMPARISONS', 'conservative_unknown'),
+        ],
+        'pgsql' => [
+            'string_comparisons' => env('IDENTITY_MAP_PGSQL_STRING_COMPARISONS', 'conservative_unknown'),
+        ],
+    ],
+
+    /*
      * Observability and debugging. Only enable in non-production environments.
      *
      *   enabled            — log identity-map decisions to the configured channel.
