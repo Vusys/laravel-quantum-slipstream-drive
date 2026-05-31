@@ -16,10 +16,12 @@ use RuntimeException;
 use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
 use Vusys\QueryRicerExtreme\Coverage\CoverageEntry;
 use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
+use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
 use Vusys\QueryRicerExtreme\Predicate\AndNode;
 use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 use Vusys\QueryRicerExtreme\Store\TransactionJournal;
+use Vusys\QueryRicerExtreme\Tests\Models\Post;
 use Vusys\QueryRicerExtreme\Tests\Models\User;
 use Vusys\QueryRicerExtreme\Tests\TestCase;
 
@@ -82,8 +84,9 @@ final class ServiceProviderTest extends TestCase
 
     private function primeAllRegistries(): void
     {
-        User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        User::where('name', 'Alice')->get();
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Post::create(['user_id' => $alice->id, 'title' => 'p1']);
+        User::with('posts')->get();
 
         resolve(CoverageRegistry::class)->record(new CoverageEntry(
             modelClass: 'App\\Sentinel',
@@ -107,6 +110,7 @@ final class ServiceProviderTest extends TestCase
         $this->assertGreaterThan(0, resolve(IdentityMapStore::class)->debugStats()['entries']);
         $this->assertGreaterThan(0, resolve(CoverageRegistry::class)->entryCount());
         $this->assertGreaterThan(0, resolve(TransactionJournal::class)->depth('default'));
+        $this->assertGreaterThan(0, resolve(IdentityGraph::class)->totalEdgeCount());
         $this->assertNotEmpty($this->readSchemaCache());
     }
 
@@ -115,6 +119,7 @@ final class ServiceProviderTest extends TestCase
         $this->assertSame(0, resolve(IdentityMapStore::class)->debugStats()['entries'], 'IdentityMapStore not flushed');
         $this->assertSame(0, resolve(CoverageRegistry::class)->entryCount(), 'CoverageRegistry not flushed');
         $this->assertSame(0, resolve(TransactionJournal::class)->depth('default'), 'TransactionJournal not flushed');
+        $this->assertSame(0, resolve(IdentityGraph::class)->totalEdgeCount(), 'IdentityGraph not flushed');
         $this->assertEmpty($this->readSchemaCache(), 'SchemaDiscovery cache not flushed');
     }
 
