@@ -18,6 +18,28 @@ final class IdentityGraph
     /** @var array<string, PivotCoverage> */
     private array $pivotCoverage = [];
 
+    /**
+     * Reverse-indexes: modelClass → set of bucket/coverage keys that have ever
+     * referenced that class (as `from`/`to` for edges, as `parent`/`related`
+     * for coverage). Maintained on insert only — entries may be stale when a
+     * bucket has been cleared or its edges overwritten. Treated as hints by
+     * invalidateModelClass(): we visit only the indexed keys and verify each
+     * against the current state. flush() resets the indexes alongside the
+     * primary maps.
+     *
+     * @var array<string, array<string, true>>
+     */
+    private array $edgesBucketsByClass = [];
+
+    /** @var array<string, array<string, true>> */
+    private array $coverageKeysByClass = [];
+
+    /** @var array<string, array<string, true>> */
+    private array $pivotEdgesBucketsByClass = [];
+
+    /** @var array<string, array<string, true>> */
+    private array $pivotCoverageKeysByClass = [];
+
     private int $edgeCount = 0;
 
     private int $pivotEdgeCount = 0;
@@ -38,6 +60,7 @@ final class IdentityGraph
             if ($current->to->key() === $edge->to->key()) {
                 $existing[$i] = $edge;
                 $this->edges[$bucket] = $existing;
+                $this->edgesBucketsByClass[$edge->to->modelClass][$bucket] = true;
 
                 return;
             }
@@ -52,6 +75,8 @@ final class IdentityGraph
         $existing[] = $edge;
         $this->edges[$bucket] = $existing;
         $this->edgeCount++;
+        $this->edgesBucketsByClass[$edge->from->modelClass][$bucket] = true;
+        $this->edgesBucketsByClass[$edge->to->modelClass][$bucket] = true;
     }
 
     public function addCoverage(RelationCoverage $coverage): void
@@ -60,6 +85,7 @@ final class IdentityGraph
 
         if (isset($this->coverage[$key])) {
             $this->coverage[$key] = $coverage;
+            $this->coverageKeysByClass[$coverage->relatedModelClass][$key] = true;
 
             return;
         }
@@ -71,6 +97,8 @@ final class IdentityGraph
         }
 
         $this->coverage[$key] = $coverage;
+        $this->coverageKeysByClass[$coverage->parent->modelClass][$key] = true;
+        $this->coverageKeysByClass[$coverage->relatedModelClass][$key] = true;
     }
 
     public function addPivotEdge(PivotEdge $edge): void
@@ -82,6 +110,7 @@ final class IdentityGraph
             if ($current->related->key() === $edge->related->key()) {
                 $existing[$i] = $edge;
                 $this->pivotEdges[$bucket] = $existing;
+                $this->pivotEdgesBucketsByClass[$edge->related->modelClass][$bucket] = true;
 
                 return;
             }
@@ -96,6 +125,8 @@ final class IdentityGraph
         $existing[] = $edge;
         $this->pivotEdges[$bucket] = $existing;
         $this->pivotEdgeCount++;
+        $this->pivotEdgesBucketsByClass[$edge->parent->modelClass][$bucket] = true;
+        $this->pivotEdgesBucketsByClass[$edge->related->modelClass][$bucket] = true;
     }
 
     public function addPivotCoverage(PivotCoverage $coverage): void
@@ -104,6 +135,7 @@ final class IdentityGraph
 
         if (isset($this->pivotCoverage[$key])) {
             $this->pivotCoverage[$key] = $coverage;
+            $this->pivotCoverageKeysByClass[$coverage->relatedModelClass][$key] = true;
 
             return;
         }
@@ -115,6 +147,8 @@ final class IdentityGraph
         }
 
         $this->pivotCoverage[$key] = $coverage;
+        $this->pivotCoverageKeysByClass[$coverage->parent->modelClass][$key] = true;
+        $this->pivotCoverageKeysByClass[$coverage->relatedModelClass][$key] = true;
     }
 
     /** @return list<RelationEdge> */
@@ -264,8 +298,12 @@ final class IdentityGraph
     {
         $needle = '|'.$modelClass.'|';
 
-        foreach (array_keys($this->edges) as $bucketKey) {
-            $bucket = $this->edges[$bucketKey];
+        foreach (array_keys($this->edgesBucketsByClass[$modelClass] ?? []) as $bucketKey) {
+            $bucket = $this->edges[$bucketKey] ?? null;
+
+            if ($bucket === null) {
+                continue;
+            }
 
             if (str_contains($bucketKey, $needle)) {
                 $this->edgeCount -= count($bucket);
@@ -292,26 +330,31 @@ final class IdentityGraph
                 $this->edges[$bucketKey] = $kept;
             }
         }
+        unset($this->edgesBucketsByClass[$modelClass]);
 
-        foreach (array_keys($this->coverage) as $coverageKey) {
-            if (str_contains($coverageKey, $needle)) {
-                unset($this->coverage[$coverageKey]);
+        foreach (array_keys($this->coverageKeysByClass[$modelClass] ?? []) as $coverageKey) {
+            $coverage = $this->coverage[$coverageKey] ?? null;
 
+            if ($coverage === null) {
                 continue;
             }
 
-            $coverage = $this->coverage[$coverageKey];
-
             if (
-                $coverage->parent->modelClass === $modelClass
+                str_contains($coverageKey, $needle)
+                || $coverage->parent->modelClass === $modelClass
                 || $coverage->relatedModelClass === $modelClass
             ) {
                 unset($this->coverage[$coverageKey]);
             }
         }
+        unset($this->coverageKeysByClass[$modelClass]);
 
-        foreach (array_keys($this->pivotEdges) as $bucketKey) {
-            $bucket = $this->pivotEdges[$bucketKey];
+        foreach (array_keys($this->pivotEdgesBucketsByClass[$modelClass] ?? []) as $bucketKey) {
+            $bucket = $this->pivotEdges[$bucketKey] ?? null;
+
+            if ($bucket === null) {
+                continue;
+            }
 
             if (str_contains($bucketKey, $needle)) {
                 $this->pivotEdgeCount -= count($bucket);
@@ -338,23 +381,24 @@ final class IdentityGraph
                 $this->pivotEdges[$bucketKey] = $kept;
             }
         }
+        unset($this->pivotEdgesBucketsByClass[$modelClass]);
 
-        foreach (array_keys($this->pivotCoverage) as $coverageKey) {
-            if (str_contains($coverageKey, $needle)) {
-                unset($this->pivotCoverage[$coverageKey]);
+        foreach (array_keys($this->pivotCoverageKeysByClass[$modelClass] ?? []) as $coverageKey) {
+            $coverage = $this->pivotCoverage[$coverageKey] ?? null;
 
+            if ($coverage === null) {
                 continue;
             }
 
-            $coverage = $this->pivotCoverage[$coverageKey];
-
             if (
-                $coverage->parent->modelClass === $modelClass
+                str_contains($coverageKey, $needle)
+                || $coverage->parent->modelClass === $modelClass
                 || $coverage->relatedModelClass === $modelClass
             ) {
                 unset($this->pivotCoverage[$coverageKey]);
             }
         }
+        unset($this->pivotCoverageKeysByClass[$modelClass]);
     }
 
     public function flush(): void
@@ -363,6 +407,10 @@ final class IdentityGraph
         $this->coverage = [];
         $this->pivotEdges = [];
         $this->pivotCoverage = [];
+        $this->edgesBucketsByClass = [];
+        $this->coverageKeysByClass = [];
+        $this->pivotEdgesBucketsByClass = [];
+        $this->pivotCoverageKeysByClass = [];
         $this->edgeCount = 0;
         $this->pivotEdgeCount = 0;
     }

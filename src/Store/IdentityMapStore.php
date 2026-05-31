@@ -31,6 +31,21 @@ final class IdentityMapStore
     /** @var array<string, true> */
     private array $absent = [];
 
+    /**
+     * Reverse-index: modelClass → set of mapKeys.
+     *
+     * Maintained at insert; not pruned on individual evictions, so entries
+     * may name keys that are no longer in $entries / $absent. Used by
+     * flush(modelClass) to avoid scanning every key in the maps. A stale
+     * entry is a harmless no-op unset; full flush() resets both indexes.
+     *
+     * @var array<string, array<string, true>>
+     */
+    private array $entryKeysByClass = [];
+
+    /** @var array<string, array<string, true>> */
+    private array $absentKeysByClass = [];
+
     private readonly UniqueKeyIndex $uniqueKeyIndex;
 
     private bool $disabled = false;
@@ -104,6 +119,7 @@ final class IdentityMapStore
                 state: LifecycleState::Exists,
                 version: 1,
             );
+            $this->entryKeysByClass[$model::class][$mapKey] = true;
         }
 
         unset($this->absent[$mapKey]);
@@ -188,6 +204,7 @@ final class IdentityMapStore
             // The model is definitively soft-deleted within this process; record absence
             // immediately so subsequent default-scope finds skip SQL entirely.
             $this->absent[$mapKey] = true;
+            $this->absentKeysByClass[$model::class][$mapKey] = true;
         } else {
             $fingerprint = ScopeFingerprinter::fromModel($model);
             $mapKey = $this->makeKey($model, $key, $fingerprint);
@@ -303,6 +320,7 @@ final class IdentityMapStore
         $this->snapshotForJournal($mapKey);
 
         $this->absent[$mapKey] = true;
+        $this->absentKeysByClass[$modelClass][$mapKey] = true;
     }
 
     public function forget(Model $model): void
@@ -324,6 +342,8 @@ final class IdentityMapStore
         if ($modelClass === null) {
             $this->entries = [];
             $this->absent = [];
+            $this->entryKeysByClass = [];
+            $this->absentKeysByClass = [];
             $this->observabilityEnabled = null;
             $this->uniqueKeyIndex->flush();
             resolve(SchemaDiscovery::class)->flush();
@@ -331,19 +351,15 @@ final class IdentityMapStore
             return;
         }
 
-        $needle = "|{$modelClass}|";
-
-        foreach (array_keys($this->entries) as $key) {
-            if (str_contains($key, $needle)) {
-                unset($this->entries[$key]);
-            }
+        foreach (array_keys($this->entryKeysByClass[$modelClass] ?? []) as $key) {
+            unset($this->entries[$key]);
         }
+        unset($this->entryKeysByClass[$modelClass]);
 
-        foreach (array_keys($this->absent) as $key) {
-            if (str_contains($key, $needle)) {
-                unset($this->absent[$key]);
-            }
+        foreach (array_keys($this->absentKeysByClass[$modelClass] ?? []) as $key) {
+            unset($this->absent[$key]);
         }
+        unset($this->absentKeysByClass[$modelClass]);
 
         $this->uniqueKeyIndex->flush($modelClass);
     }
@@ -661,6 +677,7 @@ final class IdentityMapStore
                 if ($softDeletes) {
                     $entry->state = LifecycleState::SoftDeleted;
                     $this->absent[$mapKey] = true;
+                    $this->absentKeysByClass[$modelClass][$mapKey] = true;
                 } else {
                     $entry->state = LifecycleState::Deleted;
                 }
@@ -767,6 +784,7 @@ final class IdentityMapStore
         foreach ($entries as $journalEntry) {
             if ($journalEntry->wasAbsent) {
                 $this->absent[$journalEntry->entryKey] = true;
+                $this->absentKeysByClass[$journalEntry->modelClass][$journalEntry->entryKey] = true;
             } else {
                 unset($this->absent[$journalEntry->entryKey]);
             }
@@ -778,6 +796,7 @@ final class IdentityMapStore
             }
 
             $this->entries[$journalEntry->entryKey] = $journalEntry->before;
+            $this->entryKeysByClass[$journalEntry->modelClass][$journalEntry->entryKey] = true;
 
             if ($journalEntry->modelOriginal !== null) {
                 $journalEntry->before->model->setRawAttributes(
