@@ -9,12 +9,18 @@ use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
 
 final class CoverageRegistry
 {
-    /** @var list<CoverageEntry> */
+    /**
+     * Entries bucketed by modelClass so findCovering / flushModelClass /
+     * flushByColumns visit only the class's slice instead of scanning every
+     * entry every call.
+     *
+     * @var array<string, list<CoverageEntry>>
+     */
     private array $entries = [];
 
     public function record(CoverageEntry $entry): void
     {
-        $this->entries[] = $entry;
+        $this->entries[$entry->modelClass][] = $entry;
     }
 
     public function findCovering(
@@ -24,13 +30,15 @@ final class CoverageRegistry
         string $scopeFingerprint,
         PredicateNode $queryRegion,
     ): ?CoverageEntry {
+        $bucket = $this->entries[$modelClass] ?? null;
+
+        if ($bucket === null) {
+            return null;
+        }
+
         $checker = new SubsetChecker;
 
-        foreach ($this->entries as $entry) {
-            if ($entry->modelClass !== $modelClass) {
-                continue;
-            }
-
+        foreach ($bucket as $entry) {
             if ($entry->connection !== $connection) {
                 continue;
             }
@@ -57,10 +65,7 @@ final class CoverageRegistry
 
     public function flushModelClass(string $modelClass): void
     {
-        $this->entries = array_values(array_filter(
-            $this->entries,
-            static fn (CoverageEntry $e): bool => $e->modelClass !== $modelClass,
-        ));
+        unset($this->entries[$modelClass]);
     }
 
     /**
@@ -76,27 +81,39 @@ final class CoverageRegistry
             return;
         }
 
-        $this->entries = array_values(array_filter(
-            $this->entries,
-            static function (CoverageEntry $e) use ($modelClass, $changedColumns): bool {
-                if ($e->modelClass !== $modelClass) {
-                    return true;
+        $bucket = $this->entries[$modelClass] ?? null;
+
+        if ($bucket === null) {
+            return;
+        }
+
+        $kept = [];
+
+        foreach ($bucket as $entry) {
+            $regionColumns = PredicateColumns::fromNode($entry->region);
+            $touched = false;
+
+            foreach ($changedColumns as $col) {
+                if (in_array($col, $regionColumns, true)) {
+                    $touched = true;
+                    break;
                 }
-
-                $regionColumns = PredicateColumns::fromNode($e->region);
-
-                foreach ($changedColumns as $col) {
-                    if (in_array($col, $regionColumns, true)) {
-                        return false;
-                    }
-                    if (! $e->columns->allColumns && $e->columns->covers([$col])) {
-                        return false;
-                    }
+                if (! $entry->columns->allColumns && $entry->columns->covers([$col])) {
+                    $touched = true;
+                    break;
                 }
-
-                return true;
             }
-        ));
+
+            if (! $touched) {
+                $kept[] = $entry;
+            }
+        }
+
+        if ($kept === []) {
+            unset($this->entries[$modelClass]);
+        } else {
+            $this->entries[$modelClass] = $kept;
+        }
     }
 
     public function flush(): void
@@ -106,6 +123,12 @@ final class CoverageRegistry
 
     public function entryCount(): int
     {
-        return count($this->entries);
+        $count = 0;
+
+        foreach ($this->entries as $bucket) {
+            $count += count($bucket);
+        }
+
+        return $count;
     }
 }
