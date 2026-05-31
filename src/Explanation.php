@@ -37,4 +37,20 @@ final readonly class Explanation implements \Stringable
             'SQL executed: '.($this->sqlExecuted ? 'yes' : 'no'),
         ]));
     }
+
+    /** @return array<string, mixed> */
+    public function toArray(): array
+    {
+        return [
+            'type' => $this->type->value,
+            'model_class' => $this->modelClass,
+            'reason' => $this->reason,
+            'sql_executed' => $this->sqlExecuted,
+            'known_keys' => $this->knownKeys,
+            'missing_keys' => $this->missingKeys,
+            'memory_keys' => $this->memoryKeys,
+            'rejected_keys' => $this->rejectedKeys,
+            'coverage_region' => $this->coverageRegion,
+        ];
+    }
 }
