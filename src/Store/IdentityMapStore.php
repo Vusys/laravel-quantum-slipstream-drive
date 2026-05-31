@@ -42,6 +42,15 @@ final class IdentityMapStore
     /** @var list<Explanation> */
     private array $captured = [];
 
+    /**
+     * Cached observability.enabled flag. Populated lazily on first capture()
+     * call, reset to null by flush() so tests that mutate config between
+     * cases see fresh state. config() is otherwise hit on every captured
+     * decision, which streaming-disabled benches showed dominating per-find
+     * cost.
+     */
+    private ?bool $observabilityEnabled = null;
+
     public function __construct(private readonly ?TransactionJournal $journal = null)
     {
         $this->uniqueKeyIndex = new UniqueKeyIndex;
@@ -315,20 +324,23 @@ final class IdentityMapStore
         if ($modelClass === null) {
             $this->entries = [];
             $this->absent = [];
+            $this->observabilityEnabled = null;
             $this->uniqueKeyIndex->flush();
             resolve(SchemaDiscovery::class)->flush();
 
             return;
         }
 
+        $needle = "|{$modelClass}|";
+
         foreach (array_keys($this->entries) as $key) {
-            if (str_contains($key, "|{$modelClass}|")) {
+            if (str_contains($key, $needle)) {
                 unset($this->entries[$key]);
             }
         }
 
         foreach (array_keys($this->absent) as $key) {
-            if (str_contains($key, "|{$modelClass}|")) {
+            if (str_contains($key, $needle)) {
                 unset($this->absent[$key]);
             }
         }
@@ -431,7 +443,7 @@ final class IdentityMapStore
             $this->captured[] = $explanation;
         }
 
-        if (config('query-ricer-extreme.observability.enabled') !== true) {
+        if (! ($this->observabilityEnabled ??= config('query-ricer-extreme.observability.enabled') === true)) {
             return;
         }
 
