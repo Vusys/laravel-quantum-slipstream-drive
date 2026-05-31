@@ -7,10 +7,13 @@ namespace Vusys\QueryRicerExtreme\Store;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
 use Vusys\QueryRicerExtreme\Enums\FactConfidence;
 use Vusys\QueryRicerExtreme\Enums\FactSource;
 use Vusys\QueryRicerExtreme\Enums\LifecycleState;
+use Vusys\QueryRicerExtreme\Events\QueryDecided;
 use Vusys\QueryRicerExtreme\Explanation;
 use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
 use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
@@ -427,6 +430,30 @@ final class IdentityMapStore
         if ($this->capturing) {
             $this->captured[] = $explanation;
         }
+
+        if (config('query-ricer-extreme.observability.enabled') !== true) {
+            return;
+        }
+
+        $this->streamDecision($explanation);
+    }
+
+    private function streamDecision(Explanation $explanation): void
+    {
+        Event::dispatch(new QueryDecided($explanation));
+
+        $channel = config('query-ricer-extreme.observability.channel');
+        $level = config('query-ricer-extreme.observability.level', 'info');
+
+        $logger = is_string($channel) && $channel !== ''
+            ? Log::channel($channel)
+            : Log::driver();
+
+        $logger->log(
+            is_string($level) ? $level : 'info',
+            (string) $explanation,
+            ['context' => $explanation->toArray()],
+        );
     }
 
     public function isCapturing(): bool
