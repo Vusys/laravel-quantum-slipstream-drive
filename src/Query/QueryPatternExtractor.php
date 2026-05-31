@@ -16,6 +16,9 @@ use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
  */
 final readonly class QueryPatternExtractor
 {
+    /** @var array<int, true> */
+    private array $skipWhereSet;
+
     /**
      * @param  Builder<TModel>  $builder
      * @param  list<int>  $skipWhereIndexes  offsets of `wheres` to ignore — used for
@@ -24,8 +27,10 @@ final readonly class QueryPatternExtractor
      */
     public function __construct(
         private Builder $builder,
-        private array $skipWhereIndexes = [],
-    ) {}
+        array $skipWhereIndexes = [],
+    ) {
+        $this->skipWhereSet = array_fill_keys($skipWhereIndexes, true);
+    }
 
     private function hasStructuralHazards(): bool
     {
@@ -43,7 +48,7 @@ final readonly class QueryPatternExtractor
         }
 
         foreach ($query->wheres as $index => $where) {
-            if (in_array($index, $this->skipWhereIndexes, true)) {
+            if (isset($this->skipWhereSet[$index])) {
                 continue;
             }
 
@@ -101,7 +106,7 @@ final readonly class QueryPatternExtractor
         $pkWhere = null;
 
         foreach ($wheres as $index => $where) {
-            if (in_array($index, $this->skipWhereIndexes, true)) {
+            if (isset($this->skipWhereSet[$index])) {
                 continue;
             }
 
@@ -175,7 +180,7 @@ final readonly class QueryPatternExtractor
         $extraPredicateNodes = [];
 
         foreach ($wheres as $index => $where) {
-            if (in_array($index, $this->skipWhereIndexes, true)) {
+            if (isset($this->skipWhereSet[$index])) {
                 continue;
             }
 
@@ -277,7 +282,7 @@ final readonly class QueryPatternExtractor
         $extraNodes = [];
 
         foreach ($wheres as $index => $where) {
-            if (in_array($index, $this->skipWhereIndexes, true)) {
+            if (isset($this->skipWhereSet[$index])) {
                 continue;
             }
 
@@ -406,7 +411,7 @@ final readonly class QueryPatternExtractor
         $nodes = [];
 
         foreach ($wheres as $index => $where) {
-            if (in_array($index, $this->skipWhereIndexes, true)) {
+            if (isset($this->skipWhereSet[$index])) {
                 continue;
             }
 

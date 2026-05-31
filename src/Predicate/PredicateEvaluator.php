@@ -15,20 +15,19 @@ use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
 use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
 use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
 
-final readonly class PredicateEvaluator
+final class PredicateEvaluator
 {
-    private DriverSemantics $semantics;
+    private readonly DriverSemantics $semantics;
 
-    private ColumnSemanticsResolver $columns;
+    private readonly ColumnSemanticsResolver $columns;
+
+    /** @var array<string, ColumnSemantics> */
+    private array $columnSemanticsCache = [];
 
     public function __construct(
         ?DriverSemantics $semantics = null,
         ?ColumnSemanticsResolver $columns = null,
-        /**
-         * Model instance used to resolve per-column semantics on the correct
-         * connection. When null, every column resolves to ColumnSemantics::unknown().
-         */
-        private ?Model $model = null,
+        private readonly ?Model $model = null,
     ) {
         $this->semantics = $semantics ?? new ConservativeSemantics;
         $this->columns = $columns ?? new NullColumnSemanticsResolver;
@@ -254,6 +253,6 @@ final readonly class PredicateEvaluator
             return ColumnSemantics::unknown();
         }
 
-        return $this->columns->for($this->model, $column);
+        return $this->columnSemanticsCache[$column] ??= $this->columns->for($this->model, $column);
     }
 }
