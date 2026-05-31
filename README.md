@@ -41,6 +41,7 @@ A scoped Eloquent identity map, process-truth engine, and query-elision planner 
   - [Lifecycle hooks and automatic flushing](#lifecycle-hooks-and-automatic-flushing)
   - [Mass writes](#mass-writes)
   - [Observability: explain()](#observability-explain)
+  - [Streaming decision log](#streaming-decision-log)
 - [Test suite](#test-suite)
   - [Overview](#overview)
   - [Unit tests](#unit-tests)
@@ -599,6 +600,44 @@ Known keys: [1, 2]
 Missing keys: [3]
 SQL executed: yes
 ```
+
+`Explanation::toArray()` returns the same fields as a structured payload — used as the log context by the streaming sink below, and useful for serialising into custom event sinks.
+
+### Streaming decision log
+
+`explain()` is the right API when the caller knows the scope to inspect. For a rolling decision log over a whole request / job / test, enable the streaming sink in `config/query-ricer-extreme.php`:
+
+```php
+'observability' => [
+    'enabled' => (bool) env('IDENTITY_MAP_OBSERVABILITY', false),
+    'channel' => env('IDENTITY_MAP_OBSERVABILITY_CHANNEL'),
+    'level'   => env('IDENTITY_MAP_OBSERVABILITY_LEVEL', 'info'),
+],
+```
+
+When `enabled = true`, every finalised plan emits to two sinks in addition to anything captured by `IdentityMap::explain()`:
+
+1. A `Vusys\QueryRicerExtreme\Events\QueryDecided` event is dispatched. Its single public property `explanation` carries the `Explanation` — wire bespoke sinks (Sentry breadcrumbs, NR custom events, custom log shippers) by listening to this event.
+2. A log line is written to `channel` at `level`, with `Explanation::toString()` as the message and `['context' => Explanation::toArray()]` as the log context. If `channel` is null, the default log channel is used.
+
+```php
+use Illuminate\Support\Facades\Event;
+use Vusys\QueryRicerExtreme\Events\QueryDecided;
+
+Event::listen(function (QueryDecided $event): void {
+    Sentry\addBreadcrumb(new Sentry\Breadcrumb(
+        level: Sentry\Breadcrumb::LEVEL_DEBUG,
+        type: 'query',
+        category: 'identity-map',
+        message: $event->explanation->reason,
+        metadata: $event->explanation->toArray(),
+    ));
+});
+```
+
+When `enabled = false`, no event is dispatched and no log line is written. `IdentityMap::explain()` keeps working unchanged — the streaming sink fires in addition, not instead, so nesting an `explain()` inside a streamed request still produces the buffer the caller asked for.
+
+The sink is fire-and-forget. Built-in formatters beyond `Explanation::__toString()` / `toArray()`, sampling, and async delivery are out of scope — wrap your own listener (or use a queued log driver) if you need them.
 
 ---
 
