@@ -26,6 +26,33 @@ use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
 trait HasIdentityMap
 {
     /**
+     * Per-class cache of computed table names. Each class using the trait
+     * gets its own static (PHP trait semantics) so the cache is naturally
+     * scoped — one entry per class, storing its own table name.
+     *
+     * @var array<class-string<Model>, string>
+     */
+    private static array $tableNameCache = [];
+
+    /**
+     * Fires once per Model::__construct. Eloquent's Model::getTable() returns
+     * `$this->table ?? Str::snake(Str::pluralStudly(class_basename($this)))`,
+     * so the pluralization chain re-runs on every fresh instance unless the
+     * class declares `protected $table = '...'`. We set $this->table eagerly
+     * from a class-level cache here so Eloquent's existing short-circuit
+     * returns the cached value immediately — and crucially this benefits
+     * Eloquent's own internal getTable() calls (hydration, scope application,
+     * relation key qualification) that the package's ModelMetadata helper
+     * can't intercept.
+     */
+    public function initializeHasIdentityMap(): void
+    {
+        if ($this->table === null) {
+            $this->table = self::$tableNameCache[static::class] ??= $this->getTable();
+        }
+    }
+
+    /**
      * @return IdentityMapBuilder<Model>
      */
     public function newEloquentBuilder($query): IdentityMapBuilder
