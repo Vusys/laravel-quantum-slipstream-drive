@@ -257,13 +257,16 @@ final class MassWriteModelingTest extends TestCase
     {
         $graph = resolve(IdentityGraph::class);
 
+        // Bob owns the post (not Alice) so the force-delete on inactive users
+        // does not violate the posts.user_id foreign key on MySQL/MariaDB/PostgreSQL.
+        // The User-class graph invalidation still tears Bob's edge down.
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
         $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
-        Post::create(['user_id' => $alice->id, 'title' => 'P1', 'published' => true]);
+        Post::create(['user_id' => $bob->id, 'title' => 'P1', 'published' => true]);
         User::find($alice->id);
         User::find($bob->id);
         User::where('active', true)->get();
-        $alice->load('posts');
+        $bob->load('posts');
 
         $entriesBefore = $this->store->debugStats()['entries'];
         $this->assertGreaterThanOrEqual(2, $entriesBefore);
