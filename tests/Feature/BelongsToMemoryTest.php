@@ -295,4 +295,52 @@ final class BelongsToMemoryTest extends TestCase
         $this->assertGreaterThan(0, $queryCount, 'belongsTo with a raw SELECT expression must fall back to SQL');
         $this->assertNotNull($result);
     }
+
+    #[Test]
+    public function belongs_to_cache_hit_records_belongs_to_memory_hit_reason(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+
+        $explanations = $this->store->explain(fn () => $post->user()->getResults());
+
+        $reasons = array_map(fn (Explanation $e): string => $e->reason, $explanations);
+
+        $this->assertContains(
+            'belongs-to-memory-hit',
+            $reasons,
+            'belongsTo cache hit (no backfill) must capture an explanation with reason "belongs-to-memory-hit"',
+        );
+        $this->assertNotContains(
+            'belongs-to-memory-hit-after-backfill',
+            $reasons,
+            'a vanilla cache hit must not be reported as a post-backfill hit',
+        );
+    }
+
+    #[Test]
+    public function belongs_to_falls_back_when_cached_entry_is_soft_deleted(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+
+        // Soft-delete the parent: the entry's LifecycleState flips to SoftDeleted
+        // under the same default-scope fingerprint the relation lookup uses.
+        $user->delete();
+
+        $explanations = $this->store->explain(fn () => $post->user()->getResults());
+
+        $reasons = array_map(fn (Explanation $e): string => $e->reason, $explanations);
+
+        $this->assertNotContains(
+            'belongs-to-memory-hit',
+            $reasons,
+            'a cached entry in a non-Exists lifecycle state must not be served from memory under the default scope',
+        );
+        $this->assertNotContains(
+            'belongs-to-memory-hit-after-backfill',
+            $reasons,
+            'a cached entry in a non-Exists lifecycle state must not be served via backfill either',
+        );
+    }
 }

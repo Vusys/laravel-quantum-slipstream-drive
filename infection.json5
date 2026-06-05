@@ -31,6 +31,12 @@
                 ".*\\$seen\\[\\$key\\] = true.*",
                 // UniqueKeyIndex::markDiscovered — discoveredClasses[] is only ever read via isset() in hasDiscovered()
                 ".*\\$this->discoveredClasses\\[\\$modelClass\\] = true.*",
+                // IdentityGraph reverse-indexes (edges/coverage/pivot ByClass) are read only via
+                // array_keys() in invalidateModelClass(); the boolean value is never inspected.
+                ".*\\$this->edgesBucketsByClass\\[.*\\]\\[\\$bucket\\] = true.*",
+                ".*\\$this->coverageKeysByClass\\[.*\\]\\[\\$key\\] = true.*",
+                ".*\\$this->pivotEdgesBucketsByClass\\[.*\\]\\[\\$bucket\\] = true.*",
+                ".*\\$this->pivotCoverageKeysByClass\\[.*\\]\\[\\$key\\] = true.*",
             ]
         },
         // break vs continue after $found = true are equivalent — $found cannot be unset by remaining iterations
