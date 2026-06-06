@@ -77,6 +77,32 @@ final class MySqlSemanticsTest extends TestCase
     }
 
     #[Test]
+    public function case_sensitive_ordering_returns_negative_one_for_left_strictly_less(): void
+    {
+        $s = new MySqlSemantics;
+        $col = new ColumnSemantics(ColumnType::String, 'utf8mb4_bin', StringComparisonMode::CaseSensitive);
+
+        self::assertSame(
+            -1,
+            $s->compareForOrder('aaa', 'bbb', $col),
+            'Mutating `strcmp(...) <=> 0` to `<=> -1` flips this from -1 to 0.',
+        );
+    }
+
+    #[Test]
+    public function case_sensitive_ordering_returns_positive_one_for_left_strictly_greater(): void
+    {
+        $s = new MySqlSemantics;
+        $col = new ColumnSemantics(ColumnType::String, 'utf8mb4_bin', StringComparisonMode::CaseSensitive);
+
+        self::assertSame(
+            1,
+            $s->compareForOrder('bbb', 'aaa', $col),
+            'Mutating `strcmp(...) <=> 0` to `<=> 1` flips this from 1 to 0.',
+        );
+    }
+
+    #[Test]
     public function case_insensitive_ordering_folds_case(): void
     {
         $s = new MySqlSemantics;

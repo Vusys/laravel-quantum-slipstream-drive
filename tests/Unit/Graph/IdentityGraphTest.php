@@ -574,6 +574,78 @@ final class IdentityGraphTest extends TestCase
     }
 
     #[Test]
+    public function invalidate_model_class_continues_past_orphan_edge_bucket(): void
+    {
+        $user = $this->userIdentity();
+        $post = $this->postIdentity();
+        $comment = new ModelIdentity(
+            connection: 'default',
+            modelClass: 'App\\Models\\Comment',
+            table: 'comments',
+            primaryKeyName: 'id',
+            primaryKeyValue: 5,
+            scopeFingerprint: 'default',
+        );
+
+        // First edge: User→Post, registered in edgesBucketsByClass[Post] under bucketK1.
+        $this->graph->addEdge($this->makeEdge($user, $post, 'posts'));
+        // Invalidate User — drops bucketK1 from $edges but leaves it in edgesBucketsByClass[Post].
+        $this->graph->invalidateModelClass('App\\Models\\User');
+
+        // Second edge: Comment→Post under a different relation, new bucketK2.
+        // edgesBucketsByClass[Post] now lists [K1=orphan, K2=live] in that insertion order.
+        $edgeCommentToPost = $this->makeEdge($comment, $post, 'replyTarget');
+        $this->graph->addEdge($edgeCommentToPost);
+
+        $this->graph->invalidateModelClass('App\\Models\\Post');
+
+        $this->assertSame(
+            [],
+            $this->graph->edgesFrom($comment, 'replyTarget'),
+            'After invalidating Post, the live Comment→Post bucket must still be processed even when an orphaned bucket precedes it in edgesBucketsByClass.',
+        );
+    }
+
+    #[Test]
+    public function invalidate_model_class_continues_past_orphan_coverage_entry(): void
+    {
+        $user = $this->userIdentity();
+        $comment = new ModelIdentity(
+            connection: 'default',
+            modelClass: 'App\\Models\\Comment',
+            table: 'comments',
+            primaryKeyName: 'id',
+            primaryKeyValue: 5,
+            scopeFingerprint: 'default',
+        );
+
+        // First coverage: parent=User, related=Post. Registered under coverageKeysByClass[Post].
+        $this->graph->addCoverage($this->makeCoverage(
+            $user,
+            relationName: 'posts',
+            relatedModelClass: 'App\\Models\\Post',
+            childPrimaryKeys: [10],
+        ));
+        // Invalidate User — drops the coverage from $coverage but leaves the key in coverageKeysByClass[Post].
+        $this->graph->invalidateModelClass('App\\Models\\User');
+
+        // Second coverage: parent=Comment, related=Post. New key. coverageKeysByClass[Post] now lists [orphan, live].
+        $this->graph->addCoverage($this->makeCoverage(
+            $comment,
+            relationName: 'parentPost',
+            relatedModelClass: 'App\\Models\\Post',
+            childPrimaryKeys: [10],
+        ));
+
+        $this->graph->invalidateModelClass('App\\Models\\Post');
+
+        $this->assertNull(
+            $this->graph->coverageFor($comment, 'parentPost'),
+            'After invalidating Post, the live Comment→Post coverage must still be processed even when an orphaned coverage key precedes it in coverageKeysByClass.',
+        );
+    }
+
+    #[Test]
     public function model_identity_key_includes_all_components(): void
     {
         $identity = new ModelIdentity(

@@ -29,6 +29,7 @@ final class CoverageRegistryTest extends TestCase
     // Helpers
     // -------------------------------------------------------------------------
 
+    /** @param list<string> $columns */
     private function makeEntry(
         string $modelClass = 'App\\User',
         string $connection = 'default',
@@ -36,6 +37,7 @@ final class CoverageRegistryTest extends TestCase
         string $scopeFingerprint = 'fp',
         bool $complete = true,
         ?PredicateNode $region = null,
+        array $columns = ['*'],
     ): CoverageEntry {
         return new CoverageEntry(
             modelClass: $modelClass,
@@ -43,7 +45,7 @@ final class CoverageRegistryTest extends TestCase
             table: $table,
             scopeFingerprint: $scopeFingerprint,
             region: $region ?? new AndNode([]),
-            columns: new ColumnSet(['*']),
+            columns: new ColumnSet($columns),
             primaryKeys: [1],
             complete: $complete,
             version: 1,
@@ -290,5 +292,31 @@ final class CoverageRegistryTest extends TestCase
         $this->registry->flushByColumns('App\\User', ['status']);
 
         $this->assertSame(1, $this->registry->entryCount());
+    }
+
+    #[Test]
+    public function flush_by_columns_flushes_partial_column_entry_when_changed_column_is_covered(): void
+    {
+        $this->registry->record($this->makeEntry(
+            region: new NullNode('deleted_at', false),
+            columns: ['active'],
+        ));
+
+        $this->registry->flushByColumns('App\\User', ['active']);
+
+        $this->assertSame(0, $this->registry->entryCount(), 'A partial-column entry must be flushed when the changed column is in its column set, even if the region predicate does not reference that column.');
+    }
+
+    #[Test]
+    public function flush_by_columns_preserves_partial_column_entry_when_changed_column_is_not_covered(): void
+    {
+        $this->registry->record($this->makeEntry(
+            region: new NullNode('deleted_at', false),
+            columns: ['active'],
+        ));
+
+        $this->registry->flushByColumns('App\\User', ['role']);
+
+        $this->assertSame(1, $this->registry->entryCount(), 'A partial-column entry must NOT be flushed when neither its region nor its column set references the changed column.');
     }
 }

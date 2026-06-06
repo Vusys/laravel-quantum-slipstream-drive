@@ -135,6 +135,41 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     }
 
     #[Test]
+    public function config_entry_with_no_string_columns_is_skipped_without_aborting_iteration(): void
+    {
+        config(['query-ricer-extreme.models' => [
+            User::class => ['unique' => [
+                [123, true, null],
+                ['email'],
+            ]],
+        ]]);
+
+        $this->assertSame(
+            [['email']],
+            $this->index->uniqueIndexesForModelClass(User::class),
+            'A config entry whose columns are all non-string must be skipped, not abort the iteration before the valid entry.',
+        );
+    }
+
+    #[Test]
+    public function duplicate_config_entries_are_deduped_without_aborting_iteration(): void
+    {
+        config(['query-ricer-extreme.models' => [
+            User::class => ['unique' => [
+                ['email'],
+                ['email'],
+                ['handle'],
+            ]],
+        ]]);
+
+        $this->assertSame(
+            [['email'], ['handle']],
+            $this->index->uniqueIndexesForModelClass(User::class),
+            'A duplicate config entry must be skipped, not abort the iteration before the next distinct entry.',
+        );
+    }
+
+    #[Test]
     public function register_ignores_empty_column_list(): void
     {
         $this->index->register(User::class, []);
