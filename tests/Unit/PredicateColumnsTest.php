@@ -73,6 +73,21 @@ final class PredicateColumnsTest extends TestCase
     }
 
     #[Test]
+    public function and_node_returns_dense_list_when_dedup_removes_middle_entry(): void
+    {
+        $node = new AndNode([
+            new ComparisonNode('a', '=', 1),
+            new ComparisonNode('a', '=', 2),
+            new ComparisonNode('c', '=', 3),
+        ]);
+
+        $result = PredicateColumns::fromNode($node);
+
+        $this->assertSame(['a', 'c'], $result);
+        $this->assertSame([0, 1], array_keys($result));
+    }
+
+    #[Test]
     public function nested_and_node_flattens_columns(): void
     {
         $inner = new AndNode([new ComparisonNode('role', '=', 'admin')]);
