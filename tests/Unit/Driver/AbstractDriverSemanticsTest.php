@@ -72,6 +72,13 @@ final class AbstractDriverSemanticsTest extends TestCase
     }
 
     #[Test]
+    public function string_to_int_returns_unknown(): void
+    {
+        $s = new SqliteSemantics;
+        self::assertSame(EvaluationResult::Unknown, $s->compare('1', '=', 1, ColumnSemantics::unknown()));
+    }
+
+    #[Test]
     public function bool_to_arbitrary_int_rejects(): void
     {
         $s = new SqliteSemantics;

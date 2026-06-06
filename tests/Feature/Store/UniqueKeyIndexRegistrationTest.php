@@ -101,6 +101,40 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     }
 
     #[Test]
+    public function registered_loop_skips_duplicates_without_dropping_later_entries(): void
+    {
+        config(['query-ricer-extreme.models' => [
+            User::class => ['unique' => [['email']]],
+        ]]);
+
+        $this->index->register(User::class, ['email']);
+        $this->index->register(User::class, ['handle']);
+
+        $this->assertSame(
+            [['email'], ['handle']],
+            $this->index->uniqueIndexesForModelClass(User::class),
+            'A registered index that duplicates a config-declared one must be skipped, not abort the iteration',
+        );
+    }
+
+    #[Test]
+    public function malformed_config_entry_is_skipped_without_aborting_iteration(): void
+    {
+        config(['query-ricer-extreme.models' => [
+            User::class => ['unique' => [
+                'not-an-array',
+                ['email'],
+            ]],
+        ]]);
+
+        $this->assertSame(
+            [['email']],
+            $this->index->uniqueIndexesForModelClass(User::class),
+            'A non-array config entry must be skipped, not abort the iteration before the valid entry.',
+        );
+    }
+
+    #[Test]
     public function register_ignores_empty_column_list(): void
     {
         $this->index->register(User::class, []);
