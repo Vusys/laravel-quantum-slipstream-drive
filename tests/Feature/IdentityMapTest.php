@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Enums\FactConfidence;
 use Vusys\QueryRicerExtreme\Enums\FactSource;
+use Vusys\QueryRicerExtreme\Enums\PlanType;
 use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
 use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
@@ -371,6 +372,55 @@ final class IdentityMapTest extends TestCase
         $this->assertCount(1, $explanations);
         $this->assertSame('return_model_from_memory', $explanations[0]->type->value);
         $this->assertFalse($explanations[0]->sqlExecuted);
+    }
+
+    #[Test]
+    public function explain_captures_find_pk_absence_with_no_sql(): void
+    {
+        // First find() runs SQL and records primary-key absence.
+        $this->assertNull(User::find(999_999));
+
+        // Second find() must hit the isAbsent shortcut → ReturnNull, sqlExecuted=false.
+        $explanations = $this->store->explain(function (): void {
+            User::find(999_999);
+        });
+
+        $hit = null;
+        foreach ($explanations as $e) {
+            if ($e->type === PlanType::ReturnNull) {
+                $hit = $e;
+                break;
+            }
+        }
+
+        $this->assertNotNull($hit, 'find() must capture ReturnNull on primary-key absence hit');
+        $this->assertSame('primary-key-absence-tracked', $hit->reason);
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
+    #[Test]
+    public function explain_captures_get_pk_absence_with_no_sql(): void
+    {
+        // First find() runs SQL and records primary-key absence.
+        $this->assertNull(User::find(999_999));
+
+        // Subsequent get() targeted at the same primary key must short-circuit
+        // via the isAbsent branch in getModels() → ReturnEmptyCollection, sqlExecuted=false.
+        $explanations = $this->store->explain(function (): void {
+            User::whereKey(999_999)->get();
+        });
+
+        $hit = null;
+        foreach ($explanations as $e) {
+            if ($e->type === PlanType::ReturnEmptyCollection) {
+                $hit = $e;
+                break;
+            }
+        }
+
+        $this->assertNotNull($hit, 'whereKey()->get() must capture ReturnEmptyCollection on PK-absence hit');
+        $this->assertSame('primary-key-absence-tracked', $hit->reason);
+        $this->assertFalse($hit->sqlExecuted);
     }
 
     #[Test]

@@ -321,6 +321,25 @@ final class BelongsToManyHardeningTest extends TestCase
         $this->assertSame(0, $n);
     }
 
+    #[Test]
+    public function soft_delete_basic_where_on_tags_deleted_at_falls_back_to_sql(): void
+    {
+        $post = $this->makePostWithTags(3);
+        $post->tags()->get();
+
+        // Tags table has no deleted_at column, so the SQL will error — what
+        // matters is that we ATTEMPTED SQL (memory shortcut bypassed) because
+        // isSafeGlobalScopeWhere must reject a Basic operator on deleted_at.
+        $sqlAttempted = $this->sqlWasAttempted(function () use ($post): void {
+            $post->tags()->where('tags.deleted_at', '>', '2026-01-01')->get();
+        });
+
+        $this->assertTrue(
+            $sqlAttempted,
+            'isSafeGlobalScopeWhere must reject a Basic where on deleted_at — only WHERE IS NULL is safe',
+        );
+    }
+
     // ------------------------------------------------------------------
     // extractExtraPredicates / isCleanLoad — unsupported boolean → SQL
     // ------------------------------------------------------------------
