@@ -70,21 +70,38 @@ jobs:
             --threads=$(nproc)
 
   full:
-    name: Mutation testing (full suite)
+    name: "Mutation testing (full suite, ${{ matrix.db }})"
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
 
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, pgsql]
+        include:
+          - { db: sqlite, db_connection: sqlite }
+          - { db: pgsql,  db_connection: pgsql, db_host: '127.0.0.1', db_port: '5432', db_database: testing, db_username: postgres, db_password: password }
+
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Start database
+        if: matrix.db != 'sqlite'
+        run: |
+          docker run -d --name database \
+            -e POSTGRES_PASSWORD=password \
+            -e POSTGRES_DB=testing \
+            -p 5432:5432 \
+            postgres:16
 
       - name: Setup PHP
         uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_sqlite
+          extensions: mbstring, pdo_sqlite, pdo_pgsql
           coverage: pcov
           tools: composer:v2
 
@@ -112,9 +129,19 @@ jobs:
           composer config --no-plugins allow-plugins.infection/extension-installer true
           composer update --prefer-dist --no-interaction --no-progress
 
+      - name: Wait for database
+        if: matrix.db != 'sqlite'
+        run: timeout 60 bash -c 'until docker exec database pg_isready -U postgres -q 2>/dev/null; do sleep 2; done'
+
       - name: Run Infection (full suite)
         env:
           STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
+          DB_CONNECTION: ${{ matrix.db_connection }}
+          DB_HOST: ${{ matrix.db_host }}
+          DB_PORT: ${{ matrix.db_port }}
+          DB_DATABASE: ${{ matrix.db_database }}
+          DB_USERNAME: ${{ matrix.db_username }}
+          DB_PASSWORD: ${{ matrix.db_password }}
         run: |
           vendor/bin/infection \
             --logger-github \
@@ -126,7 +153,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: infection-report-${{ github.run_id }}
+          name: infection-report-${{ matrix.db }}-${{ github.run_id }}
           path: build/infection/
           if-no-files-found: warn
           retention-days: 14
