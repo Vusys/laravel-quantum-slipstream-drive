@@ -568,6 +568,39 @@ final class CoverageRegistryFeatureTest extends TestCase
         $this->assertFalse($hit->sqlExecuted);
     }
 
+    #[Test]
+    public function coverage_first_empty_captures_plan_type_with_no_sql(): void
+    {
+        // Coverage region exists (User::all() in seedUsers) but no row satisfies
+        // the filter — first() returns null via the `$coveredModels === []`
+        // branch, which has its own capture site that must report sqlExecuted=false.
+        $this->seedUsers();
+
+        $this->assertNull(User::where('active', true)->where('name', 'NoSuchName')->first());
+
+        $explanations = $this->store->explain(function (): void {
+            User::where('active', true)->where('name', 'NoSuchName')->first();
+        });
+
+        $hit = $this->findExplanationByType($explanations, PlanType::ReturnFirstFromCoverage);
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
+    #[Test]
+    public function coverage_sole_captures_plan_type_with_no_sql(): void
+    {
+        // sole() through the coverage path has its own capture site distinct
+        // from get()/first().
+        $this->seedUsers();
+
+        $explanations = $this->store->explain(function (): void {
+            User::where('name', 'Alice')->sole();
+        });
+
+        $hit = $this->findExplanationByType($explanations, PlanType::ReturnSoleFromCoverage);
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
     // -------------------------------------------------------------------------
     // count() fallthrough paths
     // -------------------------------------------------------------------------

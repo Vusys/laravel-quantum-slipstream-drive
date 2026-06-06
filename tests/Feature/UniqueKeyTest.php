@@ -812,6 +812,123 @@ final class UniqueKeyTest extends TestCase
         $this->assertFalse($plan->sqlExecuted);
     }
 
+    #[Test]
+    public function explain_captures_exists_unique_key_positive_with_extra_predicate(): void
+    {
+        // Targets the `if ($evalResult === EvaluationResult::Match)` capture inside
+        // the `if ($extraNodes !== [])` block: a unique-key hit whose trailing
+        // predicate also matches must record sqlExecuted=false.
+        $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
+        User::find($alice->id);
+
+        $explanations = $this->store->explain(function (): void {
+            User::where('email', 'alice@example.com')->where('active', true)->exists();
+        });
+
+        $hit = null;
+        foreach ($explanations as $e) {
+            if ($e->type === PlanType::ReturnExistsFromMemory && $e->reason === 'unique-key-positive-hit') {
+                $hit = $e;
+                break;
+            }
+        }
+
+        $this->assertNotNull($hit, 'exists() with matching extra predicate must capture unique-key-positive-hit');
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
+    #[Test]
+    public function explain_captures_exists_unique_key_predicate_rejected(): void
+    {
+        // Targets the EvaluationResult::Reject capture in exists() — the unique-key
+        // row was found in memory but the trailing predicate rejects it.
+        $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
+        User::find($alice->id);
+
+        $explanations = $this->store->explain(function (): void {
+            User::where('email', 'alice@example.com')->where('active', false)->exists();
+        });
+
+        $hit = null;
+        foreach ($explanations as $e) {
+            if ($e->type === PlanType::ReturnExistsFromMemory && $e->reason === 'unique-key-hit-predicate-rejected') {
+                $hit = $e;
+                break;
+            }
+        }
+
+        $this->assertNotNull($hit, 'exists() with rejected extra predicate must capture unique-key-hit-predicate-rejected');
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
+    #[Test]
+    public function explain_captures_exists_unique_key_absence_tracked(): void
+    {
+        // First call records absence via SQL; second call must short-circuit and
+        // capture sqlExecuted=false with reason `unique-key-absence-tracked`.
+        $this->assertFalse(User::where('email', 'nobody@example.com')->exists());
+
+        $explanations = $this->store->explain(function (): void {
+            User::where('email', 'nobody@example.com')->exists();
+        });
+
+        $hit = null;
+        foreach ($explanations as $e) {
+            if ($e->type === PlanType::ReturnExistsFromMemory && $e->reason === 'unique-key-absence-tracked') {
+                $hit = $e;
+                break;
+            }
+        }
+
+        $this->assertNotNull($hit, 'second exists() with same unique-key must capture unique-key-absence-tracked');
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
+    #[Test]
+    public function explain_captures_get_unique_key_predicate_rejected(): void
+    {
+        // getModels() unique-key path: row found in memory, extra predicate rejects.
+        $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
+        User::find($alice->id);
+
+        $explanations = $this->store->explain(function (): void {
+            User::where('email', 'alice@example.com')->where('active', false)->get();
+        });
+
+        $hit = null;
+        foreach ($explanations as $e) {
+            if ($e->type === PlanType::ReturnEmptyCollection && $e->reason === 'unique-key-hit-predicate-rejected') {
+                $hit = $e;
+                break;
+            }
+        }
+
+        $this->assertNotNull($hit, 'get() with rejected extra predicate must capture unique-key-hit-predicate-rejected');
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
+    #[Test]
+    public function explain_captures_get_unique_key_absence_tracked(): void
+    {
+        // getModels() absence path: first SQL miss records absence, second hits memory.
+        $this->assertCount(0, User::where('email', 'nobody@example.com')->get());
+
+        $explanations = $this->store->explain(function (): void {
+            User::where('email', 'nobody@example.com')->get();
+        });
+
+        $hit = null;
+        foreach ($explanations as $e) {
+            if ($e->type === PlanType::ReturnEmptyCollection && $e->reason === 'unique-key-absence-tracked') {
+                $hit = $e;
+                break;
+            }
+        }
+
+        $this->assertNotNull($hit, 'second get() with same unique-key must capture unique-key-absence-tracked');
+        $this->assertFalse($hit->sqlExecuted);
+    }
+
     // -----------------------------------------------------------------------
     // exists() — absence recorded after SQL miss
     // -----------------------------------------------------------------------

@@ -59,6 +59,44 @@ final class ScopeFingerprinterTest extends TestCase
         $this->assertSame('soft-delete:only-trashed', $fingerprint);
     }
 
+    public function test_with_trashed_with_unrelated_notnull_where_stays_with_trashed(): void
+    {
+        // softDeletePart's only-trashed detector matches WHERE column IS NOT NULL
+        // ONLY when the column is the deletedAt column AND boolean='and'. A
+        // NotNull where on an unrelated column (here `users.id`) must NOT be
+        // treated as only-trashed — otherwise mutating the `in_array($column, …)`
+        // check from `&&` to `||` would escape.
+        $fingerprint = ScopeFingerprinter::fromBuilder(
+            User::withTrashed()->whereNotNull('users.id'),
+        );
+
+        $this->assertSame('soft-delete:with-trashed', $fingerprint);
+    }
+
+    public function test_with_trashed_with_basic_where_on_deleted_at_stays_with_trashed(): void
+    {
+        // A Basic operator (not NotNull) on the deletedAt column must NOT be
+        // treated as only-trashed — kills the `($type === 'NotNull') && …` → `||`
+        // mutation, since the basic where would otherwise match the relaxed guard.
+        $fingerprint = ScopeFingerprinter::fromBuilder(
+            User::withTrashed()->where('users.deleted_at', '>', '2026-01-01'),
+        );
+
+        $this->assertSame('soft-delete:with-trashed', $fingerprint);
+    }
+
+    public function test_with_trashed_with_null_where_on_deleted_at_stays_with_trashed(): void
+    {
+        // A `WHERE deleted_at IS NULL` (type='Null', not 'NotNull') must NOT be
+        // treated as only-trashed — kills the `($type === 'NotNull') && … && in_array(…)`
+        // → trailing `|| in_array(…)` mutation.
+        $fingerprint = ScopeFingerprinter::fromBuilder(
+            User::withTrashed()->whereNull('users.deleted_at'),
+        );
+
+        $this->assertSame('soft-delete:with-trashed', $fingerprint);
+    }
+
     public function test_fingerprint_is_deterministic(): void
     {
         $a = ScopeFingerprinter::fromBuilder(User::query());
