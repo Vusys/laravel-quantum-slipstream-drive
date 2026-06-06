@@ -595,6 +595,114 @@ final class PivotEdgeTest extends TestCase
     }
 
     #[Test]
+    public function invalidate_model_class_continues_past_orphan_pivot_edge_bucket(): void
+    {
+        $post = $this->postIdentity();
+        $tag = $this->tagIdentity();
+        $user = new ModelIdentity(
+            connection: 'default',
+            modelClass: 'App\\Models\\User',
+            table: 'users',
+            primaryKeyName: 'id',
+            primaryKeyValue: 7,
+            scopeFingerprint: 'default',
+        );
+
+        $this->graph->addPivotEdge($this->makePivotEdge($post, $tag));
+        $this->graph->invalidateModelClass('App\\Models\\Post');
+
+        $this->graph->addPivotEdge(new PivotEdge(
+            parent: $user,
+            relationName: 'tags',
+            related: $tag,
+            pivotTable: 'user_tag',
+            pivotAttributes: ['flag' => true],
+            source: EdgeSource::Pivot,
+            confidence: EdgeConfidence::Certain,
+            version: 1,
+        ));
+
+        $this->graph->invalidateModelClass('App\\Models\\Tag');
+
+        $this->assertSame(
+            [],
+            $this->graph->pivotEdgesFrom($user, 'tags'),
+            'After invalidating Tag, the live User→Tag pivot bucket must still be processed even when an orphaned bucket precedes it in pivotEdgesBucketsByClass.',
+        );
+    }
+
+    #[Test]
+    public function invalidate_model_class_continues_past_orphan_pivot_coverage_entry(): void
+    {
+        $post = $this->postIdentity();
+        $user = new ModelIdentity(
+            connection: 'default',
+            modelClass: 'App\\Models\\User',
+            table: 'users',
+            primaryKeyName: 'id',
+            primaryKeyValue: 7,
+            scopeFingerprint: 'default',
+        );
+
+        $this->graph->addPivotCoverage($this->makePivotCoverage(
+            $post,
+            relationName: 'tags',
+            relatedModelClass: 'App\\Models\\Tag',
+        ));
+        $this->graph->invalidateModelClass('App\\Models\\Post');
+
+        $this->graph->addPivotCoverage($this->makePivotCoverage(
+            $user,
+            relationName: 'tags',
+            relatedModelClass: 'App\\Models\\Tag',
+        ));
+
+        $this->graph->invalidateModelClass('App\\Models\\Tag');
+
+        $this->assertNull(
+            $this->graph->pivotCoverageFor($user, 'tags'),
+            'After invalidating Tag, the live User→Tag pivot coverage must still be processed even when an orphaned key precedes it in pivotCoverageKeysByClass.',
+        );
+    }
+
+    #[Test]
+    public function invalidate_model_class_keeps_pivot_siblings_in_same_bucket(): void
+    {
+        $post = $this->postIdentity();
+        $tag = $this->tagIdentity();
+        $label = new ModelIdentity(
+            connection: 'default',
+            modelClass: 'App\\Models\\Label',
+            table: 'labels',
+            primaryKeyName: 'id',
+            primaryKeyValue: 5,
+            scopeFingerprint: 'default',
+        );
+
+        $edgeToTag = $this->makePivotEdge($post, $tag);
+        $edgeToLabel = new PivotEdge(
+            parent: $post,
+            relationName: 'tags',
+            related: $label,
+            pivotTable: 'post_tag',
+            pivotAttributes: ['flag' => true],
+            source: EdgeSource::Pivot,
+            confidence: EdgeConfidence::Certain,
+            version: 1,
+        );
+        $this->graph->addPivotEdge($edgeToTag);
+        $this->graph->addPivotEdge($edgeToLabel);
+
+        $this->graph->invalidateModelClass('App\\Models\\Tag');
+
+        $this->assertSame(
+            [$edgeToLabel],
+            $this->graph->pivotEdgesFrom($post, 'tags'),
+            'Surviving pivot edges to other classes must remain in the bucket; the bucket must NOT be unset when $kept is non-empty.',
+        );
+    }
+
+    #[Test]
     public function add_pivot_coverage_upsert_at_cap_does_not_flush(): void
     {
         $graph = new IdentityGraph(maxCoverage: 1);

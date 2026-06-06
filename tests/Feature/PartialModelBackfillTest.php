@@ -277,6 +277,67 @@ final class PartialModelBackfillTest extends TestCase
         $this->assertNull($result, 'Backfill must fall through to SQL when row has disappeared');
     }
 
+    #[Test]
+    public function backfill_forgets_stale_entry_when_row_disappears(): void
+    {
+        $alice = $this->createUser();
+        $cached = User::select('id', 'name')->whereKey($alice->id)->first();
+        $this->assertNotNull($cached);
+
+        DB::table('users')->where('id', $alice->id)->delete();
+
+        User::find($alice->id, ['id', 'email']);
+
+        $this->assertNull(
+            $this->store->findEntry($cached),
+            'When a missing row triggers backfill failure, the stale cache entry must be forgotten so subsequent lookups do not return ghost data.',
+        );
+    }
+
+    #[Test]
+    public function backfill_query_select_list_includes_primary_key_when_not_requested(): void
+    {
+        $alice = $this->createUser();
+        User::select('id', 'name')->whereKey($alice->id)->first();
+
+        $queries = [];
+        DB::listen(function ($event) use (&$queries): void {
+            $queries[] = $event->sql;
+        });
+
+        // Request only 'email' — primary key 'id' is already known on the cached entry,
+        // so the missingColumns list does NOT contain 'id'. The backfill SQL must still
+        // SELECT the primary key column so the fetched row can be matched back to its entry.
+        User::find($alice->id, ['email']);
+
+        $this->assertCount(1, $queries);
+        $this->assertMatchesRegularExpression(
+            '/select\s+["`]?id["`]?\s*,\s*["`]?email["`]?\s+from/i',
+            $queries[0],
+            'Backfill must prepend the primary key to the SELECT list when it is not already in the missing-column set.',
+        );
+    }
+
+    #[Test]
+    public function backfill_increments_entry_version(): void
+    {
+        $alice = $this->createUser();
+        $cached = User::select('id', 'name')->whereKey($alice->id)->first();
+        $this->assertNotNull($cached);
+
+        $entry = $this->store->findEntry($cached);
+        $this->assertNotNull($entry);
+        $versionBefore = $entry->version;
+
+        User::find($alice->id, ['id', 'email']);
+
+        $this->assertSame(
+            $versionBefore + 1,
+            $entry->version,
+            'A successful backfill must increment the entry version so coverage caches detect the merge.',
+        );
+    }
+
     // ---------------------------------------------------------------------
     // Explanations
     // ---------------------------------------------------------------------
@@ -301,6 +362,7 @@ final class PartialModelBackfillTest extends TestCase
         ))[0];
         $this->assertTrue($backfill->sqlExecuted);
         $this->assertSame(['email'], $backfill->missingKeys);
+        $this->assertSame([$alice->id], $backfill->memoryKeys, 'backfill explanation must record the primary-key value it fetched against');
 
         $served = array_values(array_filter(
             $explanations,
