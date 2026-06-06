@@ -21,6 +21,8 @@ on:
         default: ''
   schedule:
     - cron: '0 7 * * 1'
+  push:
+    branches: [master]
 
 permissions:
   contents: read
@@ -75,4 +77,11 @@ jobs:
           FUZZER_SEED_COUNT: '20'
           FUZZER_STEPS: '50'
           FUZZER_RUNS: '12'
+        run: composer fuzz
+
+      - name: Run fuzzers (master push — pinned seeds)
+        if: github.event_name == 'push'
+        env:
+          DB_CONNECTION: sqlite
+          FUZZER_SEEDS: '1,42,1337,9999,314159'
         run: composer fuzz
