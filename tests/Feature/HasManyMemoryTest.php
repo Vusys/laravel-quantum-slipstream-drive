@@ -6,6 +6,7 @@ namespace Vusys\QueryRicerExtreme\Tests\Feature;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
@@ -126,6 +127,34 @@ final class HasManyMemoryTest extends TestCase
 
         $this->assertSame(0, $queryCount, 'hasMany must keep serving from memory when the chain is whereNull(deleted_at) + extra predicate');
         $this->assertCount(2, $result);
+    }
+
+    #[Test]
+    public function has_many_falls_back_when_non_null_where_targets_deleted_at_column(): void
+    {
+        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        Post::create(['user_id' => $user->id, 'title' => 'P1', 'published' => true]);
+
+        $user->load('posts');
+
+        // posts has no deleted_at column, so the SQL will error — what matters
+        // is that we ATTEMPTED SQL (memory shortcut bypassed) because
+        // isSafeGlobalScopeWhere must reject a Basic operator on deleted_at.
+        $sqlAttempted = false;
+        DB::listen(function () use (&$sqlAttempted): void {
+            $sqlAttempted = true;
+        });
+
+        try {
+            $user->posts()->where('posts.deleted_at', '>', '2026-01-01')->get();
+        } catch (QueryException) {
+            $sqlAttempted = true;
+        }
+
+        $this->assertTrue(
+            $sqlAttempted,
+            'isSafeGlobalScopeWhere must reject a Basic where on deleted_at — only WHERE IS NULL is safe',
+        );
     }
 
     #[Test]
