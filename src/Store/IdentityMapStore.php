@@ -525,6 +525,11 @@ final class IdentityMapStore
         foreach ($equalityValues as $column => $value) {
             $fact = $entry->attributes->get($column);
             if (! $fact instanceof AttributeFact) {
+                // The index points at an entry that no longer carries the indexed
+                // column. Evict so the next lookup falls through to SQL and
+                // re-indexes, instead of missing against this stale entry forever.
+                $this->uniqueKeyIndex->evict($uniqueFp);
+
                 return null;
             }
             // phpcs:ignore SlevomatCodingStandard.Operators.DisallowEqualOperators
