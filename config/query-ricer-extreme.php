@@ -78,12 +78,42 @@ return [
      *
      *   enabled                          — turn the graph on or off entirely.
      *   max_edges / max_coverage_entries — hard caps; when exceeded the graph
-     *                                      is flushed entirely (safest).
+     *                                      is flushed entirely (safest). Parsed
+     *                                      and validated like store_caps below:
+     *                                      a malformed value falls back to the
+     *                                      default rather than coercing to 0,
+     *                                      and a literal 0 removes the cap.
      */
     'relation_graph' => [
         'enabled' => (bool) env('IDENTITY_MAP_RELATION_GRAPH_ENABLED', true),
-        'max_edges' => (int) env('IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES', 50000),
-        'max_coverage_entries' => (int) env('IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE', 5000),
+        'max_edges' => env('IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES', 50000),
+        'max_coverage_entries' => env('IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE', 5000),
+    ],
+
+    /*
+     * Per-request store size caps. The identity-map store, unique-key index and
+     * coverage registry accumulate state for the life of a request — or, worse,
+     * a single queue job iterating millions of rows, where job-boundary flushes
+     * do not help. These caps bound that growth. When a store exceeds its cap it
+     * is flushed in full: flush-all is the only safe semantics here, because
+     * coverage and absence reasoning reference live entries and evicting
+     * individual ones would corrupt that reasoning (a half-pruned coverage
+     * region could answer a query the database would not). A flush only costs a
+     * cold cache — never correctness. Caps are generous by default; set any to 0
+     * to disable that cap.
+     *
+     *   max_entries          — IdentityMapStore $entries + $absent combined.
+     *   max_unique_keys      — UniqueKeyIndex live + absent fingerprints.
+     *   max_coverage_entries — CoverageRegistry recorded regions.
+     *
+     * Values are parsed (and validated) in the service provider rather than cast
+     * here, so a malformed env value falls back to the safe default instead of
+     * silently coercing to 0 and disabling the cap. Use a literal 0 to disable.
+     */
+    'store_caps' => [
+        'max_entries' => env('IDENTITY_MAP_MAX_ENTRIES', 100000),
+        'max_unique_keys' => env('IDENTITY_MAP_MAX_UNIQUE_KEYS', 100000),
+        'max_coverage_entries' => env('IDENTITY_MAP_MAX_COVERAGE_ENTRIES', 50000),
     ],
 
     /*

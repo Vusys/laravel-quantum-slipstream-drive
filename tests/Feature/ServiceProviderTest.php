@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
+use ReflectionProperty;
 use RuntimeException;
 use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
 use Vusys\QueryRicerExtreme\Coverage\CoverageEntry;
@@ -80,6 +81,33 @@ final class ServiceProviderTest extends TestCase
         Event::dispatch($event);
 
         $this->assertAllRegistriesFlushed();
+    }
+
+    #[Test]
+    public function relation_graph_caps_are_parsed_and_validated_like_store_caps(): void
+    {
+        // A malformed override must fall back to the default, never silently
+        // disable the cap (which would let the graph grow unbounded).
+        config(['query-ricer-extreme.relation_graph.max_edges' => 'not-a-number']);
+        app()->forgetInstance(IdentityGraph::class);
+        $this->assertSame(50000, $this->graphMaxEdges(), 'a malformed cap falls back to the default');
+
+        // A literal 0 removes the cap on purpose.
+        config(['query-ricer-extreme.relation_graph.max_edges' => '0']);
+        app()->forgetInstance(IdentityGraph::class);
+        $this->assertNull($this->graphMaxEdges(), 'a literal 0 removes the cap');
+
+        // A numeric override is honoured.
+        config(['query-ricer-extreme.relation_graph.max_edges' => '7']);
+        app()->forgetInstance(IdentityGraph::class);
+        $this->assertSame(7, $this->graphMaxEdges(), 'a valid override is honoured');
+    }
+
+    private function graphMaxEdges(): ?int
+    {
+        $value = (new ReflectionProperty(IdentityGraph::class, 'maxEdges'))->getValue(resolve(IdentityGraph::class));
+
+        return is_int($value) ? $value : null;
     }
 
     private function primeAllRegistries(): void

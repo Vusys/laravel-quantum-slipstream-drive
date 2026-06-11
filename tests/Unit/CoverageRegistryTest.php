@@ -319,4 +319,48 @@ final class CoverageRegistryTest extends TestCase
 
         $this->assertSame(1, $this->registry->entryCount(), 'A partial-column entry must NOT be flushed when neither its region nor its column set references the changed column.');
     }
+
+    // -------------------------------------------------------------------------
+    // Size cap (flush-on-overflow)
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function entries_accumulate_up_to_the_cap_then_flush(): void
+    {
+        $registry = new CoverageRegistry(maxEntries: 2);
+
+        $registry->record($this->makeEntry(region: new ComparisonNode('id', '=', 1)));
+        $this->assertSame(1, $registry->entryCount());
+
+        $registry->record($this->makeEntry(region: new ComparisonNode('id', '=', 2)));
+        $this->assertSame(2, $registry->entryCount());
+
+        $registry->record($this->makeEntry(region: new ComparisonNode('id', '=', 3)));
+        $this->assertSame(0, $registry->entryCount(), 'registry flushes when the cap is reached');
+    }
+
+    #[Test]
+    public function the_cap_counts_entries_across_every_model_class(): void
+    {
+        $registry = new CoverageRegistry(maxEntries: 2);
+
+        $registry->record($this->makeEntry(modelClass: 'App\\User'));
+        $registry->record($this->makeEntry(modelClass: 'App\\Post'));
+        $this->assertSame(2, $registry->entryCount());
+
+        $registry->record($this->makeEntry(modelClass: 'App\\Tag'));
+        $this->assertSame(0, $registry->entryCount());
+    }
+
+    #[Test]
+    public function null_cap_never_flushes(): void
+    {
+        $registry = new CoverageRegistry;
+
+        foreach (range(1, 50) as $i) {
+            $registry->record($this->makeEntry(region: new ComparisonNode('id', '=', $i)));
+        }
+
+        $this->assertSame(50, $registry->entryCount());
+    }
 }

@@ -18,9 +18,24 @@ final class CoverageRegistry
      */
     private array $entries = [];
 
+    /** Running total across all buckets, kept in sync by every mutator so the cap check stays O(1). */
+    private int $count = 0;
+
+    public function __construct(
+        /** @var int|null null disables the cap */
+        private readonly ?int $maxEntries = null,
+    ) {}
+
     public function record(CoverageEntry $entry): void
     {
+        if ($this->maxEntries !== null && $this->count >= $this->maxEntries) {
+            $this->flush();
+
+            return;
+        }
+
         $this->entries[$entry->modelClass][] = $entry;
+        $this->count++;
     }
 
     public function findCovering(
@@ -65,6 +80,7 @@ final class CoverageRegistry
 
     public function flushModelClass(string $modelClass): void
     {
+        $this->count -= count($this->entries[$modelClass] ?? []);
         unset($this->entries[$modelClass]);
     }
 
@@ -109,6 +125,8 @@ final class CoverageRegistry
             }
         }
 
+        $this->count -= count($bucket) - count($kept);
+
         if ($kept === []) {
             unset($this->entries[$modelClass]);
         } else {
@@ -119,16 +137,11 @@ final class CoverageRegistry
     public function flush(): void
     {
         $this->entries = [];
+        $this->count = 0;
     }
 
     public function entryCount(): int
     {
-        $count = 0;
-
-        foreach ($this->entries as $bucket) {
-            $count += count($bucket);
-        }
-
-        return $count;
+        return $this->count;
     }
 }
