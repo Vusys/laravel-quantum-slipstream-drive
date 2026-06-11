@@ -67,9 +67,19 @@ final class IdentityMapStore
      */
     private ?bool $observabilityEnabled = null;
 
-    public function __construct(private readonly ?TransactionJournal $journal = null)
+    public function __construct(
+        private readonly ?TransactionJournal $journal = null,
+        /** @var int|null null disables the cap on $entries + $absent */
+        private readonly ?int $maxEntries = null,
+        ?int $maxUniqueKeys = null,
+    ) {
+        $this->uniqueKeyIndex = new UniqueKeyIndex($maxUniqueKeys);
+    }
+
+    private function atEntryCap(): bool
     {
-        $this->uniqueKeyIndex = new UniqueKeyIndex;
+        return $this->maxEntries !== null
+            && (count($this->entries) + count($this->absent)) >= $this->maxEntries;
     }
 
     public function setPendingFingerprint(?string $fingerprint): void
@@ -120,6 +130,12 @@ final class IdentityMapStore
             $entry->version++;
             $entry->attributes->recordFromModel($model, $allColumnsKnown);
         } else {
+            if ($this->atEntryCap()) {
+                $this->flush();
+
+                return;
+            }
+
             $attributes = new AttributeKnowledge;
             $attributes->recordFromModel($model, $allColumnsKnown);
 
@@ -333,6 +349,12 @@ final class IdentityMapStore
             $primaryKeyValue,
             $fingerprint,
         );
+
+        if (! isset($this->absent[$mapKey]) && ! isset($this->entries[$mapKey]) && $this->atEntryCap()) {
+            $this->flush();
+
+            return;
+        }
 
         $this->snapshotForJournal($mapKey);
 

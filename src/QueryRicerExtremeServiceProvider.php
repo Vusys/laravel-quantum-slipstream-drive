@@ -31,8 +31,14 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/query-ricer-extreme.php', 'query-ricer-extreme');
 
         $this->app->singleton(TransactionJournal::class);
-        $this->app->singleton(IdentityMapStore::class);
-        $this->app->singleton(CoverageRegistry::class);
+        $this->app->singleton(IdentityMapStore::class, fn ($app): IdentityMapStore => new IdentityMapStore(
+            $app->make(TransactionJournal::class),
+            $this->capValue('query-ricer-extreme.store_caps.max_entries'),
+            $this->capValue('query-ricer-extreme.store_caps.max_unique_keys'),
+        ));
+        $this->app->singleton(CoverageRegistry::class, fn (): CoverageRegistry => new CoverageRegistry(
+            $this->capValue('query-ricer-extreme.store_caps.max_coverage_entries'),
+        ));
         $this->app->singleton(SchemaDiscovery::class);
         $this->app->singleton(DriverSemanticsResolver::class);
         $this->app->singleton(ColumnSemanticsResolver::class, fn ($app) => $app->make(SchemaDiscovery::class));
@@ -118,6 +124,13 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
                 $graph->invalidateModelClass($class);
             }
         });
+    }
+
+    private function capValue(string $configKey): ?int
+    {
+        $value = config($configKey);
+
+        return is_int($value) && $value > 0 ? $value : null;
     }
 
     private function flushAll(): void

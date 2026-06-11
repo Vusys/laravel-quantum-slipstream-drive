@@ -18,8 +18,19 @@ final class CoverageRegistry
      */
     private array $entries = [];
 
+    public function __construct(
+        /** @var int|null null disables the cap */
+        private readonly ?int $maxEntries = null,
+    ) {}
+
     public function record(CoverageEntry $entry): void
     {
+        if ($this->maxEntries !== null && $this->entryCount() >= $this->maxEntries) {
+            $this->flush();
+
+            return;
+        }
+
         $this->entries[$entry->modelClass][] = $entry;
     }
 

@@ -87,6 +87,28 @@ return [
     ],
 
     /*
+     * Per-request store size caps. The identity-map store, unique-key index and
+     * coverage registry accumulate state for the life of a request — or, worse,
+     * a single queue job iterating millions of rows, where job-boundary flushes
+     * do not help. These caps bound that growth. When a store exceeds its cap it
+     * is flushed in full: flush-all is the only safe semantics here, because
+     * coverage and absence reasoning reference live entries and evicting
+     * individual ones would corrupt that reasoning (a half-pruned coverage
+     * region could answer a query the database would not). A flush only costs a
+     * cold cache — never correctness. Caps are generous by default; set any to 0
+     * to disable that cap.
+     *
+     *   max_entries          — IdentityMapStore $entries + $absent combined.
+     *   max_unique_keys      — UniqueKeyIndex live + absent fingerprints.
+     *   max_coverage_entries — CoverageRegistry recorded regions.
+     */
+    'store_caps' => [
+        'max_entries' => (int) env('IDENTITY_MAP_MAX_ENTRIES', 100000),
+        'max_unique_keys' => (int) env('IDENTITY_MAP_MAX_UNIQUE_KEYS', 100000),
+        'max_coverage_entries' => (int) env('IDENTITY_MAP_MAX_COVERAGE_ENTRIES', 50000),
+    ],
+
+    /*
      * Per-driver comparison semantics. Controls how the predicate evaluator
      * resolves string equality.
      *
