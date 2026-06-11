@@ -12,6 +12,8 @@ Ground rules for every item (see `CLAUDE.md`):
 
 ## Phase 1 — Correctness fixes (blockers; do these first)
 
+> **Status: ✅ Complete** — all four blockers (1.1–1.4) shipped in #59, each with a regression test that failed before the fix. A genuine divergence not originally listed (partial-select model downgrade) was also found and fixed along the way.
+
 These are confirmed, reproduced divergences between memory-served results and SQL. Each repro below was run against the current codebase and fails.
 
 ### 1.1 `ORDER BY` is ignored on memory-serving paths
@@ -144,6 +146,8 @@ The fuzzers compare against an oracle but never generate `orderBy`, `with()`, or
 
 ## Phase 2 — Hardening the drop-in claim
 
+> **Status: ✅ Complete** — all of 2.1–2.10 shipped across #60, #61, #66, and #67. 2.6 needed no production change (the store key already isolates by connection; schema discovery is already prefix-aware) — its differential tests prove it. The only production code in this phase was 2.8 (store size caps) and 2.9 (relation-name memo); the rest landed as differential/oracle tests.
+
 Order within this phase is by user exposure. All are test-first: write the differential test, observe (pass = document as covered / fail = fix).
 
 ### 2.1 Iteration/pagination differential tests
@@ -238,16 +242,16 @@ Serialize coverage **facts** and absence markers (never model instances) into AP
 
 ## Suggested working order (flat list)
 
-1. 1.1 ORDER BY bail-outs + regression tests
-2. 1.2 eager loads on `first()`/`sole()` + regression tests
-3. 1.3 pivot driver semantics + regression tests
-4. 1.4 fuzzer dimensions (orderBy / with / case-varied strings / predicate shapes)
-5. 2.1 iteration/pagination differential tests
-6. 2.2 cast coverage
-7. 2.10 small nits (morph PlanType, unique-key eviction, README caveat)
-8. 2.3 morph maps, 2.4 custom pivots, 2.5 accessors
-9. 2.6 prefixes/connections, 2.7 Octane/queue, 2.8 store caps, 2.9 backtrace removal
-10. 4.1–4.3 hygiene (cheap, do alongside)
-11. 3.1 in-memory ORDER BY, 3.2 OR-trees, 3.3 new relations, 3.4 coverage union
-12. 3.5 toolbar integration
-13. 4.4 release tagging; 3.6 cross-request spike last
+1. ✅ 1.1 ORDER BY bail-outs + regression tests
+2. ✅ 1.2 eager loads on `first()`/`sole()` + regression tests
+3. ✅ 1.3 pivot driver semantics + regression tests
+4. ✅ 1.4 fuzzer dimensions (orderBy / with / case-varied strings / predicate shapes)
+5. ✅ 2.1 iteration/pagination differential tests
+6. ✅ 2.2 cast coverage
+7. ✅ 2.10 small nits (morph PlanType, unique-key eviction, README caveat)
+8. ✅ 2.3 morph maps, 2.4 custom pivots, 2.5 accessors
+9. ✅ 2.6 prefixes/connections, 2.7 Octane/queue, 2.8 store caps, 2.9 backtrace removal
+10. ⬜ 4.1–4.3 hygiene (cheap, do alongside) — **next**
+11. ⬜ 3.1 in-memory ORDER BY, 3.2 OR-trees, 3.3 new relations, 3.4 coverage union
+12. ⬜ 3.5 toolbar integration
+13. ⬜ 4.4 release tagging; 3.6 cross-request spike last
