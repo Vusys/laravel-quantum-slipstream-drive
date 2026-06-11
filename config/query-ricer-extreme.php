@@ -78,12 +78,16 @@ return [
      *
      *   enabled                          — turn the graph on or off entirely.
      *   max_edges / max_coverage_entries — hard caps; when exceeded the graph
-     *                                      is flushed entirely (safest).
+     *                                      is flushed entirely (safest). Parsed
+     *                                      and validated like store_caps below:
+     *                                      a malformed value falls back to the
+     *                                      default rather than coercing to 0,
+     *                                      and a literal 0 removes the cap.
      */
     'relation_graph' => [
         'enabled' => (bool) env('IDENTITY_MAP_RELATION_GRAPH_ENABLED', true),
-        'max_edges' => (int) env('IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES', 50000),
-        'max_coverage_entries' => (int) env('IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE', 5000),
+        'max_edges' => env('IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES', 50000),
+        'max_coverage_entries' => env('IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE', 5000),
     ],
 
     /*

@@ -474,8 +474,8 @@ The graph powers the `where_has_from_graph`, `where_doesnt_have_from_graph`, `be
 | Config key | Default | Env override | Effect |
 |---|---|---|---|
 | `relation_graph.enabled` | `true` | `IDENTITY_MAP_RELATION_GRAPH_ENABLED` | Disable to bypass all graph-based plans; relation traversal falls back to per-relation memory paths or SQL. |
-| `relation_graph.max_edges` | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | When exceeded, the graph flushes entirely (safest behaviour). |
-| `relation_graph.max_coverage_entries` | `5000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | When exceeded, the graph flushes entirely. |
+| `relation_graph.max_edges` | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | When exceeded, the graph flushes entirely (safest behaviour). `0` removes the cap; a malformed value falls back to the default. |
+| `relation_graph.max_coverage_entries` | `5000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | When exceeded, the graph flushes entirely. `0` removes the cap; a malformed value falls back to the default. |
 
 ### Store size caps (`store_caps`)
 

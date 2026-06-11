@@ -43,15 +43,10 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         $this->app->singleton(DriverSemanticsResolver::class);
         $this->app->singleton(ColumnSemanticsResolver::class, fn ($app) => $app->make(SchemaDiscovery::class));
         $this->app->singleton(ColumnBackfiller::class);
-        $this->app->singleton(IdentityGraph::class, function (): IdentityGraph {
-            $maxEdges = config('query-ricer-extreme.relation_graph.max_edges');
-            $maxCoverage = config('query-ricer-extreme.relation_graph.max_coverage_entries');
-
-            return new IdentityGraph(
-                maxEdges: is_int($maxEdges) ? $maxEdges : null,
-                maxCoverage: is_int($maxCoverage) ? $maxCoverage : null,
-            );
-        });
+        $this->app->singleton(IdentityGraph::class, fn (): IdentityGraph => new IdentityGraph(
+            maxEdges: $this->capValue('query-ricer-extreme.relation_graph.max_edges', 50000),
+            maxCoverage: $this->capValue('query-ricer-extreme.relation_graph.max_coverage_entries', 5000),
+        ));
     }
 
     public function boot(): void
@@ -127,10 +122,10 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
     }
 
     /**
-     * Resolve a store cap from config. A positive integer enables the cap; a
-     * literal 0 (or negative) disables it; anything malformed (a typo'd env
-     * string, null) falls back to $default so a mistake can never silently
-     * remove the memory-growth guard.
+     * Resolve a memory-growth cap (store or relation-graph) from config. A
+     * positive integer enables the cap; a literal 0 (or negative) disables it;
+     * anything malformed (a typo'd env string, null) falls back to $default so a
+     * mistake can never silently remove the guard.
      */
     private function capValue(string $configKey, int $default): ?int
     {
