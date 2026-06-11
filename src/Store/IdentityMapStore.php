@@ -130,7 +130,10 @@ final class IdentityMapStore
             $entry->version++;
             $entry->attributes->recordFromModel($model, $allColumnsKnown);
         } else {
-            if ($this->atEntryCap()) {
+            // Promoting an existing absent marker to a live entry is net-zero
+            // (the marker is unset below), so only a genuinely new key counts
+            // as growth against the cap.
+            if (! isset($this->absent[$mapKey]) && $this->atEntryCap()) {
                 $this->flush();
 
                 return;

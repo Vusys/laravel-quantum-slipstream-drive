@@ -101,11 +101,15 @@ return [
      *   max_entries          — IdentityMapStore $entries + $absent combined.
      *   max_unique_keys      — UniqueKeyIndex live + absent fingerprints.
      *   max_coverage_entries — CoverageRegistry recorded regions.
+     *
+     * Values are parsed (and validated) in the service provider rather than cast
+     * here, so a malformed env value falls back to the safe default instead of
+     * silently coercing to 0 and disabling the cap. Use a literal 0 to disable.
      */
     'store_caps' => [
-        'max_entries' => (int) env('IDENTITY_MAP_MAX_ENTRIES', 100000),
-        'max_unique_keys' => (int) env('IDENTITY_MAP_MAX_UNIQUE_KEYS', 100000),
-        'max_coverage_entries' => (int) env('IDENTITY_MAP_MAX_COVERAGE_ENTRIES', 50000),
+        'max_entries' => env('IDENTITY_MAP_MAX_ENTRIES', 100000),
+        'max_unique_keys' => env('IDENTITY_MAP_MAX_UNIQUE_KEYS', 100000),
+        'max_coverage_entries' => env('IDENTITY_MAP_MAX_COVERAGE_ENTRIES', 50000),
     ],
 
     /*

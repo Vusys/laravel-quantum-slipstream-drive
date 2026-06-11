@@ -33,11 +33,11 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         $this->app->singleton(TransactionJournal::class);
         $this->app->singleton(IdentityMapStore::class, fn ($app): IdentityMapStore => new IdentityMapStore(
             $app->make(TransactionJournal::class),
-            $this->capValue('query-ricer-extreme.store_caps.max_entries'),
-            $this->capValue('query-ricer-extreme.store_caps.max_unique_keys'),
+            $this->capValue('query-ricer-extreme.store_caps.max_entries', 100000),
+            $this->capValue('query-ricer-extreme.store_caps.max_unique_keys', 100000),
         ));
         $this->app->singleton(CoverageRegistry::class, fn (): CoverageRegistry => new CoverageRegistry(
-            $this->capValue('query-ricer-extreme.store_caps.max_coverage_entries'),
+            $this->capValue('query-ricer-extreme.store_caps.max_coverage_entries', 50000),
         ));
         $this->app->singleton(SchemaDiscovery::class);
         $this->app->singleton(DriverSemanticsResolver::class);
@@ -126,11 +126,27 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         });
     }
 
-    private function capValue(string $configKey): ?int
+    /**
+     * Resolve a store cap from config. A positive integer enables the cap; a
+     * literal 0 (or negative) disables it; anything malformed (a typo'd env
+     * string, null) falls back to $default so a mistake can never silently
+     * remove the memory-growth guard.
+     */
+    private function capValue(string $configKey, int $default): ?int
     {
         $value = config($configKey);
 
-        return is_int($value) && $value > 0 ? $value : null;
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+
+        if (is_string($value) && preg_match('/^\s*-?\d+\s*$/', $value) === 1) {
+            $parsed = (int) trim($value);
+
+            return $parsed > 0 ? $parsed : null;
+        }
+
+        return $default;
     }
 
     private function flushAll(): void
