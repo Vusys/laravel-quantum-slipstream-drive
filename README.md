@@ -474,8 +474,22 @@ The graph powers the `where_has_from_graph`, `where_doesnt_have_from_graph`, `be
 | Config key | Default | Env override | Effect |
 |---|---|---|---|
 | `relation_graph.enabled` | `true` | `IDENTITY_MAP_RELATION_GRAPH_ENABLED` | Disable to bypass all graph-based plans; relation traversal falls back to per-relation memory paths or SQL. |
-| `relation_graph.max_edges` | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | When exceeded, the graph flushes entirely (safest behaviour). |
-| `relation_graph.max_coverage_entries` | `5000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | When exceeded, the graph flushes entirely. |
+| `relation_graph.max_edges` | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | When exceeded, the graph flushes entirely (safest behaviour). `0` removes the cap; a malformed value falls back to the default. |
+| `relation_graph.max_coverage_entries` | `5000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | When exceeded, the graph flushes entirely. `0` removes the cap; a malformed value falls back to the default. |
+
+### Store size caps (`store_caps`)
+
+The identity-map store, unique-key index, and coverage registry accumulate state for the life of a scope. That is bounded for a normal HTTP request, but a single long-running queue job that iterates millions of rows would otherwise grow them without limit — job-boundary flushes only fire *between* jobs, not within one. These caps bound that growth.
+
+When a store exceeds its cap it is **flushed in full**, mirroring the identity graph. Flush-all is the only safe semantics: coverage regions and absence markers reference live entries, so evicting individual entries (LRU or otherwise) could leave a coverage region that answers a query the database would not. A flush only ever costs a cold cache on the next query — never a wrong answer.
+
+| Config key | Default | Env override | Effect |
+|---|---|---|---|
+| `store_caps.max_entries` | `100000` | `IDENTITY_MAP_MAX_ENTRIES` | Caps `IdentityMapStore` live entries + absence markers combined. Flush-all on overflow. |
+| `store_caps.max_unique_keys` | `100000` | `IDENTITY_MAP_MAX_UNIQUE_KEYS` | Caps the `UniqueKeyIndex` (live + absent fingerprints). Flushes only the index — point lookups miss to SQL until rebuilt. |
+| `store_caps.max_coverage_entries` | `50000` | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | Caps recorded `CoverageRegistry` regions. Flush-all on overflow. |
+
+Set any cap to `0` to disable it (unbounded). The defaults are generous; most applications never approach them within a single scope.
 
 ### Partial models & column backfill (`partial_models`)
 

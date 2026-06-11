@@ -20,6 +20,11 @@ final class UniqueKeyIndex
     /** @var array<string, true> classes that have completed runtime discovery */
     private array $discoveredClasses = [];
 
+    public function __construct(
+        /** @var int|null null disables the cap */
+        private readonly ?int $maxKeys = null,
+    ) {}
+
     public function index(IdentityEntry $entry, string $mapKey): void
     {
         foreach ($this->uniqueIndexesForModelClass($entry->modelClass) as $columns) {
@@ -37,6 +42,13 @@ final class UniqueKeyIndex
 
             ksort($values);
             $fp = $this->makeFingerprint($entry->connection, $entry->modelClass, $entry->table, $entry->scopeFingerprint, $values);
+
+            if (! isset($this->index[$fp]) && $this->atCap()) {
+                $this->flush();
+
+                return;
+            }
+
             $this->index[$fp] = $mapKey;
             unset($this->absent[$fp]);
         }
@@ -59,7 +71,19 @@ final class UniqueKeyIndex
 
     public function recordAbsent(string $uniqueFingerprint): void
     {
+        if (! isset($this->absent[$uniqueFingerprint]) && $this->atCap()) {
+            $this->flush();
+
+            return;
+        }
+
         $this->absent[$uniqueFingerprint] = true;
+    }
+
+    private function atCap(): bool
+    {
+        return $this->maxKeys !== null
+            && (count($this->index) + count($this->absent)) >= $this->maxKeys;
     }
 
     public function flush(?string $modelClass = null): void

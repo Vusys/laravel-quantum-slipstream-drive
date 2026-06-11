@@ -31,21 +31,22 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/query-ricer-extreme.php', 'query-ricer-extreme');
 
         $this->app->singleton(TransactionJournal::class);
-        $this->app->singleton(IdentityMapStore::class);
-        $this->app->singleton(CoverageRegistry::class);
+        $this->app->singleton(IdentityMapStore::class, fn ($app): IdentityMapStore => new IdentityMapStore(
+            $app->make(TransactionJournal::class),
+            $this->capValue('query-ricer-extreme.store_caps.max_entries', 100000),
+            $this->capValue('query-ricer-extreme.store_caps.max_unique_keys', 100000),
+        ));
+        $this->app->singleton(CoverageRegistry::class, fn (): CoverageRegistry => new CoverageRegistry(
+            $this->capValue('query-ricer-extreme.store_caps.max_coverage_entries', 50000),
+        ));
         $this->app->singleton(SchemaDiscovery::class);
         $this->app->singleton(DriverSemanticsResolver::class);
         $this->app->singleton(ColumnSemanticsResolver::class, fn ($app) => $app->make(SchemaDiscovery::class));
         $this->app->singleton(ColumnBackfiller::class);
-        $this->app->singleton(IdentityGraph::class, function (): IdentityGraph {
-            $maxEdges = config('query-ricer-extreme.relation_graph.max_edges');
-            $maxCoverage = config('query-ricer-extreme.relation_graph.max_coverage_entries');
-
-            return new IdentityGraph(
-                maxEdges: is_int($maxEdges) ? $maxEdges : null,
-                maxCoverage: is_int($maxCoverage) ? $maxCoverage : null,
-            );
-        });
+        $this->app->singleton(IdentityGraph::class, fn (): IdentityGraph => new IdentityGraph(
+            maxEdges: $this->capValue('query-ricer-extreme.relation_graph.max_edges', 50000),
+            maxCoverage: $this->capValue('query-ricer-extreme.relation_graph.max_coverage_entries', 5000),
+        ));
     }
 
     public function boot(): void
@@ -118,6 +119,29 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
                 $graph->invalidateModelClass($class);
             }
         });
+    }
+
+    /**
+     * Resolve a memory-growth cap (store or relation-graph) from config. A
+     * positive integer enables the cap; a literal 0 (or negative) disables it;
+     * anything malformed (a typo'd env string, null) falls back to $default so a
+     * mistake can never silently remove the guard.
+     */
+    private function capValue(string $configKey, int $default): ?int
+    {
+        $value = config($configKey);
+
+        if (is_int($value)) {
+            return $value > 0 ? $value : null;
+        }
+
+        if (is_string($value) && preg_match('/^\s*-?\d+\s*$/', $value) === 1) {
+            $parsed = (int) trim($value);
+
+            return $parsed > 0 ? $parsed : null;
+        }
+
+        return $default;
     }
 
     private function flushAll(): void
