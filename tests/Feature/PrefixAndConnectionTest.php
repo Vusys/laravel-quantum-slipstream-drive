@@ -97,10 +97,10 @@ final class PrefixAndConnectionTest extends TestCase
                 $queries++;
             });
 
-            $ricer = User::whereKey([$a->id, $b->id])->where('active', true)->get()->pluck('name')->all();
+            $slipstream = User::whereKey([$a->id, $b->id])->where('active', true)->get()->pluck('name')->all();
 
             $this->assertSame(0, $queries, 'key-set + predicate must serve from memory even under a prefix');
-            $this->assertSame(['Active'], $ricer);
+            $this->assertSame(['Active'], $slipstream);
         });
     }
 
@@ -111,14 +111,14 @@ final class PrefixAndConnectionTest extends TestCase
             $user = User::create(['name' => 'A', 'email' => 'a@example.com']);
             User::find($user->id);
 
-            $ricer = User::where('email', 'a@example.com')->first();
+            $slipstream = User::where('email', 'a@example.com')->first();
             $oracle = IdentityMap::disabled(
                 static fn (): ?string => User::where('email', 'a@example.com')->first()?->name,
             );
 
-            $this->assertNotNull($ricer);
-            $this->assertSame($oracle, $ricer->name);
-            $this->assertSame($user->id, $ricer->id);
+            $this->assertNotNull($slipstream);
+            $this->assertSame($oracle, $slipstream->name);
+            $this->assertSame($user->id, $slipstream->id);
         });
     }
 
