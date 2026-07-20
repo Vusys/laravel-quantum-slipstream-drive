@@ -88,6 +88,46 @@ final class RawBuilderInvalidationTest extends TestCase
     }
 
     #[Test]
+    public function raw_insert_or_ignore_invalidates_covered_collection(): void
+    {
+        User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
+        User::all(); // record complete coverage for the whole table
+
+        // insertOrIgnore compiles to "insert or ignore into" (SQLite) / "insert
+        // ignore into" (MySQL) — still an insert that must invalidate coverage.
+        DB::table('users')->insertOrIgnore(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
+
+        $names = User::all()->pluck('name')->sort()->values()->all();
+        $this->assertSame(['Alice', 'Bob'], $names, 'raw insertOrIgnore must invalidate covered collection completeness');
+    }
+
+    #[Test]
+    public function eloquent_increment_and_upsert_do_not_trigger_raw_invalidation(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true, 'score' => 1]);
+        User::find($alice->id);
+
+        // increment() and upsert() are modeled write paths (they flush explicitly);
+        // the raw-write hook must stay suppressed so no misleading explanation is
+        // emitted and the class isn't flushed twice.
+        $explanations = IdentityMap::explain(function () use ($alice): void {
+            User::whereKey($alice->id)->increment('score');
+            User::upsert(
+                [['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true, 'score' => 5]],
+                ['email'],
+                ['score'],
+            );
+        });
+
+        $raw = array_filter(
+            $explanations,
+            static fn (Explanation $e): bool => $e->type === PlanType::RawWriteInvalidation,
+        );
+
+        $this->assertSame([], $raw, 'increment/upsert must not be flagged as raw-builder writes');
+    }
+
+    #[Test]
     public function raw_write_invalidation_is_observable(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);

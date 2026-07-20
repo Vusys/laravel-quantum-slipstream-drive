@@ -1410,7 +1410,7 @@ class IdentityMapBuilder extends Builder
     #[\Override]
     public function increment($column, $amount = 1, array $extra = []): int
     {
-        $result = parent::increment($column, $amount, $extra);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => parent::increment($column, $amount, $extra));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1424,7 +1424,7 @@ class IdentityMapBuilder extends Builder
     #[\Override]
     public function decrement($column, $amount = 1, array $extra = []): int
     {
-        $result = parent::decrement($column, $amount, $extra);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => parent::decrement($column, $amount, $extra));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1445,7 +1445,7 @@ class IdentityMapBuilder extends Builder
      */
     public function incrementEach(array $columns, array $extra = []): int
     {
-        $result = $this->toBase()->incrementEach($columns, $this->addUpdatedAtColumn($extra));
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => $this->toBase()->incrementEach($columns, $this->addUpdatedAtColumn($extra)));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1457,7 +1457,7 @@ class IdentityMapBuilder extends Builder
      */
     public function decrementEach(array $columns, array $extra = []): int
     {
-        $result = $this->toBase()->decrementEach($columns, $this->addUpdatedAtColumn($extra));
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => $this->toBase()->decrementEach($columns, $this->addUpdatedAtColumn($extra)));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1471,7 +1471,7 @@ class IdentityMapBuilder extends Builder
     #[\Override]
     public function upsert(array $values, $uniqueBy, $update = null): int
     {
-        $result = parent::upsert($values, $uniqueBy, $update);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => parent::upsert($values, $uniqueBy, $update));
         $this->flushAfterBulkWrite();
 
         return $result;

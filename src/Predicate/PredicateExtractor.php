@@ -54,13 +54,24 @@ final class PredicateExtractor
         $current = [];
 
         foreach (array_values($wheres) as $i => $where) {
+            $boolean = $where['boolean'] ?? 'and';
+
+            // whereNot()/orWhereNot() encode negation in the boolean ('and not' /
+            // 'or not') rather than a flag on the where — including on a Nested
+            // clause. We cannot represent that negation, so bail to SQL. (Positive
+            // negated forms like whereNotIn / whereNotNull carry boolean 'and' and
+            // their own where type, and are handled by fromWhere().)
+            if ($boolean !== 'and' && $boolean !== 'or') {
+                return null;
+            }
+
             $node = self::fromWhere($where);
 
             if (! $node instanceof PredicateNode) {
                 return null;
             }
 
-            if ($i > 0 && ($where['boolean'] ?? 'and') === 'or') {
+            if ($i > 0 && $boolean === 'or') {
                 $groups[] = $current;
                 $current = [];
             }

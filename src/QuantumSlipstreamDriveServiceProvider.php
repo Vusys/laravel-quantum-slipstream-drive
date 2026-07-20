@@ -168,5 +168,6 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
         $this->app->make(TransactionJournal::class)->flush();
         $this->app->make(SchemaDiscovery::class)->flush();
         $this->app->make(IdentityGraph::class)->flush();
+        RawWriteInterceptor::resetSuppression();
     }
 }

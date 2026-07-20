@@ -502,4 +502,19 @@ final class PredicateExtractorTest extends TestCase
         $this->assertInstanceOf(AndNode::class, $node);
         $this->assertSame([], $node->children);
     }
+
+    #[Test]
+    public function from_wheres_bails_on_negated_boolean(): void
+    {
+        // whereNot()/orWhereNot() encode negation in the boolean; we cannot
+        // represent it, so the whole tree must fall through to SQL.
+        foreach (['and not', 'or not'] as $boolean) {
+            $node = PredicateExtractor::fromWheres([
+                ['type' => 'Basic', 'column' => 'a', 'operator' => '=', 'value' => 1, 'boolean' => 'and'],
+                ['type' => 'Basic', 'column' => 'b', 'operator' => '=', 'value' => 2, 'boolean' => $boolean],
+            ]);
+
+            $this->assertNull($node, "boolean '{$boolean}' must bail");
+        }
+    }
 }
