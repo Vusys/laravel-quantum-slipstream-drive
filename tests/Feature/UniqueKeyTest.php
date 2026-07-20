@@ -1146,7 +1146,7 @@ final class UniqueKeyTest extends TestCase
     }
 
     #[Test]
-    public function first_falls_through_for_unsupported_operator_after_unique_key(): void
+    public function first_serves_like_predicate_after_unique_key(): void
     {
         $alice = $this->createFresh('Alice', 'alice@example.com');
         User::find($alice->id);
@@ -1156,10 +1156,11 @@ final class UniqueKeyTest extends TestCase
             $queryCount++;
         });
 
-        // LIKE is unsupported by PredicateExtractor → returns null → extractUniqueKeyLookup null
+        // LIKE is a supported predicate: the unique-key hit is filtered in memory.
         $result = User::where('email', 'alice@example.com')->where('name', 'LIKE', '%Alice%')->first();
-        $this->assertSame(1, $queryCount, 'Unsupported operator must bypass unique-key shortcut');
+        $this->assertSame(0, $queryCount, 'LIKE predicate over a unique-key hit is served from memory');
         $this->assertNotNull($result);
+        $this->assertSame('Alice', $result->name);
     }
 
     #[Test]

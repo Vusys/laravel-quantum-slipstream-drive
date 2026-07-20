@@ -461,19 +461,20 @@ final class MassWriteModelingTest extends TestCase
         // than triggering a full flush: active = false OR name = 'Alice' matches only Alice.
         User::where('active', false)->orWhere('name', 'Alice')->update(['active' => true]);
 
-        $served = null;
-        $sql = $this->countSql(function () use (&$served, $alice, $bob): void {
-            $served = [
-                'alice' => User::find($alice->id),
-                'bob' => User::find($bob->id),
-            ];
+        $aliceActive = null;
+        $bobActive = null;
+        $sql = $this->countSql(function () use (&$aliceActive, &$bobActive, $alice, $bob): void {
+            $foundAlice = User::find($alice->id);
+            $foundBob = User::find($bob->id);
+            $this->assertInstanceOf(User::class, $foundAlice);
+            $this->assertInstanceOf(User::class, $foundBob);
+            $aliceActive = (bool) $foundAlice->active;
+            $bobActive = (bool) $foundBob->active;
         });
 
         $this->assertSame(0, $sql, 'Both entries remain served from memory after a modeled OR update');
-        $this->assertNotNull($served['alice']);
-        $this->assertNotNull($served['bob']);
-        $this->assertTrue((bool) $served['alice']->active, 'Alice matched the OR predicate and was updated in place');
-        $this->assertTrue((bool) $served['bob']->active, 'Bob was already active and is untouched');
+        $this->assertTrue($aliceActive, 'Alice matched the OR predicate and was updated in place');
+        $this->assertTrue($bobActive, 'Bob was already active and is untouched');
     }
 
     #[Test]

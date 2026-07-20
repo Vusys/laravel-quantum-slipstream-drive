@@ -8,11 +8,17 @@ namespace Vusys\QuantumSlipstreamDrive\Driver;
  * SQLite uses BINARY collation by default for `=`, so byte-equality maps
  * exactly to database equality regardless of column metadata.
  *
- * LIKE has its own ASCII case-insensitive default but the evaluator does
- * not currently model LIKE.
+ * LIKE is ASCII case-insensitive by default (independent of column collation),
+ * which the in-memory evaluator reproduces for ASCII operands.
  */
 final class SqliteSemantics extends AbstractDriverSemantics
 {
+    #[\Override]
+    protected function likeCaseSensitivity(ColumnSemantics $column): bool
+    {
+        return false;
+    }
+
     #[\Override]
     protected function compareStrings(string $left, string $right, ColumnSemantics $column): bool
     {

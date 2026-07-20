@@ -424,16 +424,21 @@ final class QueryCorrectnessTest extends FuzzerTestCase
     /**
      * Returns a closure that appends one randomly-chosen predicate shape to a
      * User builder. Operator pool spans =, !=, <, >=, whereIn, whereNull,
-     * whereBetween over both the integer `score` (nullable) and `active` columns.
+     * whereBetween over the integer `score` (nullable) and `active` columns,
+     * plus OR combinations (top-level and nested groups) and LIKE / NOT LIKE
+     * patterns over the ASCII `email` column.
      *
      * @return \Closure(Builder<User>): Builder<User>
      */
     private function randomPredicateShape(): \Closure
     {
-        $shape = mt_rand(0, 6);
+        $shape = mt_rand(0, 11);
         $value = mt_rand(0, 100);
         $low = mt_rand(0, 50);
         $high = $low + mt_rand(0, 50);
+        $bool = (bool) mt_rand(0, 1);
+        $letter = chr(mt_rand(97, 122));
+        $fragment = ['a', 'e', 'i', 'o', 'example', '.com', 'user'][mt_rand(0, 6)];
 
         return match ($shape) {
             0 => fn ($q) => $q->where('score', '=', $value),
@@ -442,7 +447,12 @@ final class QueryCorrectnessTest extends FuzzerTestCase
             3 => fn ($q) => $q->where('score', '>=', $value),
             4 => fn ($q) => $q->whereIn('score', [$value, $low, $high]),
             5 => fn ($q) => $q->whereNull('bio'),
-            default => fn ($q) => $q->whereBetween('score', [$low, $high]),
+            6 => fn ($q) => $q->whereBetween('score', [$low, $high]),
+            7 => fn ($q) => $q->where('score', '<', $value)->orWhere('active', $bool),
+            8 => fn ($q) => $q->where(fn ($inner) => $inner->where('score', '>=', $low)->orWhere('score', '<', $value)),
+            9 => fn ($q) => $q->where('email', 'like', $letter.'%'),
+            10 => fn ($q) => $q->where('email', 'like', '%'.$fragment.'%'),
+            default => fn ($q) => $q->where('email', 'not like', '%'.$fragment.'%'),
         };
     }
 

@@ -37,6 +37,13 @@ final class ConservativeSemantics implements DriverSemantics
     }
 
     #[\Override]
+    public function like(mixed $value, string $pattern, ColumnSemantics $column): EvaluationResult
+    {
+        // No driver profile is wired, so LIKE semantics are unknowable — defer to SQL.
+        return EvaluationResult::Unknown;
+    }
+
+    #[\Override]
     public function compareForOrder(mixed $left, mixed $right, ColumnSemantics $column): ?int
     {
         if ((! is_int($left) && ! is_float($left)) || (! is_int($right) && ! is_float($right))) {

@@ -7,6 +7,7 @@ namespace Vusys\QuantumSlipstreamDrive\Coverage;
 use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\LikeNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\OrNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
@@ -105,6 +106,14 @@ final class SubsetChecker
 
         if ($query instanceof NullNode && $recorded instanceof NullNode) {
             return $query->column === $recorded->column && $query->negated === $recorded->negated;
+        }
+
+        // An identical LIKE predicate is trivially a subset of itself; anything
+        // else about pattern containment is left to SQL.
+        if ($query instanceof LikeNode && $recorded instanceof LikeNode) {
+            return $query->column === $recorded->column
+                && $query->pattern === $recorded->pattern
+                && $query->negated === $recorded->negated;
         }
 
         return false;

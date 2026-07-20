@@ -13,6 +13,18 @@ namespace Vusys\QuantumSlipstreamDrive\Driver;
 class MySqlSemantics extends AbstractDriverSemantics
 {
     #[\Override]
+    protected function likeCaseSensitivity(ColumnSemantics $column): ?bool
+    {
+        // LIKE follows the column collation: `_ci` collations fold case, `_bin`
+        // / `_cs` do not. Without a resolved collation we cannot tell — defer.
+        return match ($column->stringComparison) {
+            StringComparisonMode::CaseSensitive => true,
+            StringComparisonMode::CaseInsensitive => false,
+            StringComparisonMode::Unknown => null,
+        };
+    }
+
+    #[\Override]
     protected function compareStrings(string $left, string $right, ColumnSemantics $column): ?bool
     {
         if ($left === $right) {
