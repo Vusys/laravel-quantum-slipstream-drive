@@ -368,18 +368,20 @@ final class WhereHasGraphRewriteTest extends TestCase
     }
 
     #[Test]
-    public function inner_predicate_with_or_boolean_falls_through(): void
+    public function inner_predicate_with_or_boolean_is_served_from_graph(): void
     {
         [$alice, $bob] = $this->seedUsersWithPosts();
 
-        // The inner closure uses `orWhere` → my extractor bails (not an AND predicate),
-        // so no PendingHasRewrite is recorded → SQL handles the EXISTS.
+        // The inner closure uses `orWhere`, which the predicate engine now expresses
+        // as an OrNode, so the EXISTS is answered from the identity graph without SQL.
+        // Alice's post A1 satisfies published = true; Bob's post B1 satisfies title = 'B1';
+        // both qualify — a proof the branch is evaluated as OR, not AND (AND would yield none).
         $this->startSqlListener();
         $result = User::whereKey([$alice->id, $bob->id])
             ->whereHas('posts', fn ($q) => $q->where('published', true)->orWhere('title', 'B1'))
             ->get();
 
-        $this->assertSomeSql();
+        $this->assertNoSql();
         $ids = $result->pluck('id')->all();
         $this->assertContains($alice->id, $ids);
         $this->assertContains($bob->id, $ids);

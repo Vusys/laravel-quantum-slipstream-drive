@@ -6,7 +6,6 @@ namespace Vusys\QuantumSlipstreamDrive\Query;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
@@ -412,39 +411,32 @@ final readonly class QueryPatternExtractor
         /** @var array<int, array<string, mixed>> $wheres */
         $wheres = $query->wheres;
 
-        $nodes = [];
+        $retained = [];
+        $dropped = false;
+        $hasOr = false;
 
         foreach ($wheres as $index => $where) {
-            if (isset($this->skipWhereSet[$index])) {
+            if (isset($this->skipWhereSet[$index]) || $this->isSafeGlobalScopeWhere($where)) {
+                $dropped = true;
+
                 continue;
             }
 
-            if ($this->isSafeGlobalScopeWhere($where)) {
-                continue;
+            if (($where['boolean'] ?? null) === 'or') {
+                $hasOr = true;
             }
 
-            if (($where['boolean'] ?? null) !== 'and') {
-                return null;
-            }
-
-            $node = PredicateExtractor::fromWhere($where);
-
-            if (! $node instanceof PredicateNode) {
-                return null;
-            }
-
-            $nodes[] = $node;
+            $retained[] = $where;
         }
 
-        if ($nodes === []) {
-            return new AndNode([]);
+        // An OR sequence cannot have AND-connected terms (global scopes, has-rewrites)
+        // pruned from its middle without widening the region — recording a superset
+        // would falsely claim coverage of rows we never fetched. Fall through to SQL.
+        if ($hasOr && $dropped) {
+            return null;
         }
 
-        if (count($nodes) === 1) {
-            return $nodes[0];
-        }
-
-        return new AndNode($nodes);
+        return PredicateExtractor::fromWheres($retained);
     }
 
     /**

@@ -6,10 +6,12 @@ namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\BetweenNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\OrNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
 
 final class PredicateExtractorTest extends TestCase
@@ -416,5 +418,70 @@ final class PredicateExtractorTest extends TestCase
 
         $this->assertInstanceOf(BetweenNode::class, $node);
         $this->assertTrue($node->negated);
+    }
+
+    // --- fromWheres: boolean precedence ---
+
+    #[Test]
+    public function from_wheres_all_and_builds_and_node(): void
+    {
+        $node = PredicateExtractor::fromWheres([
+            ['type' => 'Basic', 'column' => 'a', 'operator' => '=', 'value' => 1, 'boolean' => 'and'],
+            ['type' => 'Basic', 'column' => 'b', 'operator' => '=', 'value' => 2, 'boolean' => 'and'],
+        ]);
+
+        $this->assertInstanceOf(AndNode::class, $node);
+        $this->assertCount(2, $node->children);
+    }
+
+    #[Test]
+    public function from_wheres_top_level_or_builds_or_node(): void
+    {
+        $node = PredicateExtractor::fromWheres([
+            ['type' => 'Basic', 'column' => 'a', 'operator' => '=', 'value' => 1, 'boolean' => 'and'],
+            ['type' => 'Basic', 'column' => 'b', 'operator' => '=', 'value' => 2, 'boolean' => 'or'],
+        ]);
+
+        $this->assertInstanceOf(OrNode::class, $node);
+        $this->assertCount(2, $node->children);
+        $this->assertInstanceOf(ComparisonNode::class, $node->children[0]);
+        $this->assertInstanceOf(ComparisonNode::class, $node->children[1]);
+    }
+
+    #[Test]
+    public function from_wheres_groups_and_tighter_than_or(): void
+    {
+        // a AND b OR c  =>  (a AND b) OR c
+        $node = PredicateExtractor::fromWheres([
+            ['type' => 'Basic', 'column' => 'a', 'operator' => '=', 'value' => 1, 'boolean' => 'and'],
+            ['type' => 'Basic', 'column' => 'b', 'operator' => '=', 'value' => 2, 'boolean' => 'and'],
+            ['type' => 'Basic', 'column' => 'c', 'operator' => '=', 'value' => 3, 'boolean' => 'or'],
+        ]);
+
+        $this->assertInstanceOf(OrNode::class, $node);
+        $this->assertCount(2, $node->children);
+        $this->assertInstanceOf(AndNode::class, $node->children[0]);
+        $this->assertCount(2, $node->children[0]->children);
+        $this->assertInstanceOf(ComparisonNode::class, $node->children[1]);
+    }
+
+    #[Test]
+    public function from_wheres_returns_null_on_unsupported_clause(): void
+    {
+        $node = PredicateExtractor::fromWheres([
+            ['type' => 'Basic', 'column' => 'a', 'operator' => '=', 'value' => 1, 'boolean' => 'and'],
+            ['type' => 'Fulltext', 'columns' => ['b'], 'boolean' => 'or'],
+        ]);
+
+        $this->assertNull($node);
+    }
+
+    #[Test]
+    public function from_wheres_empty_is_tautology(): void
+    {
+        $node = PredicateExtractor::fromWheres([]);
+
+        $this->assertInstanceOf(AndNode::class, $node);
+        $this->assertSame([], $node->children);
     }
 }

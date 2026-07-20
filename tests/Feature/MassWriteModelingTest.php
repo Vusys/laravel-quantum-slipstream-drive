@@ -448,20 +448,32 @@ final class MassWriteModelingTest extends TestCase
     }
 
     #[Test]
-    public function mass_update_with_or_predicate_falls_back_to_full_flush(): void
+    public function mass_update_with_or_predicate_is_modeled_in_memory(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
-        User::find($alice->id); // warm entry
-        User::where('name', 'Alice')->get(); // coverage: name = 'Alice'
+        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
+        User::find($alice->id); // warm entry (active = false known)
+        User::find($bob->id);   // warm entry (active = true known)
 
-        $this->assertSame(1, $this->store->debugStats()['entries']);
-        $this->assertSame(1, $this->registry->entryCount());
+        $this->assertSame(2, $this->store->debugStats()['entries']);
 
-        // orWhere makes the predicate un-parseable → fallback to full flush
+        // OR predicates are now parseable, so the write is modeled precisely rather
+        // than triggering a full flush: active = false OR name = 'Alice' matches only Alice.
         User::where('active', false)->orWhere('name', 'Alice')->update(['active' => true]);
 
-        $this->assertSame(0, $this->store->debugStats()['entries'], 'Unparseable predicate triggers full flush');
-        $this->assertSame(0, $this->registry->entryCount(), 'Unparseable predicate triggers full coverage flush');
+        $served = null;
+        $sql = $this->countSql(function () use (&$served, $alice, $bob): void {
+            $served = [
+                'alice' => User::find($alice->id),
+                'bob' => User::find($bob->id),
+            ];
+        });
+
+        $this->assertSame(0, $sql, 'Both entries remain served from memory after a modeled OR update');
+        $this->assertNotNull($served['alice']);
+        $this->assertNotNull($served['bob']);
+        $this->assertTrue((bool) $served['alice']->active, 'Alice matched the OR predicate and was updated in place');
+        $this->assertTrue((bool) $served['bob']->active, 'Bob was already active and is untouched');
     }
 
     #[Test]
@@ -483,7 +495,49 @@ final class MassWriteModelingTest extends TestCase
     }
 
     #[Test]
-    public function mass_delete_with_or_predicate_falls_back_to_full_flush(): void
+    public function mass_delete_with_or_predicate_is_modeled_in_memory(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
+        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
+        User::find($alice->id); // warm entry (active = false known)
+        User::find($bob->id);   // warm entry (active = true known)
+
+        $this->assertSame(2, $this->store->debugStats()['entries']);
+
+        // active = false OR name = 'Alice' matches only Alice.
+        User::where('active', false)->orWhere('name', 'Alice')->delete();
+
+        $foundBob = null;
+        $sqlBob = $this->countSql(function () use (&$foundBob, $bob): void {
+            $foundBob = User::find($bob->id);
+        });
+
+        $this->assertSame(0, $sqlBob, 'Rejected entry (Bob) is untouched and still served from memory');
+        $this->assertNotNull($foundBob, 'Bob did not match the OR predicate and survives');
+
+        $foundAlice = User::find($alice->id);
+        $this->assertNull($foundAlice, 'Alice matched the OR predicate and is modeled as soft-deleted');
+    }
+
+    #[Test]
+    public function mass_update_with_unparseable_predicate_falls_back_to_full_flush(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
+        User::find($alice->id); // warm entry
+        User::where('name', 'Alice')->get(); // coverage: name = 'Alice'
+
+        $this->assertSame(1, $this->store->debugStats()['entries']);
+        $this->assertSame(1, $this->registry->entryCount());
+
+        // whereRaw cannot be expressed as a predicate node → fallback to full flush.
+        User::whereRaw('active = ?', [0])->update(['active' => true]);
+
+        $this->assertSame(0, $this->store->debugStats()['entries'], 'Unparseable predicate triggers full flush');
+        $this->assertSame(0, $this->registry->entryCount(), 'Unparseable predicate triggers full coverage flush');
+    }
+
+    #[Test]
+    public function mass_delete_with_unparseable_predicate_falls_back_to_full_flush(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false]);
         User::find($alice->id); // warm entry
@@ -492,8 +546,8 @@ final class MassWriteModelingTest extends TestCase
         $this->assertSame(1, $this->store->debugStats()['entries']);
         $this->assertSame(1, $this->registry->entryCount());
 
-        // orWhere makes the predicate un-parseable → fallback to full flush
-        User::where('active', false)->orWhere('name', 'Alice')->delete();
+        // whereRaw cannot be expressed as a predicate node → fallback to full flush.
+        User::whereRaw('active = ?', [0])->delete();
 
         $this->assertSame(0, $this->store->debugStats()['entries'], 'Unparseable predicate triggers full flush on delete');
         $this->assertSame(0, $this->registry->entryCount(), 'Unparseable predicate triggers full coverage flush on delete');

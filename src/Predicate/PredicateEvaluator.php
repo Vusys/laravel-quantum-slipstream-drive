@@ -87,6 +87,7 @@ final class PredicateEvaluator
     {
         return match (true) {
             $node instanceof AndNode => $this->evaluateAnd($attributes, $node, $processTruth),
+            $node instanceof OrNode => $this->evaluateOr($attributes, $node, $processTruth),
             $node instanceof ComparisonNode => $this->evaluateComparison($attributes, $node, $processTruth),
             $node instanceof InNode => $this->evaluateIn($attributes, $node, $processTruth),
             $node instanceof NullNode => $this->evaluateNull($attributes, $node, $processTruth),
@@ -116,6 +117,30 @@ final class PredicateEvaluator
         }
 
         return $hasUnknown ? EvaluationResult::Unknown : EvaluationResult::Match;
+    }
+
+    private function evaluateOr(AttributeKnowledge $attributes, OrNode $node, bool $processTruth): EvaluationResult
+    {
+        // Empty OR is a contradiction (no branch to satisfy) — matches nothing.
+        if ($node->children === []) {
+            return EvaluationResult::Reject;
+        }
+
+        $hasUnknown = false;
+
+        foreach ($node->children as $child) {
+            $result = $this->evaluate($attributes, $child, $processTruth);
+
+            if ($result === EvaluationResult::Match) {
+                return EvaluationResult::Match;
+            }
+
+            if ($result === EvaluationResult::Unknown) {
+                $hasUnknown = true;
+            }
+        }
+
+        return $hasUnknown ? EvaluationResult::Unknown : EvaluationResult::Reject;
     }
 
     private function evaluateComparison(AttributeKnowledge $attributes, ComparisonNode $node, bool $processTruth): EvaluationResult
