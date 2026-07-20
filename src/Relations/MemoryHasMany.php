@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Coverage\SubsetChecker;
 use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
 use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
 use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
@@ -99,6 +100,11 @@ final class MemoryHasMany extends HasMany
 
             /** @var Collection<int, TRelatedModel> $r */
             $r = $this->query->get($columns);
+
+            // The query is hazard-free (checked above) and its predicate parsed,
+            // so the result is the complete set of rows matching that predicate —
+            // record it as filtered coverage a later subset read can reuse.
+            $this->recordFilteredGraphCoverage($extraNodes, $r);
 
             return $r;
         }
@@ -443,6 +449,56 @@ final class MemoryHasMany extends HasMany
     }
 
     /**
+     * Record coverage for a filtered relation load. The recorded predicate lets a
+     * later read reuse the result only when its own predicate is a provable
+     * subset. An existing unfiltered (complete) coverage is never downgraded.
+     *
+     * @param  list<PredicateNode>  $extraNodes
+     * @param  Collection<int, TRelatedModel>  $children
+     */
+    private function recordFilteredGraphCoverage(array $extraNodes, Collection $children): void
+    {
+        if ($extraNodes === [] || ! $this->isGraphEnabled() || $this->relationName === null) {
+            return;
+        }
+
+        $parentIdentity = ModelIdentity::fromModel($this->parent);
+
+        if (! $parentIdentity instanceof ModelIdentity) {
+            return;
+        }
+
+        $graph = resolve(IdentityGraph::class);
+        $existing = $graph->coverageFor($parentIdentity, $this->relationName);
+
+        if ($existing !== null && $existing->complete && $existing->predicate === null) {
+            return;
+        }
+
+        $childPrimaryKeys = [];
+
+        foreach ($children as $child) {
+            $childIdentity = ModelIdentity::fromModel($child);
+
+            if (! $childIdentity instanceof ModelIdentity) {
+                return;
+            }
+
+            $childPrimaryKeys[] = $childIdentity->primaryKeyValue;
+        }
+
+        $graph->addCoverage(new RelationCoverage(
+            parent: $parentIdentity,
+            relationName: $this->relationName,
+            relatedModelClass: $this->related::class,
+            complete: false,
+            columns: new ColumnSet(['*']),
+            childPrimaryKeys: $childPrimaryKeys,
+            predicate: new AndNode($extraNodes),
+        ));
+    }
+
+    /**
      * @param  list<PredicateNode>  $extraNodes
      * @return Collection<int, TRelatedModel>|null
      */
@@ -461,7 +517,18 @@ final class MemoryHasMany extends HasMany
         $graph = resolve(IdentityGraph::class);
         $coverage = $graph->coverageFor($parentIdentity, $this->relationName);
 
-        if ($coverage === null || ! $coverage->complete) {
+        if ($coverage === null) {
+            return null;
+        }
+
+        $queryPredicate = $extraNodes === [] ? new AndNode([]) : new AndNode($extraNodes);
+
+        // Unfiltered coverage serves any read; filtered coverage serves only reads
+        // whose predicate is provably a subset of the recorded load predicate.
+        $canServe = ($coverage->complete && $coverage->predicate === null)
+            || ($coverage->predicate !== null && (new SubsetChecker)->isSubset($queryPredicate, $coverage->predicate));
+
+        if (! $canServe) {
             return null;
         }
 

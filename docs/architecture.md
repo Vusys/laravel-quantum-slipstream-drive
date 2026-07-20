@@ -158,6 +158,8 @@ If you published the config, re-publish (or delete `attribute_truth` and add `mo
 - **`PivotEdge`** entries for `belongsToMany`, including the captured pivot column values so that `wherePivot()`-style filters can be evaluated against the graph instead of the pivot table.
 - **`RelationCoverage`** / **`PivotCoverage`** markers that record "this parent's relation is fully loaded" so subsequent `$user->roles` reads can be served without SQL.
 
+`RelationCoverage` also records the **load predicate**. An unfiltered load stores a `null` predicate (covers every related row); a filtered load such as `$user->posts()->where('published', true)->get()` stores its predicate, marking the coverage complete only for rows that satisfy it. A later relation read reuses that coverage only when its own predicate is provably a subset (via `SubsetChecker`) — the recorded children are then pruned in memory against the narrower predicate. A superset or disjoint read (for example a later *unfiltered* load) falls through to SQL. Because a filtered coverage records only the child keys that matched at load time, any write to the related class drops it — a newly-qualifying row could otherwise be missed. This is wired for `HasMany` and `MorphMany`; predicate-encoded pivot coverage for `BelongsToMany` is tracked in `ROADMAP.md`.
+
 The graph powers the `where_has_from_graph`, `where_doesnt_have_from_graph`, `belongs_to_many_from_graph`, and `where_pivot_in_memory` plans. It is invalidated per-model on `saved` (for the changed model's identity) and per-class on creation, deletion, and rolled-back transactions touching that class.
 
 | Config key | Default | Env override | Effect |
