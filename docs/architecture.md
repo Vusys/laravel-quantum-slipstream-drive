@@ -56,17 +56,23 @@ This fingerprinting is what makes the package safe under Laravel Octane: two con
 4. **Coverage candidate** — a predicate-only WHERE clause with no key constraints; eligible for the coverage registry.
 5. **Structural-hazard bypass** — anything else: the query falls straight through to SQL.
 
-Structural hazards that trigger bypass include: joins, unions, `GROUP BY`, `HAVING`, pessimistic locks (`lockForUpdate`, `sharedLock`), non-string SELECT columns introduced by `withCount` or `selectRaw`, and `orWhere` clauses. The extractor is stateless and pure — it only reads the query object, never modifying it.
+Structural hazards that trigger bypass include: joins, unions, `GROUP BY`, `HAVING`, pessimistic locks (`lockForUpdate`, `sharedLock`), and non-string SELECT columns introduced by `withCount` or `selectRaw`. The extractor is stateless and pure — it only reads the query object, never modifying it.
+
+`orWhere` clauses and nested `where(function ($q) { … })` groups are **not** hazards: `PredicateExtractor::fromWheres()` rebuilds the WHERE list into a boolean tree that honours SQL precedence (AND binds tighter than OR), so `where(...)->orWhere(...)` and grouped disjunctions are eligible for the coverage path. A disjunction is only bypassed when an AND-connected term (a global scope or a `whereHas` rewrite) would have to be pruned from the middle of an OR sequence — dropping it would widen the recorded region and falsely claim coverage — so those queries conservatively fall through to SQL.
 
 ## Predicate evaluation
 
-When the extractor identifies predicates that should be evaluated in memory, `PredicateExtractor` converts the Eloquent WHERE clause list into a typed tree. The tree has five node types:
+When the extractor identifies predicates that should be evaluated in memory, `PredicateExtractor` converts the Eloquent WHERE clause list into a typed tree. The tree has seven node types:
 
-- **`AndNode`** — a list of child nodes that must all evaluate to `Match`.
+- **`AndNode`** — a list of child nodes that must all evaluate to `Match`. An empty `AndNode` is the tautology (matches everything).
+- **`OrNode`** — a list of child nodes where `Match` from any one is enough. An empty `OrNode` is the contradiction (matches nothing). Unknown propagates: with no matching branch, a single `Unknown` branch makes the whole node `Unknown`.
 - **`ComparisonNode`** — a single column/operator/value triple; supports `=`, `!=`, `<>`, `>`, `>=`, `<`, `<=`.
+- **`LikeNode`** — `where(col, 'like', …)` / `'not like'`. `%` and `_` wildcards are translated to an anchored regex, and case-sensitivity is taken from the connection's `DriverSemantics`: SQLite folds ASCII case, PostgreSQL is case-sensitive unless the column is `citext`, and MySQL/MariaDB follow the column collation. The evaluator returns `Unknown` (defers to SQL) whenever semantics can't be guaranteed — unresolved collation, non-ASCII operands (accent/collation folding), or a backslash escape whose meaning differs across drivers.
 - **`InNode`** — `whereIn` (positive) or `whereNotIn` (negated).
 - **`NullNode`** — `whereNull` or `whereNotNull`.
 - **`BetweenNode`** — `whereBetween` (positive) or `whereNotBetween` (negated).
+
+`SubsetChecker` reasons about `OrNode` too: a query is a subset of a recorded `OrNode` when it implies any one branch, and a query `OrNode` is a subset of a recorded region only when *every* branch is — so a disjunction reuses cached coverage only when provably contained by it.
 
 `PredicateEvaluator` walks the tree against the `AttributeKnowledge` of a cached entry and returns one of three results:
 
@@ -151,6 +157,8 @@ If you published the config, re-publish (or delete `attribute_truth` and add `mo
 - **Plain `RelationEdge`** entries for `belongsTo` / `hasMany` / `morphMany` / `morphTo`, captured each time a relation is hydrated.
 - **`PivotEdge`** entries for `belongsToMany`, including the captured pivot column values so that `wherePivot()`-style filters can be evaluated against the graph instead of the pivot table.
 - **`RelationCoverage`** / **`PivotCoverage`** markers that record "this parent's relation is fully loaded" so subsequent `$user->roles` reads can be served without SQL.
+
+`RelationCoverage` also records the **load predicate**. An unfiltered load stores a `null` predicate (covers every related row); a filtered load such as `$user->posts()->where('published', true)->get()` stores its predicate, marking the coverage complete only for rows that satisfy it. A later relation read reuses that coverage only when its own predicate is provably a subset (via `SubsetChecker`) — the recorded children are then pruned in memory against the narrower predicate. A superset or disjoint read (for example a later *unfiltered* load) falls through to SQL. Because a filtered coverage records only the child keys that matched at load time, any write to the related class drops it — a newly-qualifying row could otherwise be missed. This is wired for `HasMany` and `MorphMany`; predicate-encoded pivot coverage for `BelongsToMany` is tracked as a follow-up ([issue #106](https://github.com/Vusys/laravel-quantum-slipstream-drive/issues/106)).
 
 The graph powers the `where_has_from_graph`, `where_doesnt_have_from_graph`, `belongs_to_many_from_graph`, and `where_pivot_in_memory` plans. It is invalidated per-model on `saved` (for the changed model's identity) and per-class on creation, deletion, and rolled-back transactions touching that class.
 
@@ -240,6 +248,14 @@ After the SQL executes, the package evaluates the builder's predicate against ev
 - **`Unknown`** — the entry cannot be safely classified; it is evicted from the store so a future query will re-fetch it from the database.
 
 Eviction triggers a coverage flush for the model class, since any previously-recorded query region may now be incomplete.
+
+## Raw query-builder writes
+
+`DB::table('users')->update(...)` / `->delete()` / `->insert(...)` bypass Eloquent — and therefore the `IdentityMapBuilder`, the model events, and the mass-write modeling above — entirely. Left unhandled they would mutate rows the store still believes are cached, so a later read could return stale data.
+
+`RawWriteInterceptor` closes that gap. A connection-level `DB::listen` hook inspects every executed statement; when it is a write (`insert`, `update`, `delete`, `truncate`) whose target table backs an identity-mapped model, it conservatively flushes that model's store entries, coverage, and identity-graph edges. The flush emits a `raw_write_invalidation` explanation (`sqlExecuted: true`) so the decision is observable.
+
+Writes issued through the modeled Eloquent path — model saves, `$model->delete()`, and bulk `update()`/`delete()` — wrap their SQL in a suppression guard, so the hook ignores them: those paths already keep the cache consistent, and precisely. Only genuine raw-builder bypasses trigger the conservative flush. Table matching is by name (prefix-stripped) across every registered model, so a shared table name on multiple connections is over-invalidated rather than missed.
 
 ## See also
 

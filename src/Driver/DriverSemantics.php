@@ -23,6 +23,16 @@ interface DriverSemantics
     public function compare(mixed $left, string $operator, mixed $right, ColumnSemantics $column): EvaluationResult;
 
     /**
+     * Evaluate a SQL `LIKE` match in memory against the column's semantics.
+     *
+     * Returns Match / Reject when the driver's LIKE behaviour can be reproduced
+     * confidently, or Unknown when it cannot — unresolved case-sensitivity,
+     * non-ASCII operands (collation / accent folding can't be guaranteed), or
+     * driver-divergent escaping — so the caller falls through to SQL.
+     */
+    public function like(mixed $value, string $pattern, ColumnSemantics $column): EvaluationResult;
+
+    /**
      * Comparator for ORDER BY against the given column.
      *
      * Returns an int (negative / zero / positive) when the relative order is

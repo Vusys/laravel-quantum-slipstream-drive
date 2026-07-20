@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Vusys\QuantumSlipstreamDrive\Graph;
 
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
+
 final class IdentityGraph
 {
     /** @var array<string, list<RelationEdge>> */
@@ -255,6 +257,22 @@ final class IdentityGraph
 
         foreach (array_keys($this->coverage) as $coverageKey) {
             if (str_starts_with($coverageKey, $prefix)) {
+                unset($this->coverage[$coverageKey]);
+            }
+        }
+
+        // A change to a related row can add it to (or remove it from) a recorded
+        // predicate set. Filtered coverage records only the child keys that
+        // matched at load time, so any write to the related class must drop it —
+        // unfiltered coverage stays, since it serves fresh data straight from the
+        // store and its membership is unaffected by an attribute change.
+        foreach (array_keys($this->coverageKeysByClass[$identity->modelClass] ?? []) as $coverageKey) {
+            $coverage = $this->coverage[$coverageKey] ?? null;
+
+            if ($coverage instanceof RelationCoverage
+                && $coverage->predicate instanceof PredicateNode
+                && $coverage->relatedModelClass === $identity->modelClass
+            ) {
                 unset($this->coverage[$coverageKey]);
             }
         }

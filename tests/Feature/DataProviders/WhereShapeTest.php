@@ -12,6 +12,7 @@ use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
 use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
 use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
 use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Predicate\LikeNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
@@ -108,9 +109,10 @@ final class WhereShapeTest extends TestCase
     public static function unsupportedOperatorProvider(): array
     {
         return [
-            'like' => ['LIKE'],
-            'not like' => ['NOT LIKE'],
             'ilike' => ['ILIKE'],
+            'rlike' => ['RLIKE'],
+            'regexp' => ['REGEXP'],
+            'bitwise and' => ['&'],
         ];
     }
 
@@ -126,6 +128,33 @@ final class WhereShapeTest extends TestCase
         ]);
 
         $this->assertNull($node);
+    }
+
+    /** @return array<string, array{string, bool}> */
+    public static function likeOperatorProvider(): array
+    {
+        return [
+            'like' => ['LIKE', false],
+            'lowercase like' => ['like', false],
+            'not like' => ['NOT LIKE', true],
+        ];
+    }
+
+    #[DataProvider('likeOperatorProvider')]
+    public function test_like_operator_extracts_to_like_node(string $operator, bool $negated): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'Basic',
+            'column' => 'name',
+            'operator' => $operator,
+            'value' => 'Al%',
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(LikeNode::class, $node);
+        $this->assertSame('name', $node->column);
+        $this->assertSame('Al%', $node->pattern);
+        $this->assertSame($negated, $node->negated);
     }
 
     // -------------------------------------------------------------------------

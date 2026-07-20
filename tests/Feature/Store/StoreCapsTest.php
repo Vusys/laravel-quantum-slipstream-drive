@@ -144,7 +144,7 @@ final class StoreCapsTest extends TestCase
         // Each remembered user contributes at least one unique-key fingerprint
         // (the email unique index), so five users would push the index past a
         // cap of 3 if it were unbounded.
-        $store = new IdentityMapStore(null, maxEntries: null, maxUniqueKeys: 3);
+        $store = new IdentityMapStore(null, maxUniqueKeys: 3);
 
         foreach (range(1, 5) as $i) {
             $store->remember(User::create(['name' => "U{$i}", 'email' => "u{$i}@example.com"]));

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Coverage\SubsetChecker;
 use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
 use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
 use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
@@ -99,6 +100,10 @@ final class MemoryMorphMany extends MorphMany
 
             /** @var Collection<int, TRelatedModel> $r */
             $r = $this->query->get($columns);
+
+            // Hazard-free filtered load: record it as filtered coverage a later
+            // subset read can reuse.
+            $this->recordFilteredGraphCoverage($extraNodes, $r);
 
             return $r;
         }
@@ -461,6 +466,56 @@ final class MemoryMorphMany extends MorphMany
     }
 
     /**
+     * Record coverage for a filtered relation load; a later read may reuse it only
+     * when its own predicate is a provable subset. Never downgrades an existing
+     * unfiltered coverage.
+     *
+     * @param  list<PredicateNode>  $extraNodes
+     * @param  Collection<int, TRelatedModel>  $children
+     */
+    private function recordFilteredGraphCoverage(array $extraNodes, Collection $children): void
+    {
+        if ($extraNodes === [] || ! $this->isGraphEnabled() || $this->relationName === null) {
+            return;
+        }
+
+        $parentIdentity = ModelIdentity::fromModel($this->parent);
+
+        if (! $parentIdentity instanceof ModelIdentity) {
+            return;
+        }
+
+        $graph = resolve(IdentityGraph::class);
+        $existing = $graph->coverageFor($parentIdentity, $this->relationName);
+
+        if ($existing !== null && $existing->complete && $existing->predicate === null) {
+            return;
+        }
+
+        $childPrimaryKeys = [];
+
+        foreach ($children as $child) {
+            $childIdentity = ModelIdentity::fromModel($child);
+
+            if (! $childIdentity instanceof ModelIdentity) {
+                return;
+            }
+
+            $childPrimaryKeys[] = $childIdentity->primaryKeyValue;
+        }
+
+        $graph->addCoverage(new RelationCoverage(
+            parent: $parentIdentity,
+            relationName: $this->relationName,
+            relatedModelClass: $this->related::class,
+            complete: false,
+            columns: new ColumnSet(['*']),
+            childPrimaryKeys: $childPrimaryKeys,
+            predicate: new AndNode($extraNodes),
+        ));
+    }
+
+    /**
      * @param  list<PredicateNode>  $extraNodes
      * @return Collection<int, TRelatedModel>|null
      */
@@ -479,7 +534,16 @@ final class MemoryMorphMany extends MorphMany
         $graph = resolve(IdentityGraph::class);
         $coverage = $graph->coverageFor($parentIdentity, $this->relationName);
 
-        if ($coverage === null || ! $coverage->complete) {
+        if ($coverage === null) {
+            return null;
+        }
+
+        $queryPredicate = $extraNodes === [] ? new AndNode([]) : new AndNode($extraNodes);
+
+        $canServe = ($coverage->complete && $coverage->predicate === null)
+            || ($coverage->predicate !== null && (new SubsetChecker)->isSubset($queryPredicate, $coverage->predicate));
+
+        if (! $canServe) {
             return null;
         }
 

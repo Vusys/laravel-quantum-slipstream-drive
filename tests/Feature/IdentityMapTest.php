@@ -1017,11 +1017,14 @@ final class IdentityMapTest extends TestCase
     }
 
     #[Test]
-    public function raw_db_update_bypassing_events_leaves_map_attribute_stale(): void
+    public function raw_db_update_bypassing_events_invalidates_the_map(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::find($alice->id);
 
+        // Raw builder writes bypass model events, but the connection-level
+        // RawWriteInterceptor detects the write and conservatively flushes the
+        // cached state, so a re-read is forced to fetch fresh data.
         DB::table('users')->where('id', $alice->id)->update(['active' => 0]);
 
         $queryCount = 0;
@@ -1030,12 +1033,9 @@ final class IdentityMapTest extends TestCase
         });
 
         $fromMap = User::find($alice->id);
-        $this->assertSame(0, $queryCount, 'find() must be served from map after raw DB update — map entry is stale but still served');
+        $this->assertGreaterThan(0, $queryCount, 'find() must re-query after a raw DB update invalidates the map');
         $this->assertInstanceOf(User::class, $fromMap);
-        $fromDb = User::withoutIdentityMap()->find($alice->id);
-        $this->assertInstanceOf(User::class, $fromDb);
-        $this->assertFalse((bool) $fromDb->active, 'DB has active=false after raw update');
-        $this->assertTrue((bool) $fromMap->active, 'Map still has stale active=true — raw updates bypass model events');
+        $this->assertFalse((bool) $fromMap->active, 'Map returns fresh active=false after the raw update');
     }
 
     #[Test]
