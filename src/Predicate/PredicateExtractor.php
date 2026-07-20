@@ -56,8 +56,7 @@ final class PredicateExtractor
             }
         }
 
-        /** @var list<mixed> $values */
-        return new InNode($column, $values, $negated);
+        return new InNode($column, array_values($values), $negated);
     }
 
     /** @param array<string, mixed> $where */
