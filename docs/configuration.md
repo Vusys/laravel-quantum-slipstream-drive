@@ -71,7 +71,7 @@ Controls what happens when a cached entry (loaded with a narrow `select([...])`)
 - `query_normally` — cache miss → execute the full original query. Safe, equivalent to having no backfill.
 - `backfill_missing_columns` — cache hit on the primary key but missing some requested columns → issue a narrow `SELECT only_missing_columns FROM table WHERE id = ?`, merge into the cached model, and return from memory. Dirty in-memory attributes are preserved (only `AttributeFact::originalValue` is updated for those columns).
 
-Backfill fires only for point lookups (`find()`, unique-key lookups, and `MemoryBelongsTo`); coverage and `whereHas` paths still fall through to a full `SELECT`. See [Partial models & column backfill](architecture.md#partial-models--column-backfill-partial_models).
+Backfill fires only for point lookups (`find()`, unique-key lookups, and `MemoryBelongsTo`); coverage and `whereHas` paths still fall through to a full `SELECT`. See [Partial models & column backfill](architecture.md#partial-models-column-backfill-partial_models).
 
 ## `relation_graph`
 

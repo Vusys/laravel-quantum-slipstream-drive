@@ -51,7 +51,7 @@ $explanations = IdentityMap::explain(fn () => User::whereKey([1, 2, 3])->where('
 | `where_doesnt_have_from_graph` | `whereDoesntHave()` rewritten using the identity graph. |
 | `belongs_to_many_from_graph` | `belongsToMany` relation served from the identity graph (no SQL). |
 | `where_pivot_in_memory` | `belongsToMany` query filtered in memory via captured pivot columns. |
-| `backfill_columns_from_database` | Narrow `SELECT` issued to backfill missing columns on a cached entry (see [Partial models & column backfill](architecture.md#partial-models--column-backfill-partial_models)). |
+| `backfill_columns_from_database` | Narrow `SELECT` issued to backfill missing columns on a cached entry (see [Partial models & column backfill](architecture.md#partial-models-column-backfill-partial_models)). |
 
 `Explanation::__toString()` renders a short summary suitable for logging:
 
