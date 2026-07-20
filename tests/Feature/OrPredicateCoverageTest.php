@@ -115,4 +115,37 @@ final class OrPredicateCoverageTest extends TestCase
         $this->assertSame($expected, $served);
         $this->assertSame(['Alice', 'Bob'], $served);
     }
+
+    #[Test]
+    public function top_level_or_excludes_soft_deleted_rows(): void
+    {
+        $this->seedUsers(); // Alice (active), Bob (inactive), Carol (active); coverage recorded
+
+        // Soft-delete Bob, who matches the `active = false` branch of the OR.
+        User::where('name', 'Bob')->firstOrFail()->delete();
+
+        // DB ground truth mirroring the default soft-delete scope:
+        // deleted_at IS NULL AND (name = 'Alice' OR active = false).
+        $expected = DB::table('users')
+            ->whereNull('deleted_at')
+            ->where(function ($q): void {
+                $q->where('name', 'Alice')->orWhere('active', false);
+            })
+            ->pluck('name')
+            ->sort()
+            ->values()
+            ->all();
+
+        $served = User::where('name', 'Alice')
+            ->orWhere('active', false)
+            ->get()
+            ->pluck('name')
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame($expected, $served);
+        $this->assertNotContains('Bob', $served, 'the soft-deleted user must not be served');
+        $this->assertSame(['Alice'], $served);
+    }
 }

@@ -67,6 +67,18 @@ final class RawWriteInterceptor
         }
     }
 
+    /**
+     * Reset suppression to zero at a request/job boundary. `withoutInterception()`
+     * already balances itself with try/finally, but a fatal error or `exit()`
+     * mid-write could skip the decrement; on a long-lived worker (Octane, queue)
+     * that leaked depth would silently suppress the next request's invalidation.
+     * Called from the package's boundary flush so each request starts clean.
+     */
+    public static function resetSuppression(): void
+    {
+        self::$suppressionDepth = 0;
+    }
+
     /** @param class-string<Model> $modelClass */
     public function registerModel(string $modelClass): void
     {
@@ -131,7 +143,9 @@ final class RawWriteInterceptor
      */
     private function parseWrite(string $sql): ?array
     {
-        if (preg_match('/^\s*(insert\s+into|update|delete\s+from|truncate\s+table|truncate)\s+["`\[]?([a-zA-Z0-9_.]+)/i', $sql, $matches) !== 1) {
+        // "insert ignore into" (MySQL) and "insert or ignore into" (SQLite) are
+        // still inserts and must invalidate too.
+        if (preg_match('/^\s*(insert(?:\s+or)?(?:\s+ignore)?\s+into|update|delete\s+from|truncate\s+table|truncate)\s+["`\[]?([a-zA-Z0-9_.]+)/i', $sql, $matches) !== 1) {
             return null;
         }
 

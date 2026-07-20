@@ -399,8 +399,11 @@ final readonly class QueryPatternExtractor
     /**
      * Extract all user-provided WHERE clauses into a single predicate tree.
      *
-     * Returns null if any clause uses an unsupported operator, an OR boolean,
-     * or any other form that cannot be expressed as a phase-one predicate node.
+     * OR clauses are supported via {@see PredicateExtractor::fromWheres()}, which
+     * builds a precedence-honouring AND/OR tree. Returns null when a clause uses
+     * an unsupported operator or form that cannot be expressed as a predicate
+     * node, or when an OR is combined with a skipped or safe global-scope where
+     * (pruning an AND-connected term from an OR sequence would widen the region).
      * Safe global-scope wheres (deleted_at IS NULL) are skipped since they are
      * already captured by the scope fingerprint.
      */
