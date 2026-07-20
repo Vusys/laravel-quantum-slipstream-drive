@@ -1,0 +1,87 @@
+site_name: Laravel Quantum Slipstream Drive
+site_description: A scoped Eloquent identity map, process-truth engine, and query-elision planner for Laravel.
+site_url: https://vusys.github.io/laravel-quantum-slipstream-drive/
+repo_url: https://github.com/Vusys/laravel-quantum-slipstream-drive
+repo_name: Vusys/laravel-quantum-slipstream-drive
+edit_uri: edit/master/docs/
+
+docs_dir: docs
+
+validation:
+  nav:
+    omitted_files: info
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Fira Sans
+    code: Fira Code
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      extend_pygments_lang:
+        - name: php
+          lang: php
+          options:
+            startinline: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_css:
+  - stylesheets/codehilite.css
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Getting started: getting-started.md
+  - Usage: usage.md
+  - Configuration: configuration.md
+  - Architecture & internals: architecture.md
+  - Observability: observability.md
+  - Testing: testing.md
