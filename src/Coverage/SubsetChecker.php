@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Coverage;
+namespace Vusys\QuantumSlipstreamDrive\Coverage;
 
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\InNode;
-use Vusys\QueryRicerExtreme\Predicate\NullNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 
 final class SubsetChecker
 {

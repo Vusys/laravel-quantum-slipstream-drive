@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
-use Vusys\QueryRicerExtreme\Coverage\CoverageEntry;
-use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\InNode;
-use Vusys\QueryRicerExtreme\Predicate\NullNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageEntry;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 
 final class CoverageRegistryTest extends TestCase
 {

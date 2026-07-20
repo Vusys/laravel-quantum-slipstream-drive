@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\IdentityMap;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\Pivots\CastTagging;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\Tag;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\IdentityMap;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Pivots\CastTagging;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Tag;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 /**
  * A belongsToMany using a custom Pivot (`->using()`) with casts may expose

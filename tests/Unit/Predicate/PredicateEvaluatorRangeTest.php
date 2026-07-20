@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Predicate;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Predicate;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\BetweenNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\BetweenNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
 
 final class PredicateEvaluatorRangeTest extends TestCase
 {

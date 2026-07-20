@@ -1,5 +1,5 @@
 {
-    "name": "vusys/laravel-query-ricer-extreme",
+    "name": "vusys/laravel-quantum-slipstream-drive",
     "description": "A Laravel package.",
     "type": "library",
     "license": "MIT",
@@ -18,18 +18,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Vusys\\QueryRicerExtreme\\": "src/"
+            "Vusys\\QuantumSlipstreamDrive\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Vusys\\QueryRicerExtreme\\Tests\\": "tests/"
+            "Vusys\\QuantumSlipstreamDrive\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Vusys\\QueryRicerExtreme\\QueryRicerExtremeServiceProvider"
+                "Vusys\\QuantumSlipstreamDrive\\QuantumSlipstreamDriveServiceProvider"
             ]
         }
     },

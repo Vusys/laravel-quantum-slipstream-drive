@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\DataProviders;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\DataProviders;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
-use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 #[Group('comprehensive')]
 final class WhereShapeTest extends TestCase

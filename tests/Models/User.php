@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
-use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
-use Vusys\QueryRicerExtreme\Tests\Factories\UserFactory;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\UsesContextConnection;
+use Vusys\QuantumSlipstreamDrive\Tests\Factories\UserFactory;
 
 /**
  * @property int $id

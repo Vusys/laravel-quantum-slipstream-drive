@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme;
+namespace Vusys\QuantumSlipstreamDrive;
 
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Database\Events\TransactionBeginning;
@@ -13,39 +13,39 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
-use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\DriverSemanticsResolver;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Knowledge\ColumnBackfiller;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Store\JournalEntry;
-use Vusys\QueryRicerExtreme\Store\TransactionJournal;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Knowledge\ColumnBackfiller;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Store\JournalEntry;
+use Vusys\QuantumSlipstreamDrive\Store\TransactionJournal;
 
-class QueryRicerExtremeServiceProvider extends ServiceProvider
+class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
 {
     #[\Override]
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/query-ricer-extreme.php', 'query-ricer-extreme');
+        $this->mergeConfigFrom(__DIR__.'/../config/quantum-slipstream-drive.php', 'quantum-slipstream-drive');
 
         $this->app->singleton(TransactionJournal::class);
         $this->app->singleton(IdentityMapStore::class, fn ($app): IdentityMapStore => new IdentityMapStore(
             $app->make(TransactionJournal::class),
-            $this->capValue('query-ricer-extreme.store_caps.max_entries', 100000),
-            $this->capValue('query-ricer-extreme.store_caps.max_unique_keys', 100000),
+            $this->capValue('quantum-slipstream-drive.store_caps.max_entries', 100000),
+            $this->capValue('quantum-slipstream-drive.store_caps.max_unique_keys', 100000),
         ));
         $this->app->singleton(CoverageRegistry::class, fn (): CoverageRegistry => new CoverageRegistry(
-            $this->capValue('query-ricer-extreme.store_caps.max_coverage_entries', 50000),
+            $this->capValue('quantum-slipstream-drive.store_caps.max_coverage_entries', 50000),
         ));
         $this->app->singleton(SchemaDiscovery::class);
         $this->app->singleton(DriverSemanticsResolver::class);
         $this->app->singleton(ColumnSemanticsResolver::class, fn ($app) => $app->make(SchemaDiscovery::class));
         $this->app->singleton(ColumnBackfiller::class);
         $this->app->singleton(IdentityGraph::class, fn (): IdentityGraph => new IdentityGraph(
-            maxEdges: $this->capValue('query-ricer-extreme.relation_graph.max_edges', 50000),
-            maxCoverage: $this->capValue('query-ricer-extreme.relation_graph.max_coverage_entries', 5000),
+            maxEdges: $this->capValue('quantum-slipstream-drive.relation_graph.max_edges', 50000),
+            maxCoverage: $this->capValue('quantum-slipstream-drive.relation_graph.max_coverage_entries', 5000),
         ));
     }
 
@@ -53,8 +53,8 @@ class QueryRicerExtremeServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__.'/../config/query-ricer-extreme.php' => config_path('query-ricer-extreme.php'),
-            ], 'query-ricer-extreme-config');
+                __DIR__.'/../config/quantum-slipstream-drive.php' => config_path('quantum-slipstream-drive.php'),
+            ], 'quantum-slipstream-drive-config');
         }
 
         $this->registerLifecycleHooks();

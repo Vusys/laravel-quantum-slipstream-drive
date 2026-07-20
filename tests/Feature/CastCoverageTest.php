@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\IdentityMap;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\CastSample;
-use Vusys\QueryRicerExtreme\Tests\Models\Enums\SampleStatus;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\IdentityMap;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\CastSample;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Enums\SampleStatus;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 /**
  * Predicate evaluation and unique-key lookups must match SQL (or bail to SQL)
@@ -210,7 +210,7 @@ final class CastCoverageTest extends TestCase
     #[Test]
     public function unique_key_lookup_on_string_cast_column_serves_from_memory(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             CastSample::class => ['unique' => [['name']]],
         ]]);
 
@@ -232,7 +232,7 @@ final class CastCoverageTest extends TestCase
     #[Test]
     public function unique_key_lookup_on_enum_cast_column_matches_oracle(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             CastSample::class => ['unique' => [['status']]],
         ]]);
 

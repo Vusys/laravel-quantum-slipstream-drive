@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Performance;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Performance;
 
 use Illuminate\Support\Facades\DB;
-use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 abstract class PerformanceTestCase extends TestCase
 {

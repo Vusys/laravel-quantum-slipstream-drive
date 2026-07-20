@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Store;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Store;
 
 use Illuminate\Database\Eloquent\Model;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Enums\RelationKind;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Knowledge\RelationFact;
-use Vusys\QueryRicerExtreme\Knowledge\RelationKnowledge;
-use Vusys\QueryRicerExtreme\Store\IdentityEntry;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Enums\RelationKind;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationKnowledge;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityEntry;
 
 final class IdentityEntryTest extends TestCase
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Knowledge;
+namespace Vusys\QuantumSlipstreamDrive\Knowledge;
 
 final class RelationKnowledge
 {

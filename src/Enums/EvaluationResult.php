@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Enums;
+namespace Vusys\QuantumSlipstreamDrive\Enums;
 
 enum EvaluationResult
 {

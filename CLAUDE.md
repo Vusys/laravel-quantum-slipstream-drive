@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this package is
 
-`vusys/laravel-query-ricer-extreme` — a Laravel package. Targets **PHP 8.3+** and **Laravel 11 / 12 / 13**.
+`vusys/laravel-quantum-slipstream-drive` — a Laravel package. Targets **PHP 8.3+** and **Laravel 11 / 12 / 13**.
 Library code only — no application code. Pre-1.0, so backwards-compat breaks are acceptable when called out.
 
 <!-- Replace this section with actual package description once the concept is decided. -->
@@ -43,7 +43,7 @@ PHPUnit 11–13 with Orchestra Testbench.
 
 ### Test categories
 - `tests/Unit/` — pure-PHP unit tests (no DB). Extend `PHPUnit\Framework\TestCase` directly — do **not** boot Laravel.
-- `tests/Feature/` — DB-backed integration tests. Extend `Vusys\QueryRicerExtreme\Tests\TestCase`.
+- `tests/Feature/` — DB-backed integration tests. Extend `Vusys\QuantumSlipstreamDrive\Tests\TestCase`.
 - `tests/Performance/` — separate suite (`vendor/bin/phpunit --testsuite Performance`). Not run on PR CI.
 
 ## Before every push

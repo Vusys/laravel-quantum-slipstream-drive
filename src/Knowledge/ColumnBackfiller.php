@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Knowledge;
+namespace Vusys\QuantumSlipstreamDrive\Knowledge;
 
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\Explanation;
-use Vusys\QueryRicerExtreme\Query\IdentityMapBuilder;
-use Vusys\QueryRicerExtreme\Store\IdentityEntry;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Explanation;
+use Vusys\QuantumSlipstreamDrive\Query\IdentityMapBuilder;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityEntry;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 final readonly class ColumnBackfiller
 {
@@ -19,7 +19,7 @@ final readonly class ColumnBackfiller
 
     public function isEnabled(): bool
     {
-        return config('query-ricer-extreme.partial_models') === 'backfill_missing_columns';
+        return config('quantum-slipstream-drive.partial_models') === 'backfill_missing_columns';
     }
 
     /**

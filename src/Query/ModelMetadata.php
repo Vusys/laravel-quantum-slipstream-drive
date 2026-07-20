@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Query;
+namespace Vusys\QuantumSlipstreamDrive\Query;
 
 use Illuminate\Database\Eloquent\Model;
 

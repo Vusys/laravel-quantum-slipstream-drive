@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class PredicateEvaluatorFeatureTest extends TestCase
 {

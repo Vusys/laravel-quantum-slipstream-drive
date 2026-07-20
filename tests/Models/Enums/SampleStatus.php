@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models\Enums;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models\Enums;
 
 enum SampleStatus: string
 {

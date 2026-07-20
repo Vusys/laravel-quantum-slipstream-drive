@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\Explanation;
-use Vusys\QueryRicerExtreme\IdentityMap;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Explanation;
+use Vusys\QuantumSlipstreamDrive\IdentityMap;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class PartialModelBackfillTest extends TestCase
 {
@@ -25,8 +25,8 @@ final class PartialModelBackfillTest extends TestCase
         $this->store = resolve(IdentityMapStore::class);
         $this->store->flush();
 
-        config(['query-ricer-extreme.partial_models' => 'backfill_missing_columns']);
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.partial_models' => 'backfill_missing_columns']);
+        config(['quantum-slipstream-drive.models' => [
             User::class => [
                 'unique' => [
                     ['email'],
@@ -50,7 +50,7 @@ final class PartialModelBackfillTest extends TestCase
     #[Test]
     public function default_mode_falls_through_with_full_fetch(): void
     {
-        config(['query-ricer-extreme.partial_models' => 'query_normally']);
+        config(['quantum-slipstream-drive.partial_models' => 'query_normally']);
         $alice = $this->createUser();
 
         User::select('id', 'name')->whereKey($alice->id)->first();

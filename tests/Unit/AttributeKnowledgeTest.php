@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use Illuminate\Database\Eloquent\Model;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
 
 final class AttributeKnowledgeTest extends TestCase
 {

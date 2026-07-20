@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Graph;
+namespace Vusys\QuantumSlipstreamDrive\Graph;
 
 enum EdgeSource: string
 {

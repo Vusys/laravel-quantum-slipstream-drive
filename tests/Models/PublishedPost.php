@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
 
 /**
  * Post variant with a non-soft-delete global scope for fingerprinter tests.

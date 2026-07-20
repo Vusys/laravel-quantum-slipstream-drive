@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Graph;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Graph;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
-use Vusys\QueryRicerExtreme\Enums\RelationKind;
-use Vusys\QueryRicerExtreme\Graph\EdgeConfidence;
-use Vusys\QueryRicerExtreme\Graph\EdgeSource;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
-use Vusys\QueryRicerExtreme\Graph\PivotCoverage;
-use Vusys\QueryRicerExtreme\Graph\PivotEdge;
-use Vusys\QueryRicerExtreme\Graph\RelationCoverage;
-use Vusys\QueryRicerExtreme\Graph\RelationEdge;
+use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Enums\RelationKind;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeConfidence;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeSource;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
+use Vusys\QuantumSlipstreamDrive\Graph\PivotCoverage;
+use Vusys\QuantumSlipstreamDrive\Graph\PivotEdge;
+use Vusys\QuantumSlipstreamDrive\Graph\RelationCoverage;
+use Vusys\QuantumSlipstreamDrive\Graph\RelationEdge;
 
 final class PivotEdgeTest extends TestCase
 {

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\Explanation;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Explanation;
 
 final class ExplanationTest extends TestCase
 {

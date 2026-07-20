@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Query;
+namespace Vusys\QuantumSlipstreamDrive\Query;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 
 /**
  * @template TModel of Model

@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Predicate\BetweenNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\InNode;
-use Vusys\QueryRicerExtreme\Predicate\NullNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
+use Vusys\QuantumSlipstreamDrive\Predicate\BetweenNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
 
 final class PredicateExtractorTest extends TestCase
 {

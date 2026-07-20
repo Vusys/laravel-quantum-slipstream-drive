@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\DataProviders;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\DataProviders;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Concerns\ProvidesCartesian;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\ProvidesCartesian;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 #[Group('comprehensive')]
 final class ConfigPermutationTest extends TestCase
@@ -28,7 +28,7 @@ final class ConfigPermutationTest extends TestCase
         // These tests exercise unique-key config permutations in isolation; schema
         // auto-discovery would supplement the config shape under test and obscure
         // the assertions.
-        config(['query-ricer-extreme.schema_discovery.enabled' => false]);
+        config(['quantum-slipstream-drive.schema_discovery.enabled' => false]);
     }
 
     // -------------------------------------------------------------------------
@@ -72,7 +72,7 @@ final class ConfigPermutationTest extends TestCase
             default => [],
         };
 
-        config(['query-ricer-extreme.models' => $uniqueConfig]);
+        config(['quantum-slipstream-drive.models' => $uniqueConfig]);
 
         $user = User::create(['name' => 'Alice', 'email' => 'alice-'.uniqid().'@example.com']);
         $this->store->flush();
@@ -107,7 +107,7 @@ final class ConfigPermutationTest extends TestCase
     #[DataProvider('compoundUkQueryProvider')]
     public function test_compound_unique_key_requires_all_columns(bool $includeEmail, bool $includeName, bool $expectsCacheHit): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [['email', 'name']]],
         ]]);
 
@@ -156,7 +156,7 @@ final class ConfigPermutationTest extends TestCase
     #[DataProvider('multiIndexProvider')]
     public function test_multiple_indexes_tried_in_order(string $queryColumn, bool $expectsCacheHit): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [['name'], ['email']]],
         ]]);
 
@@ -192,7 +192,7 @@ final class ConfigPermutationTest extends TestCase
     public function test_absence_with_extra_predicate_does_not_poison_plain_lookup(string $method): void
     {
         config([
-            'query-ricer-extreme.models' => [User::class => ['unique' => [['email']]]],
+            'quantum-slipstream-drive.models' => [User::class => ['unique' => [['email']]]],
         ]);
 
         // Prime with an extra predicate — absence must NOT be recorded because
@@ -222,7 +222,7 @@ final class ConfigPermutationTest extends TestCase
     public function test_unique_absence_prevents_repeated_sql(string $method): void
     {
         config([
-            'query-ricer-extreme.models' => [User::class => ['unique' => [['email']]]],
+            'quantum-slipstream-drive.models' => [User::class => ['unique' => [['email']]]],
         ]);
 
         if ($method === 'first') {
@@ -268,7 +268,7 @@ final class ConfigPermutationTest extends TestCase
             default => [],
         };
 
-        config(['query-ricer-extreme.models' => $uniqueConfig]);
+        config(['quantum-slipstream-drive.models' => $uniqueConfig]);
 
         $user = User::create(['name' => 'Alice', 'email' => 'alice-'.uniqid().'@example.com']);
 

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Performance;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Performance;
 
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 
 #[Group('performance')]
 final class IdentityMapBenchmarkTest extends PerformanceTestCase

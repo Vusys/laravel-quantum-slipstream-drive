@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Schema;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Schema;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Driver\ColumnType;
-use Vusys\QueryRicerExtreme\Driver\StringComparisonMode;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnType;
+use Vusys\QuantumSlipstreamDrive\Driver\StringComparisonMode;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class ColumnSemanticsDiscoveryTest extends TestCase
 {
@@ -50,7 +50,7 @@ final class ColumnSemanticsDiscoveryTest extends TestCase
     #[Test]
     public function disabled_schema_discovery_returns_unknown_for_every_column(): void
     {
-        config()->set('query-ricer-extreme.schema_discovery.enabled', false);
+        config()->set('quantum-slipstream-drive.schema_discovery.enabled', false);
         $this->discovery->flush();
 
         $semantics = $this->discovery->for(new User, 'email');
@@ -74,7 +74,7 @@ final class ColumnSemanticsDiscoveryTest extends TestCase
     #[Test]
     public function conservative_unknown_mode_keeps_string_comparison_unknown(): void
     {
-        config()->set('query-ricer-extreme.database_semantics.'.DB::connection()->getDriverName().'.string_comparisons', 'conservative_unknown');
+        config()->set('quantum-slipstream-drive.database_semantics.'.DB::connection()->getDriverName().'.string_comparisons', 'conservative_unknown');
         $this->discovery->flush();
 
         $semantics = $this->discovery->for(new User, 'email');
@@ -84,7 +84,7 @@ final class ColumnSemanticsDiscoveryTest extends TestCase
     #[Test]
     public function php_strict_mode_forces_case_sensitive(): void
     {
-        config()->set('query-ricer-extreme.database_semantics.'.DB::connection()->getDriverName().'.string_comparisons', 'php_strict');
+        config()->set('quantum-slipstream-drive.database_semantics.'.DB::connection()->getDriverName().'.string_comparisons', 'php_strict');
         $this->discovery->flush();
 
         $semantics = $this->discovery->for(new User, 'email');
@@ -95,7 +95,7 @@ final class ColumnSemanticsDiscoveryTest extends TestCase
     public function database_collation_mode_uses_driver_default_when_collation_missing(): void
     {
         $driver = DB::connection()->getDriverName();
-        config()->set('query-ricer-extreme.database_semantics.'.$driver.'.string_comparisons', 'database_collation');
+        config()->set('quantum-slipstream-drive.database_semantics.'.$driver.'.string_comparisons', 'database_collation');
         $this->discovery->flush();
 
         $semantics = $this->discovery->for(new User, 'email');

@@ -156,7 +156,7 @@ return [
      * for every finalised plan, in addition to anything captured by
      * IdentityMap::explain(). Two sinks fire per decision:
      *
-     *   1. A QueryDecided event (Vusys\QueryRicerExtreme\Events\QueryDecided)
+     *   1. A QueryDecided event (Vusys\QuantumSlipstreamDrive\Events\QueryDecided)
      *      carrying the Explanation. Wire bespoke sinks via Event::listen.
      *   2. A log line on the configured channel at the configured level,
      *      with the Explanation's toArray() as the context payload.

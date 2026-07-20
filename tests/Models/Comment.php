@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
-use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\UsesContextConnection;
 
 /**
  * @property int $id

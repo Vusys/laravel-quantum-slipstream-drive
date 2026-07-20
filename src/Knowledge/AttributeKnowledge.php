@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Knowledge;
+namespace Vusys\QuantumSlipstreamDrive\Knowledge;
 
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
 
 final class AttributeKnowledge
 {

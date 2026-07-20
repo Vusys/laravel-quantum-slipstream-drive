@@ -2,40 +2,40 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Relations;
+namespace Vusys\QuantumSlipstreamDrive\Relations;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\ConservativeSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemanticsResolver;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\Enums\RelationKind;
-use Vusys\QueryRicerExtreme\Explanation;
-use Vusys\QueryRicerExtreme\Graph\EdgeConfidence;
-use Vusys\QueryRicerExtreme\Graph\EdgeSource;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
-use Vusys\QueryRicerExtreme\Graph\PivotCoverage;
-use Vusys\QueryRicerExtreme\Graph\PivotEdge;
-use Vusys\QueryRicerExtreme\Knowledge\RelationFact;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\BetweenNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\InNode;
-use Vusys\QueryRicerExtreme\Predicate\NullNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
-use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
-use Vusys\QueryRicerExtreme\Query\ModelMetadata;
-use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
-use Vusys\QueryRicerExtreme\Store\IdentityEntry;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\ConservativeSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Enums\RelationKind;
+use Vusys\QuantumSlipstreamDrive\Explanation;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeConfidence;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeSource;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
+use Vusys\QuantumSlipstreamDrive\Graph\PivotCoverage;
+use Vusys\QuantumSlipstreamDrive\Graph\PivotEdge;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationFact;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\BetweenNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
+use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityEntry;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 /**
  * @template TRelatedModel of Model
@@ -1106,6 +1106,6 @@ final class MemoryBelongsToMany extends BelongsToMany
 
     private function isGraphEnabled(): bool
     {
-        return (bool) config('query-ricer-extreme.relation_graph.enabled', true);
+        return (bool) config('quantum-slipstream-drive.relation_graph.enabled', true);
     }
 }

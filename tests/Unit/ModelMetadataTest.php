@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use Illuminate\Database\Eloquent\Model;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Query\ModelMetadata;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
 
 final class ModelMetadataTest extends TestCase
 {

@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Graph;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Graph;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\Tag;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Tag;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class BelongsToManyGraphTest extends TestCase
 {
@@ -273,7 +273,7 @@ final class BelongsToManyGraphTest extends TestCase
     #[Test]
     public function disabled_graph_skips_pivot_population(): void
     {
-        config(['query-ricer-extreme.relation_graph.enabled' => false]);
+        config(['quantum-slipstream-drive.relation_graph.enabled' => false]);
 
         $post = $this->postWithTags(2);
         $post->tags()->get();

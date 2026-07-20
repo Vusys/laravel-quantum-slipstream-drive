@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Driver;
 
 use Illuminate\Database\Eloquent\Model;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Driver\ColumnType;
-use Vusys\QueryRicerExtreme\Driver\NullColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\StringComparisonMode;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnType;
+use Vusys\QuantumSlipstreamDrive\Driver\NullColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\StringComparisonMode;
 
 final class NullColumnSemanticsResolverTest extends TestCase
 {

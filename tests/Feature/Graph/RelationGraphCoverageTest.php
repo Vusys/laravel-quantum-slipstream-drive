@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Graph;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Graph;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\Comment;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Comment;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class RelationGraphCoverageTest extends TestCase
 {
@@ -160,7 +160,7 @@ final class RelationGraphCoverageTest extends TestCase
     #[Test]
     public function disabling_relation_graph_via_config_skips_population(): void
     {
-        config(['query-ricer-extreme.relation_graph.enabled' => false]);
+        config(['quantum-slipstream-drive.relation_graph.enabled' => false]);
 
         $user = User::create(['name' => 'A', 'email' => 'a@example.com']);
         Post::create(['user_id' => $user->id, 'title' => 'P1', 'published' => true]);

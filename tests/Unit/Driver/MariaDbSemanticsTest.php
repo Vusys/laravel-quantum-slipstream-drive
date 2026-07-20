@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Driver;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\ColumnType;
-use Vusys\QueryRicerExtreme\Driver\MariaDbSemantics;
-use Vusys\QueryRicerExtreme\Driver\MySqlSemantics;
-use Vusys\QueryRicerExtreme\Driver\StringComparisonMode;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnType;
+use Vusys\QuantumSlipstreamDrive\Driver\MariaDbSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\MySqlSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\StringComparisonMode;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
 
 final class MariaDbSemanticsTest extends TestCase
 {

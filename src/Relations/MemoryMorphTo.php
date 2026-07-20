@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Relations;
+namespace Vusys\QuantumSlipstreamDrive\Relations;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\Explanation;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
-use Vusys\QueryRicerExtreme\Query\ModelMetadata;
-use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Explanation;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
+use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 /**
  * @template TRelatedModel of Model

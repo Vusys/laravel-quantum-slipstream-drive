@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
 
 /**
  * Maps to the shared `users` table. Declares no relation methods of its own —

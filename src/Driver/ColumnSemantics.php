@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Driver;
 
 final readonly class ColumnSemantics
 {

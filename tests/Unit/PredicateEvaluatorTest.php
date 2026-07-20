@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemantics;
-use Vusys\QueryRicerExtreme\Driver\NullOrdering;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\InNode;
-use Vusys\QueryRicerExtreme\Predicate\NullNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\NullOrdering;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 
 final class PredicateEvaluatorTest extends TestCase
 {

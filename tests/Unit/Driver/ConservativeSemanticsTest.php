@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Driver;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\ConservativeSemantics;
-use Vusys\QueryRicerExtreme\Driver\NullOrdering;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ConservativeSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\NullOrdering;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
 
 final class ConservativeSemanticsTest extends TestCase
 {

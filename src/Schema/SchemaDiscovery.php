@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Schema;
+namespace Vusys\QuantumSlipstreamDrive\Schema;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\ColumnType;
-use Vusys\QueryRicerExtreme\Driver\StringComparisonMode;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnType;
+use Vusys\QuantumSlipstreamDrive\Driver\StringComparisonMode;
 
 final class SchemaDiscovery implements ColumnSemanticsResolver
 {
@@ -27,7 +27,7 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
      */
     public function uniqueIndexesFor(string $modelClass): array
     {
-        if (config('query-ricer-extreme.schema_discovery.enabled', true) === false) {
+        if (config('quantum-slipstream-drive.schema_discovery.enabled', true) === false) {
             return [];
         }
 
@@ -100,7 +100,7 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
      */
     private function columnSemanticsForModel(Model $model): array
     {
-        if (config('query-ricer-extreme.schema_discovery.enabled', true) === false) {
+        if (config('quantum-slipstream-drive.schema_discovery.enabled', true) === false) {
             return [];
         }
 
@@ -232,7 +232,7 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
      */
     private function configuredStringMode(string $driver): string
     {
-        $value = config('query-ricer-extreme.database_semantics.'.$driver.'.string_comparisons', 'conservative_unknown');
+        $value = config('quantum-slipstream-drive.database_semantics.'.$driver.'.string_comparisons', 'conservative_unknown');
 
         return match ($value) {
             'database_collation', 'php_strict', 'conservative_unknown' => $value,

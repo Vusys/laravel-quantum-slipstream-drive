@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Driver;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Driver\DriverSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\MariaDbSemantics;
-use Vusys\QueryRicerExtreme\Driver\MySqlSemantics;
-use Vusys\QueryRicerExtreme\Driver\PostgresSemantics;
-use Vusys\QueryRicerExtreme\Driver\SqliteSemantics;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\MariaDbSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\MySqlSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\PostgresSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\SqliteSemantics;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class DriverSemanticsIntegrationTest extends TestCase
 {
@@ -75,7 +75,7 @@ final class DriverSemanticsIntegrationTest extends TestCase
     public function case_different_predicate_resolves_per_driver_default(): void
     {
         $driver = DB::connection()->getDriverName();
-        config()->set('query-ricer-extreme.database_semantics.'.$driver.'.string_comparisons', 'conservative_unknown');
+        config()->set('quantum-slipstream-drive.database_semantics.'.$driver.'.string_comparisons', 'conservative_unknown');
         resolve(SchemaDiscovery::class)->flush();
 
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
@@ -116,7 +116,7 @@ final class DriverSemanticsIntegrationTest extends TestCase
     public function php_strict_mode_resolves_case_difference_as_reject(): void
     {
         $driver = DB::connection()->getDriverName();
-        config()->set('query-ricer-extreme.database_semantics.'.$driver.'.string_comparisons', 'php_strict');
+        config()->set('quantum-slipstream-drive.database_semantics.'.$driver.'.string_comparisons', 'php_strict');
         resolve(SchemaDiscovery::class)->flush();
 
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);

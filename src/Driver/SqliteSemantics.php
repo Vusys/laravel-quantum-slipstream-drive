@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Driver;
 
 /**
  * SQLite uses BINARY collation by default for `=`, so byte-equality maps

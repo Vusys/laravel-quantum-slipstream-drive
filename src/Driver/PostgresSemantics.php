@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Driver;
 
 /**
  * PostgreSQL uses case-sensitive equality and ordering by default. Byte-equality

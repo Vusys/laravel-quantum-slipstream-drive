@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Performance;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Performance;
 
 use Illuminate\Support\Facades\Event;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\Tag;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Tag;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 
 /**
  * Benchmarks targeting the engine's hot paths so future optimisation PRs have
@@ -135,7 +135,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
     {
         $user = User::factory()->create();
         $id = $user->id;
-        config(['query-ricer-extreme.observability.enabled' => false]);
+        config(['quantum-slipstream-drive.observability.enabled' => false]);
 
         $this->bench('streaming-disabled', function () use ($id): void {
             for ($i = 0; $i < 500; $i++) {
@@ -150,7 +150,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
         $user = User::factory()->create();
         $id = $user->id;
         config([
-            'query-ricer-extreme.observability.enabled' => true,
+            'quantum-slipstream-drive.observability.enabled' => true,
             'logging.default' => 'null',
         ]);
         Event::fake();
@@ -162,7 +162,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
                 }
             });
         } finally {
-            config(['query-ricer-extreme.observability.enabled' => false]);
+            config(['quantum-slipstream-drive.observability.enabled' => false]);
         }
     }
 
@@ -210,7 +210,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
     #[Test]
     public function partial_model_backfill(): void
     {
-        config(['query-ricer-extreme.partial_models' => 'backfill_missing_columns']);
+        config(['quantum-slipstream-drive.partial_models' => 'backfill_missing_columns']);
         $user = User::factory()->create();
         $id = $user->id;
 
@@ -222,7 +222,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
                 }
             });
         } finally {
-            config(['query-ricer-extreme.partial_models' => 'query_normally']);
+            config(['quantum-slipstream-drive.partial_models' => 'query_normally']);
         }
     }
 

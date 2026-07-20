@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Driver;
 
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
 
 /**
  * Shared driver-aware behaviour for the four supported database engines.

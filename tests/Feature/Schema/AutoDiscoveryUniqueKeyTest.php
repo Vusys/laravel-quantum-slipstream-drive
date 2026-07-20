@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Schema;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Schema;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class AutoDiscoveryUniqueKeyTest extends TestCase
 {
@@ -25,7 +25,7 @@ final class AutoDiscoveryUniqueKeyTest extends TestCase
         parent::setUp();
         $this->store = resolve(IdentityMapStore::class);
         $this->store->flush();
-        config(['query-ricer-extreme.models' => []]);
+        config(['quantum-slipstream-drive.models' => []]);
     }
 
     private function createUser(string $name, string $email): User
@@ -128,8 +128,8 @@ final class AutoDiscoveryUniqueKeyTest extends TestCase
     public function config_declared_unique_works_when_discovery_disabled(): void
     {
         config([
-            'query-ricer-extreme.schema_discovery.enabled' => false,
-            'query-ricer-extreme.models' => [
+            'quantum-slipstream-drive.schema_discovery.enabled' => false,
+            'quantum-slipstream-drive.models' => [
                 User::class => ['unique' => [['email']]],
             ],
         ]);
@@ -153,7 +153,7 @@ final class AutoDiscoveryUniqueKeyTest extends TestCase
     #[Test]
     public function disabled_discovery_returns_empty_for_known_unique_table(): void
     {
-        config(['query-ricer-extreme.schema_discovery.enabled' => false]);
+        config(['quantum-slipstream-drive.schema_discovery.enabled' => false]);
         resolve(SchemaDiscovery::class)->flush();
 
         $this->assertSame([], resolve(SchemaDiscovery::class)->uniqueIndexesFor(User::class));

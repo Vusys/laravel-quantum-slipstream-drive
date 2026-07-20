@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Fuzz;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Fuzz;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Group;
-use Vusys\QueryRicerExtreme\IdentityMap;
-use Vusys\QueryRicerExtreme\Tests\Fuzz\Support\ConnectionContext;
-use Vusys\QueryRicerExtreme\Tests\Models\Comment;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\Tag;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\IdentityMap;
+use Vusys\QuantumSlipstreamDrive\Tests\Fuzz\Support\ConnectionContext;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Comment;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Tag;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 
 /**
  * Oracle: all identity-map results must exactly match a fresh database read

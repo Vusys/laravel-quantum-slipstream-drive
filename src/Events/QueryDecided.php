@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Events;
+namespace Vusys\QuantumSlipstreamDrive\Events;
 
-use Vusys\QueryRicerExtreme\Explanation;
+use Vusys\QuantumSlipstreamDrive\Explanation;
 
 final readonly class QueryDecided
 {
