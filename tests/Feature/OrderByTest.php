@@ -49,16 +49,16 @@ final class OrderByTest extends TestCase
         User::find($c->id);
 
         $queries = 0;
-        $ricer = null;
-        $queries = $this->countQueries(function () use ($a, $b, $c, &$ricer): void {
-            $ricer = User::whereKey([$a->id, $b->id, $c->id])->orderBy('name')->get()->pluck('name')->all();
+        $slipstream = null;
+        $queries = $this->countQueries(function () use ($a, $b, $c, &$slipstream): void {
+            $slipstream = User::whereKey([$a->id, $b->id, $c->id])->orderBy('name')->get()->pluck('name')->all();
         });
 
         $oracle = IdentityMap::disabled(
             fn () => User::whereKey([$a->id, $b->id, $c->id])->orderBy('name')->get()->pluck('name')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
         $this->assertGreaterThan(0, $queries, 'warm key-set with orderBy must bail to SQL');
     }
 
@@ -73,12 +73,12 @@ final class OrderByTest extends TestCase
         User::find($b->id);
         User::find($c->id);
 
-        $ricer = User::whereKey([$a->id, $b->id, $c->id])->latest('id')->get()->pluck('id')->all();
+        $slipstream = User::whereKey([$a->id, $b->id, $c->id])->latest('id')->get()->pluck('id')->all();
         $oracle = IdentityMap::disabled(
             fn () => User::whereKey([$a->id, $b->id, $c->id])->latest('id')->get()->pluck('id')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
     }
 
     #[Test]
@@ -90,16 +90,16 @@ final class OrderByTest extends TestCase
 
         User::where('active', true)->get();
 
-        $ricer = null;
-        $queries = $this->countQueries(function () use (&$ricer): void {
-            $ricer = User::where('active', true)->orderBy('name')->get()->pluck('name')->all();
+        $slipstream = null;
+        $queries = $this->countQueries(function () use (&$slipstream): void {
+            $slipstream = User::where('active', true)->orderBy('name')->get()->pluck('name')->all();
         });
 
         $oracle = IdentityMap::disabled(
             fn () => User::where('active', true)->orderBy('name')->get()->pluck('name')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
         $this->assertGreaterThan(0, $queries, 'coverage-served get with orderBy must bail to SQL');
     }
 
@@ -112,12 +112,12 @@ final class OrderByTest extends TestCase
 
         User::where('active', true)->get();
 
-        $ricer = User::where('active', true)->oldest('name')->pluck('id')->all();
+        $slipstream = User::where('active', true)->oldest('name')->pluck('id')->all();
         $oracle = IdentityMap::disabled(
             fn () => User::where('active', true)->oldest('name')->pluck('id')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
     }
 
     #[Test]
@@ -130,16 +130,16 @@ final class OrderByTest extends TestCase
 
         $user->load('posts');
 
-        $ricer = null;
-        $queries = $this->countQueries(function () use ($user, &$ricer): void {
-            $ricer = $user->posts()->orderBy('title')->get()->pluck('title')->all();
+        $slipstream = null;
+        $queries = $this->countQueries(function () use ($user, &$slipstream): void {
+            $slipstream = $user->posts()->orderBy('title')->get()->pluck('title')->all();
         });
 
         $oracle = IdentityMap::disabled(
             fn () => $user->posts()->orderBy('title')->get()->pluck('title')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
         $this->assertGreaterThan(0, $queries, 'loaded hasMany with orderBy must bail to SQL');
     }
 
@@ -153,16 +153,16 @@ final class OrderByTest extends TestCase
 
         $user->load('comments');
 
-        $ricer = null;
-        $queries = $this->countQueries(function () use ($user, &$ricer): void {
-            $ricer = $user->comments()->orderBy('body')->get()->pluck('body')->all();
+        $slipstream = null;
+        $queries = $this->countQueries(function () use ($user, &$slipstream): void {
+            $slipstream = $user->comments()->orderBy('body')->get()->pluck('body')->all();
         });
 
         $oracle = IdentityMap::disabled(
             fn () => $user->comments()->orderBy('body')->get()->pluck('body')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
         $this->assertGreaterThan(0, $queries, 'loaded morphMany with orderBy must bail to SQL');
     }
 
@@ -182,16 +182,16 @@ final class OrderByTest extends TestCase
 
         $post->load('tags');
 
-        $ricer = null;
-        $queries = $this->countQueries(function () use ($post, &$ricer): void {
-            $ricer = $post->tags()->wherePivot('active', true)->orderBy('name')->get()->pluck('name')->all();
+        $slipstream = null;
+        $queries = $this->countQueries(function () use ($post, &$slipstream): void {
+            $slipstream = $post->tags()->wherePivot('active', true)->orderBy('name')->get()->pluck('name')->all();
         });
 
         $oracle = IdentityMap::disabled(
             fn () => $post->tags()->wherePivot('active', true)->orderBy('name')->get()->pluck('name')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
         $this->assertGreaterThan(0, $queries, 'loaded belongsToMany with wherePivot + orderBy must bail to SQL');
     }
 }

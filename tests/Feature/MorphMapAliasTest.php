@@ -104,14 +104,14 @@ final class MorphMapAliasTest extends TestCase
         $alice->load('comments');
         $bob->load('comments');
 
-        $ricer = User::whereHas('comments', fn ($q) => $q->where('likes', '>', 1))
+        $slipstream = User::whereHas('comments', fn ($q) => $q->where('likes', '>', 1))
             ->get()->pluck('id')->sort()->values()->all();
         $oracle = IdentityMap::disabled(
             fn (): array => User::whereHas('comments', fn ($q) => $q->where('likes', '>', 1))
                 ->get()->pluck('id')->sort()->values()->all()
         );
 
-        $this->assertSame($oracle, $ricer);
-        $this->assertSame([$alice->id], $ricer);
+        $this->assertSame($oracle, $slipstream);
+        $this->assertSame([$alice->id], $slipstream);
     }
 }

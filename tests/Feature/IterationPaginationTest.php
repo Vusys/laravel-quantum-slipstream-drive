@@ -177,7 +177,7 @@ final class IterationPaginationTest extends TestCase
         $this->warm();
 
         $page = User::query()->orderBy('id')->paginate(perPage: 2, page: 2);
-        $ricer = ['total' => $page->total(), 'ids' => $page->pluck('id')->all()];
+        $slipstream = ['total' => $page->total(), 'ids' => $page->pluck('id')->all()];
 
         $oracle = IdentityMap::disabled(function (): array {
             $p = User::query()->orderBy('id')->paginate(perPage: 2, page: 2);
@@ -185,7 +185,7 @@ final class IterationPaginationTest extends TestCase
             return ['total' => $p->total(), 'ids' => $p->pluck('id')->all()];
         });
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
     }
 
     #[Test]
@@ -195,13 +195,13 @@ final class IterationPaginationTest extends TestCase
         $this->warm();
 
         $page = User::query()->orderBy('id')->simplePaginate(perPage: 2, page: 2);
-        $ricer = $page->pluck('id')->all();
+        $slipstream = $page->pluck('id')->all();
 
         $oracle = IdentityMap::disabled(
             fn (): array => User::query()->orderBy('id')->simplePaginate(perPage: 2, page: 2)->pluck('id')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
     }
 
     #[Test]
@@ -211,13 +211,13 @@ final class IterationPaginationTest extends TestCase
         $this->warm();
 
         $page = User::query()->orderBy('id')->cursorPaginate(perPage: 2);
-        $ricer = $page->pluck('id')->all();
+        $slipstream = $page->pluck('id')->all();
 
         $oracle = IdentityMap::disabled(
             fn (): array => User::query()->orderBy('id')->cursorPaginate(perPage: 2)->pluck('id')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
     }
 
     /**

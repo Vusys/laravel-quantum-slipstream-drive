@@ -56,17 +56,17 @@ final class PivotSemanticsTest extends TestCase
 
         $post->load('tags'); // warm graph coverage
 
-        $ricer = null;
-        $queries = $this->countQueries(function () use ($post, &$ricer): void {
-            $ricer = $post->tags()->wherePivot('role', '123')->get()->pluck('name')->all();
+        $slipstream = null;
+        $queries = $this->countQueries(function () use ($post, &$slipstream): void {
+            $slipstream = $post->tags()->wherePivot('role', '123')->get()->pluck('name')->all();
         });
 
         $oracle = IdentityMap::disabled(
             fn () => $post->tags()->wherePivot('role', '123')->get()->pluck('name')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
-        $this->assertSame([], $ricer, "'0123' must not match '123' under SQL string comparison");
+        $this->assertSame($oracle, $slipstream);
+        $this->assertSame([], $slipstream, "'0123' must not match '123' under SQL string comparison");
         $this->assertSame(0, $queries, 'pivot equality must still be served from memory');
     }
 
@@ -80,17 +80,17 @@ final class PivotSemanticsTest extends TestCase
 
         $post->load('tags');
 
-        $ricer = null;
-        $queries = $this->countQueries(function () use ($post, &$ricer): void {
-            $ricer = $post->tags()->wherePivot('role', 'editor')->get()->pluck('name')->all();
+        $slipstream = null;
+        $queries = $this->countQueries(function () use ($post, &$slipstream): void {
+            $slipstream = $post->tags()->wherePivot('role', 'editor')->get()->pluck('name')->all();
         });
 
         $oracle = IdentityMap::disabled(
             fn () => $post->tags()->wherePivot('role', 'editor')->get()->pluck('name')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
-        $this->assertSame(['Editor'], $ricer);
+        $this->assertSame($oracle, $slipstream);
+        $this->assertSame(['Editor'], $slipstream);
         $this->assertSame(0, $queries, 'exact string pivot equality must be served from memory');
     }
 
@@ -104,13 +104,13 @@ final class PivotSemanticsTest extends TestCase
 
         $post->load('tags');
 
-        $ricer = $post->tags()->wherePivotIn('role', ['123', '456'])->get()->pluck('name')->all();
+        $slipstream = $post->tags()->wherePivotIn('role', ['123', '456'])->get()->pluck('name')->all();
         $oracle = IdentityMap::disabled(
             fn () => $post->tags()->wherePivotIn('role', ['123', '456'])->get()->pluck('name')->all()
         );
 
-        $this->assertSame($oracle, $ricer);
-        $this->assertSame([], $ricer);
+        $this->assertSame($oracle, $slipstream);
+        $this->assertSame([], $slipstream);
     }
 
     /**
@@ -135,11 +135,11 @@ final class PivotSemanticsTest extends TestCase
 
         $post->load('tags');
 
-        $ricer = $post->tags()->wherePivot('role', 'ADMIN')->get()->pluck('name')->all();
+        $slipstream = $post->tags()->wherePivot('role', 'ADMIN')->get()->pluck('name')->all();
         $oracle = IdentityMap::disabled(
             fn () => $post->tags()->wherePivot('role', 'ADMIN')->get()->pluck('name')->all()
         );
 
-        $this->assertSame($oracle, $ricer, 'memory-served pivot string comparison must match SQL collation behaviour');
+        $this->assertSame($oracle, $slipstream, 'memory-served pivot string comparison must match SQL collation behaviour');
     }
 }

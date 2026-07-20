@@ -55,13 +55,13 @@ final class CustomPivotCastTest extends TestCase
         $post = $this->makePost();
         $post->load('castTags');
 
-        $ricer = $post->castTags()->wherePivot('active', true)->get()->pluck('name')->sort()->values()->all();
+        $slipstream = $post->castTags()->wherePivot('active', true)->get()->pluck('name')->sort()->values()->all();
         $oracle = IdentityMap::disabled(
             fn (): array => $post->castTags()->wherePivot('active', true)->get()->pluck('name')->sort()->values()->all()
         );
 
-        $this->assertSame($oracle, $ricer);
-        $this->assertSame(['on'], $ricer);
+        $this->assertSame($oracle, $slipstream);
+        $this->assertSame(['on'], $slipstream);
     }
 
     #[Test]
@@ -70,13 +70,13 @@ final class CustomPivotCastTest extends TestCase
         $post = $this->makePost();
         $post->load('castTags');
 
-        $ricer = $post->castTags()->wherePivot('priority', '>', 6)->get()->pluck('name')->sort()->values()->all();
+        $slipstream = $post->castTags()->wherePivot('priority', '>', 6)->get()->pluck('name')->sort()->values()->all();
         $oracle = IdentityMap::disabled(
             fn (): array => $post->castTags()->wherePivot('priority', '>', 6)->get()->pluck('name')->sort()->values()->all()
         );
 
-        $this->assertSame($oracle, $ricer);
-        $this->assertSame(['off'], $ricer);
+        $this->assertSame($oracle, $slipstream);
+        $this->assertSame(['off'], $slipstream);
     }
 
     #[Test]
@@ -87,12 +87,12 @@ final class CustomPivotCastTest extends TestCase
 
         // created_at is a Carbon in memory but a string in the column; whatever the
         // decision (serve or bail), the result must equal SQL.
-        $ricer = $post->castTags()->wherePivot('created_at', '>', '2000-01-01 00:00:00')->get()->pluck('name')->sort()->values()->all();
+        $slipstream = $post->castTags()->wherePivot('created_at', '>', '2000-01-01 00:00:00')->get()->pluck('name')->sort()->values()->all();
         $oracle = IdentityMap::disabled(
             fn (): array => $post->castTags()->wherePivot('created_at', '>', '2000-01-01 00:00:00')->get()->pluck('name')->sort()->values()->all()
         );
 
-        $this->assertSame($oracle, $ricer);
+        $this->assertSame($oracle, $slipstream);
     }
 
     #[Test]

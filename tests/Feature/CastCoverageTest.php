@@ -93,10 +93,10 @@ final class CastCoverageTest extends TestCase
      */
     private function assertMatchesOracle(\Closure $build, string $message): void
     {
-        $ricer = $build()->orderBy('id')->pluck('id')->all();
+        $slipstream = $build()->orderBy('id')->pluck('id')->all();
         $oracle = IdentityMap::disabled(fn (): array => $build()->orderBy('id')->pluck('id')->all());
 
-        $this->assertSame($oracle, $ricer, $message);
+        $this->assertSame($oracle, $slipstream, $message);
     }
 
     #[Test]

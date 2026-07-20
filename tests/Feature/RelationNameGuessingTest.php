@@ -58,10 +58,10 @@ final class RelationNameGuessingTest extends TestCase
             $queries++;
         });
 
-        $ricer = $user->authoredPosts()->where('published', true)->get()->pluck('title')->all();
+        $slipstream = $user->authoredPosts()->where('published', true)->get()->pluck('title')->all();
 
         $this->assertSame(0, $queries, 'a trait-hosted relation must still be named correctly so it serves from memory');
-        $this->assertSame(['Kept'], $ricer);
+        $this->assertSame(['Kept'], $slipstream);
     }
 
     #[Test]
@@ -76,14 +76,14 @@ final class RelationNameGuessingTest extends TestCase
 
         // everyPost shares the exact signature; the memo hands it the other name,
         // but the row set is identical so the result must equal SQL.
-        $ricer = $user->everyPost()->get()->pluck('title')->sort()->values()->all();
+        $slipstream = $user->everyPost()->get()->pluck('title')->sort()->values()->all();
         $oracle = IdentityMap::disabled(
             fn (): array => TraitHostedUser::query()->whereKey($user->id)->first()
                 ?->everyPost()->get()->pluck('title')->sort()->values()->all() ?? []
         );
 
-        $this->assertSame($oracle, $ricer);
-        $this->assertSame(['One', 'Two'], $ricer);
+        $this->assertSame($oracle, $slipstream);
+        $this->assertSame(['One', 'Two'], $slipstream);
     }
 
     #[Test]
@@ -120,11 +120,11 @@ final class RelationNameGuessingTest extends TestCase
         Post::create(['user_id' => $user->id, 'title' => 'P1', 'published' => true]);
         Post::create(['user_id' => $user->id, 'title' => 'P2', 'published' => false]);
 
-        $ricer = $this->dynamicPostTitles($user->id);
+        $slipstream = $this->dynamicPostTitles($user->id);
         $oracle = IdentityMap::disabled(fn (): array => $this->dynamicPostTitles($user->id));
 
-        $this->assertSame($oracle, $ricer, 'a closure-frame relation name must never corrupt the result');
-        $this->assertSame(['P1', 'P2'], $ricer);
+        $this->assertSame($oracle, $slipstream, 'a closure-frame relation name must never corrupt the result');
+        $this->assertSame(['P1', 'P2'], $slipstream);
     }
 
     /** @return list<string> */
