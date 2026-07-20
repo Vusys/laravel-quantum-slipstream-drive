@@ -247,6 +247,14 @@ After the SQL executes, the package evaluates the builder's predicate against ev
 
 Eviction triggers a coverage flush for the model class, since any previously-recorded query region may now be incomplete.
 
+## Raw query-builder writes
+
+`DB::table('users')->update(...)` / `->delete()` / `->insert(...)` bypass Eloquent — and therefore the `IdentityMapBuilder`, the model events, and the mass-write modeling above — entirely. Left unhandled they would mutate rows the store still believes are cached, so a later read could return stale data.
+
+`RawWriteInterceptor` closes that gap. A connection-level `DB::listen` hook inspects every executed statement; when it is a write (`insert`, `update`, `delete`, `truncate`) whose target table backs an identity-mapped model, it conservatively flushes that model's store entries, coverage, and identity-graph edges. The flush emits a `raw_write_invalidation` explanation (`sqlExecuted: true`) so the decision is observable.
+
+Writes issued through the modeled Eloquent path — model saves, `$model->delete()`, and bulk `update()`/`delete()` — wrap their SQL in a suppression guard, so the hook ignores them: those paths already keep the cache consistent, and precisely. Only genuine raw-builder bypasses trigger the conservative flush. Table matching is by name (prefix-stripped) across every registered model, so a shared table name on multiple connections is over-invalidated rather than missed.
+
 ## See also
 
 - [Observability](observability.md) — the `explain()` API, the `PlanType` catalogue, and the streaming decision log.

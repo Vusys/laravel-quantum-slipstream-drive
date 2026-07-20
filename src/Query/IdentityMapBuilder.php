@@ -1318,7 +1318,9 @@ class IdentityMapBuilder extends Builder
 
         // parent::update sees updated_at already present and skips its own
         // augmentation, so the SQL UPDATE uses the same timestamp we cached.
-        $result = parent::update($augmentedValues);
+        // Suppress the raw-write hook: this modeled path already keeps the cache
+        // consistent, so the connection-level listener must not re-flush it.
+        $result = RawWriteInterceptor::withoutInterception(fn (): mixed => parent::update($augmentedValues));
 
         if ($predicate instanceof PredicateNode) {
             $hadEvictions = $store->applyMassUpdate($modelClass, $predicate, $augmentedValues, PredicateEvaluator::forModel($this->getModel()));
@@ -1495,7 +1497,7 @@ class IdentityMapBuilder extends Builder
      */
     public function insert(array $values): bool
     {
-        $result = $this->toBase()->insert($values);
+        $result = RawWriteInterceptor::withoutInterception(fn (): bool => $this->toBase()->insert($values));
 
         if ($this->isBulkInsertShape($values)) {
             $this->flushAfterBulkWrite();
@@ -1509,7 +1511,7 @@ class IdentityMapBuilder extends Builder
      */
     public function insertOrIgnore(array $values): int
     {
-        $result = $this->toBase()->insertOrIgnore($values);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => $this->toBase()->insertOrIgnore($values));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1521,7 +1523,7 @@ class IdentityMapBuilder extends Builder
      */
     public function insertGetId(array $values, $sequence = null): int
     {
-        $result = $this->toBase()->insertGetId($values, $sequence);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => $this->toBase()->insertGetId($values, $sequence));
 
         if ($this->isBulkInsertShape($values)) {
             $this->flushAfterBulkWrite();
@@ -1536,7 +1538,7 @@ class IdentityMapBuilder extends Builder
      */
     public function insertUsing(array $columns, $query): int
     {
-        $result = $this->toBase()->insertUsing($columns, $query);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => $this->toBase()->insertUsing($columns, $query));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1552,7 +1554,7 @@ class IdentityMapBuilder extends Builder
     #[\Override]
     public function touch($column = null): int|false
     {
-        $result = parent::touch($column);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int|false => parent::touch($column));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1569,7 +1571,7 @@ class IdentityMapBuilder extends Builder
      */
     public function updateOrInsert(array $attributes, array|callable $values = []): bool
     {
-        $result = $this->toBase()->updateOrInsert($attributes, $values);
+        $result = RawWriteInterceptor::withoutInterception(fn (): bool => $this->toBase()->updateOrInsert($attributes, $values));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1583,7 +1585,7 @@ class IdentityMapBuilder extends Builder
      */
     public function updateFrom(array $values): int
     {
-        $result = $this->toBase()->updateFrom($values);
+        $result = RawWriteInterceptor::withoutInterception(fn (): int => $this->toBase()->updateFrom($values));
         $this->flushAfterBulkWrite();
 
         return $result;
@@ -1622,7 +1624,7 @@ class IdentityMapBuilder extends Builder
             ? null
             : (new QueryPatternExtractor($this))->extractFullPredicate();
 
-        $result = parent::delete();
+        $result = RawWriteInterceptor::withoutInterception(fn (): mixed => parent::delete());
 
         if ($predicate instanceof PredicateNode) {
             $store->applyMassDelete($modelClass, $predicate, PredicateEvaluator::forModel($this->getModel()), $usesSoftDeletes);
@@ -1644,7 +1646,7 @@ class IdentityMapBuilder extends Builder
         $graph = resolve(IdentityGraph::class);
         $modelClass = $this->getModel()::class;
 
-        $result = parent::forceDelete();
+        $result = RawWriteInterceptor::withoutInterception(fn (): mixed => parent::forceDelete());
 
         $store->flush($modelClass);
         $registry->flushModelClass($modelClass);

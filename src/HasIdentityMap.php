@@ -16,6 +16,7 @@ use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
 use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
 use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
 use Vusys\QuantumSlipstreamDrive\Query\IdentityMapBuilder;
+use Vusys\QuantumSlipstreamDrive\Query\RawWriteInterceptor;
 use Vusys\QuantumSlipstreamDrive\Relations\MemoryBelongsTo;
 use Vusys\QuantumSlipstreamDrive\Relations\MemoryBelongsToMany;
 use Vusys\QuantumSlipstreamDrive\Relations\MemoryHasMany;
@@ -146,6 +147,11 @@ trait HasIdentityMap
 
     protected static function bootHasIdentityMap(): void
     {
+        $app = function_exists('app') ? app() : null;
+        if ($app !== null && $app->bound(RawWriteInterceptor::class)) {
+            $app->make(RawWriteInterceptor::class)->registerModel(static::class);
+        }
+
         static::retrieved(function (Model $model): void {
             resolve(IdentityMapStore::class)->remember($model);
         });
