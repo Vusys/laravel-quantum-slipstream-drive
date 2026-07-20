@@ -4,6 +4,7 @@
 /.phpunit.result.cache
 /build
 .DS_Store
+/.idea
 
 # DIY docs site
 /site
