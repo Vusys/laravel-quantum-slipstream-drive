@@ -62,11 +62,12 @@ Structural hazards that trigger bypass include: joins, unions, `GROUP BY`, `HAVI
 
 ## Predicate evaluation
 
-When the extractor identifies predicates that should be evaluated in memory, `PredicateExtractor` converts the Eloquent WHERE clause list into a typed tree. The tree has six node types:
+When the extractor identifies predicates that should be evaluated in memory, `PredicateExtractor` converts the Eloquent WHERE clause list into a typed tree. The tree has seven node types:
 
 - **`AndNode`** — a list of child nodes that must all evaluate to `Match`. An empty `AndNode` is the tautology (matches everything).
 - **`OrNode`** — a list of child nodes where `Match` from any one is enough. An empty `OrNode` is the contradiction (matches nothing). Unknown propagates: with no matching branch, a single `Unknown` branch makes the whole node `Unknown`.
 - **`ComparisonNode`** — a single column/operator/value triple; supports `=`, `!=`, `<>`, `>`, `>=`, `<`, `<=`.
+- **`LikeNode`** — `where(col, 'like', …)` / `'not like'`. `%` and `_` wildcards are translated to an anchored regex, and case-sensitivity is taken from the connection's `DriverSemantics`: SQLite folds ASCII case, PostgreSQL is case-sensitive unless the column is `citext`, and MySQL/MariaDB follow the column collation. The evaluator returns `Unknown` (defers to SQL) whenever semantics can't be guaranteed — unresolved collation, non-ASCII operands (accent/collation folding), or a backslash escape whose meaning differs across drivers.
 - **`InNode`** — `whereIn` (positive) or `whereNotIn` (negated).
 - **`NullNode`** — `whereNull` or `whereNotNull`.
 - **`BetweenNode`** — `whereBetween` (positive) or `whereNotBetween` (negated).

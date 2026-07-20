@@ -14,6 +14,7 @@ final class PredicateColumns
                 array_merge([], ...array_map(self::fromNode(...), $node->children))
             )),
             $node instanceof ComparisonNode => [$node->column],
+            $node instanceof LikeNode => [$node->column],
             $node instanceof InNode => [$node->column],
             $node instanceof NullNode => [$node->column],
             $node instanceof BetweenNode => [$node->column],

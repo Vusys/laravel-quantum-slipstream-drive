@@ -89,6 +89,7 @@ final class PredicateEvaluator
             $node instanceof AndNode => $this->evaluateAnd($attributes, $node, $processTruth),
             $node instanceof OrNode => $this->evaluateOr($attributes, $node, $processTruth),
             $node instanceof ComparisonNode => $this->evaluateComparison($attributes, $node, $processTruth),
+            $node instanceof LikeNode => $this->evaluateLike($attributes, $node, $processTruth),
             $node instanceof InNode => $this->evaluateIn($attributes, $node, $processTruth),
             $node instanceof NullNode => $this->evaluateNull($attributes, $node, $processTruth),
             $node instanceof BetweenNode => $this->evaluateBetween($attributes, $node, $processTruth),
@@ -166,6 +167,33 @@ final class PredicateEvaluator
                 $this->columnSemantics($node->column),
             ),
             default => EvaluationResult::Unknown,
+        };
+    }
+
+    private function evaluateLike(AttributeKnowledge $attributes, LikeNode $node, bool $processTruth): EvaluationResult
+    {
+        $fact = $attributes->get($node->column);
+
+        if (! $fact instanceof AttributeFact) {
+            return EvaluationResult::Unknown;
+        }
+
+        $attrValue = $processTruth ? $fact->currentValue : $fact->originalValue;
+
+        if ($attrValue === null) {
+            return EvaluationResult::Unknown;
+        }
+
+        $result = $this->semantics->like($attrValue, $node->pattern, $this->columnSemantics($node->column));
+
+        if (! $node->negated) {
+            return $result;
+        }
+
+        return match ($result) {
+            EvaluationResult::Match => EvaluationResult::Reject,
+            EvaluationResult::Reject => EvaluationResult::Match,
+            EvaluationResult::Unknown => EvaluationResult::Unknown,
         };
     }
 

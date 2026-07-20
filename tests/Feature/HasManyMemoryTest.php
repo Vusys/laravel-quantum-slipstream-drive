@@ -295,10 +295,11 @@ final class HasManyMemoryTest extends TestCase
     }
 
     #[Test]
-    public function has_many_falls_back_with_unsupported_predicate(): void
+    public function has_many_serves_like_predicate_from_memory(): void
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
         Post::create(['user_id' => $user->id, 'title' => 'Post One', 'published' => true]);
+        Post::create(['user_id' => $user->id, 'title' => 'Another', 'published' => true]);
 
         $user->load('posts');
 
@@ -309,8 +310,9 @@ final class HasManyMemoryTest extends TestCase
 
         $result = $user->posts()->where('title', 'LIKE', '%One%')->get();
 
-        $this->assertGreaterThan(0, $queryCount, 'hasMany with LIKE predicate should fall back to SQL');
+        $this->assertSame(0, $queryCount, 'hasMany with LIKE predicate is served from memory');
         $this->assertCount(1, $result);
+        $this->assertSame('Post One', $result->first()?->title);
     }
 
     #[Test]

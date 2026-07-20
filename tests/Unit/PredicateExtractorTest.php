@@ -10,6 +10,7 @@ use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\BetweenNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\LikeNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\OrNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
@@ -69,12 +70,29 @@ final class PredicateExtractorTest extends TestCase
         $node = PredicateExtractor::fromWhere([
             'type' => 'Basic',
             'column' => 'name',
-            'operator' => 'like',
+            'operator' => 'ilike',
             'value' => 'A%',
             'boolean' => 'and',
         ]);
 
         $this->assertNull($node);
+    }
+
+    #[Test]
+    public function like_operator_extracts_to_like_node(): void
+    {
+        $node = PredicateExtractor::fromWhere([
+            'type' => 'Basic',
+            'column' => 'name',
+            'operator' => 'like',
+            'value' => 'A%',
+            'boolean' => 'and',
+        ]);
+
+        $this->assertInstanceOf(LikeNode::class, $node);
+        $this->assertSame('name', $node->column);
+        $this->assertSame('A%', $node->pattern);
+        $this->assertFalse($node->negated);
     }
 
     #[Test]

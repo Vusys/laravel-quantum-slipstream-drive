@@ -292,10 +292,11 @@ final class MorphManyMemoryTest extends TestCase
     }
 
     #[Test]
-    public function morph_many_falls_back_with_unsupported_predicate(): void
+    public function morph_many_serves_like_predicate_from_memory(): void
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
         Comment::create(['commentable_type' => User::class, 'commentable_id' => $user->id, 'body' => 'hello world']);
+        Comment::create(['commentable_type' => User::class, 'commentable_id' => $user->id, 'body' => 'goodbye']);
 
         $user->load('comments');
 
@@ -306,8 +307,9 @@ final class MorphManyMemoryTest extends TestCase
 
         $result = $user->comments()->where('body', 'LIKE', '%hello%')->get();
 
-        $this->assertGreaterThan(0, $queryCount, 'morphMany with LIKE predicate should fall back to SQL');
+        $this->assertSame(0, $queryCount, 'morphMany with LIKE predicate is served from memory');
         $this->assertCount(1, $result);
+        $this->assertSame('hello world', $result->first()?->body);
     }
 
     #[Test]

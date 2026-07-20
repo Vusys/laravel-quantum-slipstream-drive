@@ -95,7 +95,21 @@ final class PredicateExtractor
     {
         $operator = $where['operator'] ?? null;
 
-        if (! is_string($operator) || ! in_array($operator, self::SUPPORTED_OPERATORS, true)) {
+        if (! is_string($operator)) {
+            return null;
+        }
+
+        $normalized = strtolower($operator);
+
+        if ($normalized === 'like' || $normalized === 'not like') {
+            $value = $where['value'] ?? null;
+
+            return is_string($value)
+                ? new LikeNode($column, $value, $normalized === 'not like')
+                : null;
+        }
+
+        if (! in_array($operator, self::SUPPORTED_OPERATORS, true)) {
             return null;
         }
 
