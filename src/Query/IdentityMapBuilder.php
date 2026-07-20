@@ -1866,7 +1866,6 @@ class IdentityMapBuilder extends Builder
         // Verify all sort column values are numeric across all models (int or float only).
         foreach ($orders as $order) {
             $col = $order['column'];
-            assert(is_string($col));
 
             foreach ($models as $m) {
                 $val = $m->getAttribute($col);
@@ -1880,7 +1879,6 @@ class IdentityMapBuilder extends Builder
         usort($models, function (Model $a, Model $b) use ($orders): int {
             foreach ($orders as $order) {
                 $col = $order['column'];
-                assert(is_string($col));
                 $va = $a->getAttribute($col);
                 $vb = $b->getAttribute($col);
 
