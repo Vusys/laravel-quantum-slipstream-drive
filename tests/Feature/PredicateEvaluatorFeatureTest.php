@@ -384,7 +384,7 @@ final class PredicateEvaluatorFeatureTest extends TestCase
     // -----------------------------------------------------------------------
 
     #[Test]
-    public function unsupported_predicate_falls_through_to_sql(): void
+    public function like_predicate_after_key_set_is_served_from_memory(): void
     {
         $alice = $this->createFresh('Alice', 'alice@example.com');
         $bob = $this->createFresh('Bob', 'bob@example.com');
@@ -397,11 +397,12 @@ final class PredicateEvaluatorFeatureTest extends TestCase
             $queryCount++;
         });
 
-        // LIKE is not a supported M3 predicate operator
+        // LIKE is a supported predicate: the key-set members are filtered in memory.
         $result = User::whereKey([$alice->id, $bob->id])->where('name', 'LIKE', 'Ali%')->get();
 
-        $this->assertSame(1, $queryCount, 'Unsupported operator must fall through to SQL');
+        $this->assertSame(0, $queryCount, 'LIKE predicate over warm key-set is served from memory');
         $this->assertCount(1, $result);
+        $this->assertSame('Alice', $result->first()?->name);
     }
 
     #[Test]

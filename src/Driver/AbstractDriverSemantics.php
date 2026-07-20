@@ -56,9 +56,74 @@ abstract class AbstractDriverSemantics implements DriverSemantics
     }
 
     #[\Override]
+    public function like(mixed $value, string $pattern, ColumnSemantics $column): EvaluationResult
+    {
+        if (! is_string($value)) {
+            return EvaluationResult::Unknown;
+        }
+
+        $caseSensitive = $this->likeCaseSensitivity($column);
+
+        if ($caseSensitive === null) {
+            return EvaluationResult::Unknown;
+        }
+
+        // Collation / accent folding for non-ASCII operands cannot be reproduced
+        // faithfully in PHP, so defer to SQL rather than risk a wrong answer.
+        if (! $this->isPlainAscii($value) || ! $this->isPlainAscii($pattern)) {
+            return EvaluationResult::Unknown;
+        }
+
+        $regex = $this->likePatternToRegex($pattern, $caseSensitive);
+
+        if ($regex === null) {
+            return EvaluationResult::Unknown;
+        }
+
+        return preg_match($regex, $value) === 1 ? EvaluationResult::Match : EvaluationResult::Reject;
+    }
+
+    #[\Override]
     public function compareForOrder(mixed $left, mixed $right, ColumnSemantics $column): ?int
     {
         return $this->orderedCompare($left, $right, $column);
+    }
+
+    /**
+     * Case-sensitivity of the driver's LIKE operator for the given column:
+     * true = case-sensitive, false = case-insensitive, null = cannot be
+     * determined (caller must fall through to SQL).
+     */
+    abstract protected function likeCaseSensitivity(ColumnSemantics $column): ?bool;
+
+    private function isPlainAscii(string $value): bool
+    {
+        return preg_match('/[^\x00-\x7F]/', $value) !== 1;
+    }
+
+    /**
+     * Translate a SQL LIKE pattern into an anchored PCRE. `%` maps to any run
+     * of characters, `_` to a single character. Returns null when the pattern
+     * contains a backslash, whose meaning as a LIKE escape diverges across
+     * drivers (MySQL treats it as an escape, SQLite does not) — safer to defer.
+     */
+    private function likePatternToRegex(string $pattern, bool $caseSensitive): ?string
+    {
+        if (str_contains($pattern, '\\')) {
+            return null;
+        }
+
+        $body = '';
+
+        foreach (str_split($pattern) as $char) {
+            $body .= match ($char) {
+                '%' => '.*',
+                '_' => '.',
+                default => preg_quote($char, '#'),
+            };
+        }
+
+        return '#^'.$body.'$#Ds'.($caseSensitive ? '' : 'i');
     }
 
     /**

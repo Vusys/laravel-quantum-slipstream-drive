@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive;
 
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
 use Illuminate\Database\Events\TransactionCommitted;
 use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
@@ -18,6 +20,7 @@ use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
 use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
 use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
 use Vusys\QuantumSlipstreamDrive\Knowledge\ColumnBackfiller;
+use Vusys\QuantumSlipstreamDrive\Query\RawWriteInterceptor;
 use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 use Vusys\QuantumSlipstreamDrive\Store\JournalEntry;
@@ -47,6 +50,7 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
             maxEdges: $this->capValue('quantum-slipstream-drive.relation_graph.max_edges', 50000),
             maxCoverage: $this->capValue('quantum-slipstream-drive.relation_graph.max_coverage_entries', 5000),
         ));
+        $this->app->singleton(RawWriteInterceptor::class);
     }
 
     public function boot(): void
@@ -58,6 +62,19 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
         }
 
         $this->registerLifecycleHooks();
+        $this->registerRawWriteInterceptor();
+    }
+
+    /**
+     * Watch executed write statements so raw query-builder writes
+     * (`DB::table('users')->update(...)`) that bypass Eloquent conservatively
+     * invalidate the cached state of any identity-mapped model on that table.
+     */
+    private function registerRawWriteInterceptor(): void
+    {
+        DB::listen(function (QueryExecuted $event): void {
+            $this->app->make(RawWriteInterceptor::class)->handle($event);
+        });
     }
 
     private function registerLifecycleHooks(): void
@@ -151,5 +168,6 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
         $this->app->make(TransactionJournal::class)->flush();
         $this->app->make(SchemaDiscovery::class)->flush();
         $this->app->make(IdentityGraph::class)->flush();
+        RawWriteInterceptor::resetSuppression();
     }
 }

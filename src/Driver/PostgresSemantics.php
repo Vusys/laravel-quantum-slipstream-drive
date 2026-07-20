@@ -14,6 +14,14 @@ namespace Vusys\QuantumSlipstreamDrive\Driver;
 final class PostgresSemantics extends AbstractDriverSemantics
 {
     #[\Override]
+    protected function likeCaseSensitivity(ColumnSemantics $column): bool
+    {
+        // Postgres LIKE is case-sensitive by default regardless of column
+        // metadata; only a citext column (surfaced as CaseInsensitive) folds case.
+        return $column->stringComparison !== StringComparisonMode::CaseInsensitive;
+    }
+
+    #[\Override]
     protected function compareStrings(string $left, string $right, ColumnSemantics $column): bool
     {
         if ($column->stringComparison === StringComparisonMode::CaseInsensitive) {

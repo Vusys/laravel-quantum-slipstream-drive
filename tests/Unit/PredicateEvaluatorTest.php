@@ -189,6 +189,12 @@ final class PredicateEvaluatorTest extends TestCase
             }
 
             #[\Override]
+            public function like(mixed $value, string $pattern, ColumnSemantics $column): EvaluationResult
+            {
+                return EvaluationResult::Match;
+            }
+
+            #[\Override]
             public function compareForOrder(
                 mixed $left,
                 mixed $right,

@@ -7,6 +7,7 @@ namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\OrNode;
 use Vusys\QuantumSlipstreamDrive\Query\QueryPatternExtractor;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
@@ -366,13 +367,16 @@ final class QueryPatternExtractorTest extends TestCase
     }
 
     #[Test]
-    public function extract_full_predicate_returns_null_when_or_boolean_present(): void
+    public function extract_full_predicate_returns_or_node_for_or_boolean(): void
     {
         $extractor = new QueryPatternExtractor(
             Post::query()->where('published', true)->orWhere('title', 'Hello')
         );
 
-        $this->assertNull($extractor->extractFullPredicate());
+        $result = $extractor->extractFullPredicate();
+
+        $this->assertInstanceOf(OrNode::class, $result);
+        $this->assertCount(2, $result->children);
     }
 
     #[Test]

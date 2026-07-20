@@ -127,7 +127,7 @@ final class DecisionStreamTest extends TestCase
     #[Test]
     public function log_falls_back_to_default_driver_when_channel_is_null(): void
     {
-        $this->enableObservability(channel: null, level: 'debug');
+        $this->enableObservability(level: 'debug');
 
         $logger = $this->createMock(LoggerInterface::class);
         $logger

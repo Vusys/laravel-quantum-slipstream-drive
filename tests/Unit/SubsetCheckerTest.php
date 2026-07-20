@@ -11,6 +11,7 @@ use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
 use Vusys\QuantumSlipstreamDrive\Predicate\NullNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\OrNode;
 
 final class SubsetCheckerTest extends TestCase
 {
@@ -366,6 +367,61 @@ final class SubsetCheckerTest extends TestCase
     {
         $query = new InNode('col', [1, 2], false);
         $recorded = new NullNode('col', true);
+
+        $this->assertFalse($this->checker->isSubset($query, $recorded));
+    }
+
+    // -------------------------------------------------------------------------
+    // OrNode composition
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function query_is_subset_of_or_when_it_implies_one_branch(): void
+    {
+        // col = 1  ⊆  (col = 1 OR col = 2)
+        $query = new ComparisonNode('col', '=', 1);
+        $recorded = new OrNode([
+            new ComparisonNode('col', '=', 1),
+            new ComparisonNode('col', '=', 2),
+        ]);
+
+        $this->assertTrue($this->checker->isSubset($query, $recorded));
+    }
+
+    #[Test]
+    public function query_is_not_subset_of_or_when_no_branch_covers_it(): void
+    {
+        $query = new ComparisonNode('col', '=', 3);
+        $recorded = new OrNode([
+            new ComparisonNode('col', '=', 1),
+            new ComparisonNode('col', '=', 2),
+        ]);
+
+        $this->assertFalse($this->checker->isSubset($query, $recorded));
+    }
+
+    #[Test]
+    public function or_query_is_subset_only_when_every_branch_is_covered(): void
+    {
+        // (col = 1 OR col = 2)  ⊆  col IN (1, 2, 3)
+        $query = new OrNode([
+            new ComparisonNode('col', '=', 1),
+            new ComparisonNode('col', '=', 2),
+        ]);
+        $recorded = new InNode('col', [1, 2, 3], false);
+
+        $this->assertTrue($this->checker->isSubset($query, $recorded));
+    }
+
+    #[Test]
+    public function or_query_is_not_subset_when_one_branch_escapes(): void
+    {
+        // (col = 1 OR col = 9)  ⊄  col IN (1, 2, 3)
+        $query = new OrNode([
+            new ComparisonNode('col', '=', 1),
+            new ComparisonNode('col', '=', 9),
+        ]);
+        $recorded = new InNode('col', [1, 2, 3], false);
 
         $this->assertFalse($this->checker->isSubset($query, $recorded));
     }
