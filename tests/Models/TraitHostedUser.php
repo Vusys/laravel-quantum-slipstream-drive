@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
-use Vusys\QueryRicerExtreme\Tests\Models\Concerns\ProvidesAuthoredPosts;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Concerns\ProvidesAuthoredPosts;
 
 /**
  * Maps to the shared `users` table. Its only relation, `authoredPosts`, is

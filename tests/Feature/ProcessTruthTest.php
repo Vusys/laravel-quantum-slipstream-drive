@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\Comment;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\Tag;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Comment;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Tag;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class ProcessTruthTest extends TestCase
 {
@@ -23,13 +23,13 @@ final class ProcessTruthTest extends TestCase
         parent::setUp();
         $this->store = resolve(IdentityMapStore::class);
         $this->store->flush();
-        config(['query-ricer-extreme.mode' => 'process_truth']);
+        config(['quantum-slipstream-drive.mode' => 'process_truth']);
     }
 
     #[\Override]
     protected function tearDown(): void
     {
-        config(['query-ricer-extreme.mode' => 'default']);
+        config(['quantum-slipstream-drive.mode' => 'default']);
         parent::tearDown();
     }
 
@@ -118,7 +118,7 @@ final class ProcessTruthTest extends TestCase
     #[Test]
     public function default_mode_ignores_dirty_changes(): void
     {
-        config(['query-ricer-extreme.mode' => 'default']);
+        config(['quantum-slipstream-drive.mode' => 'default']);
 
         $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
 
@@ -259,7 +259,7 @@ final class ProcessTruthTest extends TestCase
     #[Test]
     public function default_mode_ignores_dirty_in_coverage_filter(): void
     {
-        config(['query-ricer-extreme.mode' => 'default']);
+        config(['quantum-slipstream-drive.mode' => 'default']);
 
         $alice = $this->createFresh('Alice', 'alice@example.com', active: true);
         $this->createFresh('Bob', 'bob@example.com', active: true);
@@ -289,7 +289,7 @@ final class ProcessTruthTest extends TestCase
     public function unique_key_lookup_misses_when_column_dirty_in_process_truth(): void
     {
         config([
-            'query-ricer-extreme.models' => [
+            'quantum-slipstream-drive.models' => [
                 User::class => ['unique' => [['email']]],
             ],
         ]);
@@ -315,7 +315,7 @@ final class ProcessTruthTest extends TestCase
     public function unique_key_lookup_still_hits_when_column_unchanged(): void
     {
         config([
-            'query-ricer-extreme.models' => [
+            'quantum-slipstream-drive.models' => [
                 User::class => ['unique' => [['email']]],
             ],
         ]);
@@ -372,7 +372,7 @@ final class ProcessTruthTest extends TestCase
     private function setupStaleAbsenceScenario(): void
     {
         config([
-            'query-ricer-extreme.models' => [
+            'quantum-slipstream-drive.models' => [
                 User::class => ['unique' => [['email']]],
             ],
         ]);

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Concerns;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Concerns;
 
 trait ProvidesCartesian
 {

@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Predicate;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Predicate;
 
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\ConservativeSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\NullColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\NullOrdering;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Predicate\ComparisonNode;
-use Vusys\QueryRicerExtreme\Predicate\InNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\ConservativeSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\NullColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\NullOrdering;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\InNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
 
 final class PredicateEvaluatorForModelTest extends TestCase
 {

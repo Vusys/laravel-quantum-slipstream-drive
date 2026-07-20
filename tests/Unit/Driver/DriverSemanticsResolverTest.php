@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Driver;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Driver\ConservativeSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\MariaDbSemantics;
-use Vusys\QueryRicerExtreme\Driver\MySqlSemantics;
-use Vusys\QueryRicerExtreme\Driver\PostgresSemantics;
-use Vusys\QueryRicerExtreme\Driver\SqliteSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ConservativeSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\MariaDbSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\MySqlSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\PostgresSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\SqliteSemantics;
 
 final class DriverSemanticsResolverTest extends TestCase
 {

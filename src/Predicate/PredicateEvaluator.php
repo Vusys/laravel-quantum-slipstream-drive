@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Predicate;
+namespace Vusys\QuantumSlipstreamDrive\Predicate;
 
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\ConservativeSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemantics;
-use Vusys\QueryRicerExtreme\Driver\DriverSemanticsResolver;
-use Vusys\QueryRicerExtreme\Driver\NullColumnSemanticsResolver;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\ConservativeSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Driver\NullColumnSemanticsResolver;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
 
 final class PredicateEvaluator
 {
@@ -80,7 +80,7 @@ final class PredicateEvaluator
             return false;
         }
 
-        return config('query-ricer-extreme.mode', 'default') === 'process_truth';
+        return config('quantum-slipstream-drive.mode', 'default') === 'process_truth';
     }
 
     public function evaluate(AttributeKnowledge $attributes, PredicateNode $node, bool $processTruth = false): EvaluationResult

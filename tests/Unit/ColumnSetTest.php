@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
 
 final class ColumnSetTest extends TestCase
 {

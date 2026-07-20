@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Predicate;
+namespace Vusys\QuantumSlipstreamDrive\Predicate;
 
 final readonly class InNode implements PredicateNode
 {

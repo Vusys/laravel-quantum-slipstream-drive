@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Fuzz;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Fuzz;
 
 use Illuminate\Database\Eloquent\Builder;
 use PHPUnit\Framework\Attributes\Group;
-use Vusys\QueryRicerExtreme\IdentityMap;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\Tag;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\IdentityMap;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Tag;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 
 #[Group('fuzzer')]
 final class QueryCorrectnessTest extends FuzzerTestCase

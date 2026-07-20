@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Coverage;
+namespace Vusys\QuantumSlipstreamDrive\Coverage;
 
-use Vusys\QueryRicerExtreme\Predicate\PredicateColumns;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateColumns;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 
 final class CoverageRegistry
 {

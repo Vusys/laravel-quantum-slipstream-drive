@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Store;
+namespace Vusys\QuantumSlipstreamDrive\Store;
 
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Events\QueryDecided;
-use Vusys\QueryRicerExtreme\Explanation;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Knowledge\RelationKnowledge;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
-use Vusys\QueryRicerExtreme\Query\ModelMetadata;
-use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Events\QueryDecided;
+use Vusys\QuantumSlipstreamDrive\Explanation;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationKnowledge;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
+use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 
 final class IdentityMapStore
 {
@@ -503,7 +503,7 @@ final class IdentityMapStore
             $this->captured[] = $explanation;
         }
 
-        if (! ($this->observabilityEnabled ??= config('query-ricer-extreme.observability.enabled') === true)) {
+        if (! ($this->observabilityEnabled ??= config('quantum-slipstream-drive.observability.enabled') === true)) {
             return;
         }
 
@@ -514,8 +514,8 @@ final class IdentityMapStore
     {
         Event::dispatch(new QueryDecided($explanation));
 
-        $channel = config('query-ricer-extreme.observability.channel');
-        $level = config('query-ricer-extreme.observability.level', 'info');
+        $channel = config('quantum-slipstream-drive.observability.channel');
+        $level = config('quantum-slipstream-drive.observability.level', 'info');
 
         $logger = is_string($channel) && $channel !== ''
             ? Log::channel($channel)

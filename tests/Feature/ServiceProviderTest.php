@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -14,17 +14,17 @@ use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
 use ReflectionProperty;
 use RuntimeException;
-use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
-use Vusys\QueryRicerExtreme\Coverage\CoverageEntry;
-use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Store\TransactionJournal;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageEntry;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Store\TransactionJournal;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class ServiceProviderTest extends TestCase
 {
@@ -88,17 +88,17 @@ final class ServiceProviderTest extends TestCase
     {
         // A malformed override must fall back to the default, never silently
         // disable the cap (which would let the graph grow unbounded).
-        config(['query-ricer-extreme.relation_graph.max_edges' => 'not-a-number']);
+        config(['quantum-slipstream-drive.relation_graph.max_edges' => 'not-a-number']);
         app()->forgetInstance(IdentityGraph::class);
         $this->assertSame(50000, $this->graphMaxEdges(), 'a malformed cap falls back to the default');
 
         // A literal 0 removes the cap on purpose.
-        config(['query-ricer-extreme.relation_graph.max_edges' => '0']);
+        config(['quantum-slipstream-drive.relation_graph.max_edges' => '0']);
         app()->forgetInstance(IdentityGraph::class);
         $this->assertNull($this->graphMaxEdges(), 'a literal 0 removes the cap');
 
         // A numeric override is honoured.
-        config(['query-ricer-extreme.relation_graph.max_edges' => '7']);
+        config(['quantum-slipstream-drive.relation_graph.max_edges' => '7']);
         app()->forgetInstance(IdentityGraph::class);
         $this->assertSame(7, $this->graphMaxEdges(), 'a valid override is honoured');
     }

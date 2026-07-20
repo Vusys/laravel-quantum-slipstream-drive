@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme;
+namespace Vusys\QuantumSlipstreamDrive;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -12,16 +12,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
-use Vusys\QueryRicerExtreme\Query\IdentityMapBuilder;
-use Vusys\QueryRicerExtreme\Relations\MemoryBelongsTo;
-use Vusys\QueryRicerExtreme\Relations\MemoryBelongsToMany;
-use Vusys\QueryRicerExtreme\Relations\MemoryHasMany;
-use Vusys\QueryRicerExtreme\Relations\MemoryMorphMany;
-use Vusys\QueryRicerExtreme\Relations\MemoryMorphTo;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
+use Vusys\QuantumSlipstreamDrive\Query\IdentityMapBuilder;
+use Vusys\QuantumSlipstreamDrive\Relations\MemoryBelongsTo;
+use Vusys\QuantumSlipstreamDrive\Relations\MemoryBelongsToMany;
+use Vusys\QuantumSlipstreamDrive\Relations\MemoryHasMany;
+use Vusys\QuantumSlipstreamDrive\Relations\MemoryMorphMany;
+use Vusys\QuantumSlipstreamDrive\Relations\MemoryMorphTo;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 trait HasIdentityMap
 {

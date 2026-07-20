@@ -1,6 +1,6 @@
-# Laravel Query Ricer: Extreme
+# Laravel Quantum Slipstream: Extreme
 
-[![Tests](https://github.com/Vusys/laravel-query-ricer-extreme/actions/workflows/tests.yml/badge.svg)](https://github.com/Vusys/laravel-query-ricer-extreme/actions/workflows/tests.yml) [![codecov](https://codecov.io/gh/Vusys/laravel-query-ricer-extreme/graph/badge.svg)](https://codecov.io/gh/Vusys/laravel-query-ricer-extreme) [![tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-query-ricer-extreme/badges/tests.json)](https://github.com/Vusys/laravel-query-ricer-extreme/actions/workflows/tests.yml) [![assertions](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-query-ricer-extreme/badges/assertions.json)](https://github.com/Vusys/laravel-query-ricer-extreme/actions/workflows/tests.yml) [![test LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-query-ricer-extreme/badges/test-ratio.json)](tests/) [![CI matrix](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-query-ricer-extreme/badges/matrix.json)](.github/workflows/tests.yml) [![Bencher](https://img.shields.io/badge/Bencher-tracked-FD6F1B?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAyTDMgN3YxMGw5IDUgOS01VjdaIi8+PC9zdmc+)](https://bencher.dev/perf/vusys-laravel-query-ricer-extreme) [![Mutation testing](https://img.shields.io/endpoint?style=flat&url=https://badge-api.stryker-mutator.io/github.com/Vusys/laravel-query-ricer-extreme/master)](https://dashboard.stryker-mutator.io/reports/github.com/Vusys/laravel-query-ricer-extreme/master) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Vusys/laravel-query-ricer-extreme/badge)](https://scorecard.dev/viewer/?uri=github.com/Vusys/laravel-query-ricer-extreme) [![PHP](https://img.shields.io/badge/php-%5E8.3-777BB4?logo=php&logoColor=white)](composer.json) [![Laravel](https://img.shields.io/badge/laravel-11%20%7C%2012%20%7C%2013-FF2D20?logo=laravel)](composer.json) [![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](phpstan.neon) [![Rector](https://img.shields.io/badge/Rector-passing-brightgreen.svg)](rector.php) [![Code Style: Pint](https://img.shields.io/badge/code%20style-Laravel%20Pint-FF2D20.svg?logo=laravel)](https://github.com/laravel/pint) [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests](https://github.com/Vusys/laravel-quantum-slipstream-drive/actions/workflows/tests.yml/badge.svg)](https://github.com/Vusys/laravel-quantum-slipstream-drive/actions/workflows/tests.yml) [![codecov](https://codecov.io/gh/Vusys/laravel-quantum-slipstream-drive/graph/badge.svg)](https://codecov.io/gh/Vusys/laravel-quantum-slipstream-drive) [![tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-quantum-slipstream-drive/badges/tests.json)](https://github.com/Vusys/laravel-quantum-slipstream-drive/actions/workflows/tests.yml) [![assertions](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-quantum-slipstream-drive/badges/assertions.json)](https://github.com/Vusys/laravel-quantum-slipstream-drive/actions/workflows/tests.yml) [![test LOC](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-quantum-slipstream-drive/badges/test-ratio.json)](tests/) [![CI matrix](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Vusys/laravel-quantum-slipstream-drive/badges/matrix.json)](.github/workflows/tests.yml) [![Bencher](https://img.shields.io/badge/Bencher-tracked-FD6F1B?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMiAyTDMgN3YxMGw5IDUgOS01VjdaIi8+PC9zdmc+)](https://bencher.dev/perf/vusys-laravel-quantum-slipstream-drive) [![Mutation testing](https://img.shields.io/endpoint?style=flat&url=https://badge-api.stryker-mutator.io/github.com/Vusys/laravel-quantum-slipstream-drive/master)](https://dashboard.stryker-mutator.io/reports/github.com/Vusys/laravel-quantum-slipstream-drive/master) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Vusys/laravel-quantum-slipstream-drive/badge)](https://scorecard.dev/viewer/?uri=github.com/Vusys/laravel-quantum-slipstream-drive) [![PHP](https://img.shields.io/badge/php-%5E8.3-777BB4?logo=php&logoColor=white)](composer.json) [![Laravel](https://img.shields.io/badge/laravel-11%20%7C%2012%20%7C%2013-FF2D20?logo=laravel)](composer.json) [![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg)](phpstan.neon) [![Rector](https://img.shields.io/badge/Rector-passing-brightgreen.svg)](rector.php) [![Code Style: Pint](https://img.shields.io/badge/code%20style-Laravel%20Pint-FF2D20.svg?logo=laravel)](https://github.com/laravel/pint) [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 > Rice your Eloquent queries until the database wonders where everybody went.
 
@@ -169,7 +169,7 @@ Absent-key tracking means the package remembers which primary keys and unique-ke
 ## Installation
 
 ```bash
-composer require vusys/laravel-query-ricer-extreme
+composer require vusys/laravel-quantum-slipstream-drive
 ```
 
 ## Usage
@@ -177,7 +177,7 @@ composer require vusys/laravel-query-ricer-extreme
 ### Opt in per model
 
 ```php
-use Vusys\QueryRicerExtreme\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
 
 final class User extends Model
 {
@@ -194,7 +194,7 @@ User::query()->withoutIdentityMap()->find(1);
 ### Manual flush
 
 ```php
-use Vusys\QueryRicerExtreme\IdentityMap;
+use Vusys\QuantumSlipstreamDrive\IdentityMap;
 
 IdentityMap::flush();               // all entries
 IdentityMap::flush(User::class);    // one model class
@@ -214,7 +214,7 @@ IdentityMap::disabled(function () {
 Declare unique indexes in the published config to allow `where('col', value)->first()` style queries to be answered from memory:
 
 ```php
-// config/query-ricer-extreme.php
+// config/quantum-slipstream-drive.php
 'models' => [
     App\Models\User::class => [
         'unique' => [
@@ -620,7 +620,7 @@ SQL executed: yes
 
 ### Streaming decision log
 
-`explain()` is the right API when the caller knows the scope to inspect. For a rolling decision log over a whole request / job / test, enable the streaming sink in `config/query-ricer-extreme.php`:
+`explain()` is the right API when the caller knows the scope to inspect. For a rolling decision log over a whole request / job / test, enable the streaming sink in `config/quantum-slipstream-drive.php`:
 
 ```php
 'observability' => [
@@ -632,12 +632,12 @@ SQL executed: yes
 
 When `enabled = true`, every finalised plan emits to two sinks in addition to anything captured by `IdentityMap::explain()`:
 
-1. A `Vusys\QueryRicerExtreme\Events\QueryDecided` event is dispatched. Its single public property `explanation` carries the `Explanation` — wire bespoke sinks (Sentry breadcrumbs, NR custom events, custom log shippers) by listening to this event.
+1. A `Vusys\QuantumSlipstreamDrive\Events\QueryDecided` event is dispatched. Its single public property `explanation` carries the `Explanation` — wire bespoke sinks (Sentry breadcrumbs, NR custom events, custom log shippers) by listening to this event.
 2. A log line is written to `channel` at `level`, with `Explanation::toString()` as the message and `['context' => Explanation::toArray()]` as the log context. If `channel` is null, the default log channel is used.
 
 ```php
 use Illuminate\Support\Facades\Event;
-use Vusys\QueryRicerExtreme\Events\QueryDecided;
+use Vusys\QuantumSlipstreamDrive\Events\QueryDecided;
 
 Event::listen(function (QueryDecided $event): void {
     Sentry\addBreadcrumb(new Sentry\Breadcrumb(
@@ -692,7 +692,7 @@ The unit suite is the fastest feedback loop. Any regression in the pure core —
 ### Feature tests
 
 **Location:** `tests/Feature/` (see directory for the current set, organised into subdirectories per subsystem)  
-**Extends:** `Vusys\QueryRicerExtreme\Tests\TestCase` (Orchestra Testbench + SQLite)
+**Extends:** `Vusys\QuantumSlipstreamDrive\Tests\TestCase` (Orchestra Testbench + SQLite)
 
 The feature suite tests end-to-end behaviour with a real database and real Eloquent model lifecycle. It uses a fixed set of test models: `User` (with `HasIdentityMap` and `SoftDeletes`), `Post`, `Tag`, `Comment` (polymorphic morph), and `UuidUser` (UUID primary key).
 
@@ -808,7 +808,7 @@ A correctness test suite that fully passes can still mask a query-count regressi
 ## Publish config
 
 ```bash
-php artisan vendor:publish --tag=query-ricer-extreme-config
+php artisan vendor:publish --tag=quantum-slipstream-drive-config
 ```
 
 ## Requirements

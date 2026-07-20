@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests;
+namespace Vusys\QuantumSlipstreamDrive\Tests;
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
-use Vusys\QueryRicerExtreme\QueryRicerExtremeServiceProvider;
+use Vusys\QuantumSlipstreamDrive\QuantumSlipstreamDriveServiceProvider;
 
 abstract class TestCase extends OrchestraTestCase
 {
     #[\Override]
     protected function getPackageProviders($app): array
     {
-        return [QueryRicerExtremeServiceProvider::class];
+        return [QuantumSlipstreamDriveServiceProvider::class];
     }
 
     #[\Override]

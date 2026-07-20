@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Coverage;
+namespace Vusys\QuantumSlipstreamDrive\Coverage;
 
 final readonly class ColumnSet
 {

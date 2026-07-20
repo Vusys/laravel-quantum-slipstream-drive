@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Knowledge;
+namespace Vusys\QuantumSlipstreamDrive\Knowledge;
 
-use Vusys\QueryRicerExtreme\Enums\RelationKind;
+use Vusys\QuantumSlipstreamDrive\Enums\RelationKind;
 
 final readonly class RelationFact
 {

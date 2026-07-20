@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Store;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Store;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Store\UniqueKeyIndex;
+use Vusys\QuantumSlipstreamDrive\Store\UniqueKeyIndex;
 
 final class UniqueKeyIndexCapTest extends TestCase
 {

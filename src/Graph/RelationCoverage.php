@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Graph;
+namespace Vusys\QuantumSlipstreamDrive\Graph;
 
-use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
 
 final readonly class RelationCoverage
 {

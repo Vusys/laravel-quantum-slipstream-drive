@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Enums\RelationKind;
-use Vusys\QueryRicerExtreme\Knowledge\RelationFact;
+use Vusys\QuantumSlipstreamDrive\Enums\RelationKind;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationFact;
 
 final class RelationFactTest extends TestCase
 {

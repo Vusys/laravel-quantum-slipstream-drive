@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
-use Vusys\QueryRicerExtreme\Tests\Concerns\UsesContextConnection;
-use Vusys\QueryRicerExtreme\Tests\Models\Enums\SampleStatus;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\UsesContextConnection;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Enums\SampleStatus;
 
 /**
  * @property int $id

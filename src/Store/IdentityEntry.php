@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Store;
+namespace Vusys\QuantumSlipstreamDrive\Store;
 
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Knowledge\RelationKnowledge;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationKnowledge;
 
 final class IdentityEntry
 {

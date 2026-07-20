@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Coverage;
+namespace Vusys\QuantumSlipstreamDrive\Coverage;
 
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 
 final readonly class CoverageEntry
 {

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Concerns;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\Tests\Fuzz\Support\ConnectionContext;
+use Vusys\QuantumSlipstreamDrive\Tests\Fuzz\Support\ConnectionContext;
 
 /**
  * @phpstan-require-extends Model

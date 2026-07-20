@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Transaction;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Transaction;
 
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Coverage\CoverageRegistry;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Store\TransactionJournal;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Store\TransactionJournal;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class TransactionJournalFeatureTest extends TestCase
 {
@@ -329,7 +329,7 @@ final class TransactionJournalFeatureTest extends TestCase
     #[Test]
     public function rollback_re_indexes_unique_keys_so_subsequent_lookups_hit_memory(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => [
                 'unique' => [['email']],
             ],

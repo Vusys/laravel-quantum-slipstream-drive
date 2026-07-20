@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Store;
+namespace Vusys\QuantumSlipstreamDrive\Store;
 
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
 
 final class UniqueKeyIndex
 {
@@ -115,7 +115,7 @@ final class UniqueKeyIndex
     /** @return list<list<string>> */
     public function uniqueIndexesForModelClass(string $modelClass): array
     {
-        $rawConfig = config("query-ricer-extreme.models.{$modelClass}.unique");
+        $rawConfig = config("quantum-slipstream-drive.models.{$modelClass}.unique");
 
         $result = [];
         $seen = [];

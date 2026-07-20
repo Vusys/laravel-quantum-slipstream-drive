@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Fuzz\Support;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Fuzz\Support;
 
 use Closure;
 

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Graph;
+namespace Vusys\QuantumSlipstreamDrive\Graph;
 
 use Illuminate\Database\Eloquent\Model;
-use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
 
 final readonly class ModelIdentity
 {

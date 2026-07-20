@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Store;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Store;
 
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeKnowledge;
-use Vusys\QueryRicerExtreme\Knowledge\RelationKnowledge;
-use Vusys\QueryRicerExtreme\Store\IdentityEntry;
-use Vusys\QueryRicerExtreme\Store\UniqueKeyIndex;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeKnowledge;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationKnowledge;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityEntry;
+use Vusys\QuantumSlipstreamDrive\Store\UniqueKeyIndex;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class UniqueKeyIndexRegistrationTest extends TestCase
 {
@@ -25,7 +25,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     {
         parent::setUp();
         $this->index = new UniqueKeyIndex;
-        config(['query-ricer-extreme.models' => []]);
+        config(['quantum-slipstream-drive.models' => []]);
     }
 
     #[Test]
@@ -49,7 +49,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function register_deduplicates_against_config_declared_indexes(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [['email']]],
         ]]);
 
@@ -87,7 +87,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function register_preserves_config_declared_first(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [['email']]],
         ]]);
 
@@ -103,7 +103,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function registered_loop_skips_duplicates_without_dropping_later_entries(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [['email']]],
         ]]);
 
@@ -120,7 +120,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function malformed_config_entry_is_skipped_without_aborting_iteration(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [
                 'not-an-array',
                 ['email'],
@@ -137,7 +137,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function config_entry_with_no_string_columns_is_skipped_without_aborting_iteration(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [
                 [123, true, null],
                 ['email'],
@@ -154,7 +154,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function duplicate_config_entries_are_deduped_without_aborting_iteration(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [
                 ['email'],
                 ['email'],
@@ -218,7 +218,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function index_skips_compound_key_when_one_column_fact_is_missing(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [['tenant_id', 'slug']]],
         ]]);
 
@@ -243,7 +243,7 @@ final class UniqueKeyIndexRegistrationTest extends TestCase
     #[Test]
     public function index_registers_compound_key_when_all_column_facts_present(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => ['unique' => [['tenant_id', 'slug']]],
         ]]);
 

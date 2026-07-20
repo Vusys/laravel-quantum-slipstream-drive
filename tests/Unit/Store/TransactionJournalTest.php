@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Store;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Store;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Store\JournalEntry;
-use Vusys\QueryRicerExtreme\Store\TransactionJournal;
+use Vusys\QuantumSlipstreamDrive\Store\JournalEntry;
+use Vusys\QuantumSlipstreamDrive\Store\TransactionJournal;
 
 final class TransactionJournalTest extends TestCase
 {

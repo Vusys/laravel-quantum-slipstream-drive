@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Relations;
+namespace Vusys\QuantumSlipstreamDrive\Relations;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\Enums\RelationKind;
-use Vusys\QueryRicerExtreme\Explanation;
-use Vusys\QueryRicerExtreme\Graph\EdgeConfidence;
-use Vusys\QueryRicerExtreme\Graph\EdgeSource;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
-use Vusys\QueryRicerExtreme\Graph\RelationEdge;
-use Vusys\QueryRicerExtreme\HasIdentityMap;
-use Vusys\QueryRicerExtreme\Knowledge\ColumnBackfiller;
-use Vusys\QueryRicerExtreme\Query\ModelMetadata;
-use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
-use Vusys\QueryRicerExtreme\Store\IdentityEntry;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Enums\RelationKind;
+use Vusys\QuantumSlipstreamDrive\Explanation;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeConfidence;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeSource;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
+use Vusys\QuantumSlipstreamDrive\Graph\RelationEdge;
+use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
+use Vusys\QuantumSlipstreamDrive\Knowledge\ColumnBackfiller;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
+use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityEntry;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 /**
  * @template TRelatedModel of Model
@@ -164,7 +164,7 @@ final class MemoryBelongsTo extends BelongsTo
 
     private function recordGraphEdge(Model $parent): void
     {
-        if (! (bool) config('query-ricer-extreme.relation_graph.enabled', true)) {
+        if (! (bool) config('quantum-slipstream-drive.relation_graph.enabled', true)) {
             return;
         }
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme;
+namespace Vusys\QuantumSlipstreamDrive;
 
-use Vusys\QueryRicerExtreme\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
 
 final readonly class Explanation implements \Stringable
 {

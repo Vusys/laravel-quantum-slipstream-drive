@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models\Pivots;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models\Pivots;
 
 use Illuminate\Database\Eloquent\Relations\Pivot;
 

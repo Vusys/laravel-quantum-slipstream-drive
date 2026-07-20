@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Factories;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
-use Vusys\QueryRicerExtreme\Tests\Models\UuidUser;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\UuidUser;
 
 /**
  * @extends Factory<UuidUser>

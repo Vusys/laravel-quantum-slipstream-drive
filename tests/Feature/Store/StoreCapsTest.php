@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Store;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Store;
 
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionMethod;
-use Vusys\QueryRicerExtreme\Query\ModelMetadata;
-use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
-use Vusys\QueryRicerExtreme\QueryRicerExtremeServiceProvider;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\QuantumSlipstreamDriveServiceProvider;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
+use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 /**
  * IdentityMapStore is unbounded by default; under a configured cap it must flush
@@ -98,7 +98,7 @@ final class StoreCapsTest extends TestCase
     #[Test]
     public function configured_cap_is_wired_through_the_service_provider(): void
     {
-        config(['query-ricer-extreme.store_caps.max_entries' => 2]);
+        config(['quantum-slipstream-drive.store_caps.max_entries' => 2]);
         app()->forgetInstance(IdentityMapStore::class);
 
         $store = resolve(IdentityMapStore::class);
@@ -157,19 +157,19 @@ final class StoreCapsTest extends TestCase
     #[Test]
     public function a_malformed_cap_value_falls_back_to_the_default_rather_than_disabling(): void
     {
-        $provider = new QueryRicerExtremeServiceProvider(app());
+        $provider = new QuantumSlipstreamDriveServiceProvider(app());
         $capValue = new ReflectionMethod($provider, 'capValue');
 
-        config(['query-ricer-extreme.store_caps.probe' => 'not-a-number']);
-        $this->assertSame(100000, $capValue->invoke($provider, 'query-ricer-extreme.store_caps.probe', 100000), 'a typo must not silently disable the cap');
+        config(['quantum-slipstream-drive.store_caps.probe' => 'not-a-number']);
+        $this->assertSame(100000, $capValue->invoke($provider, 'quantum-slipstream-drive.store_caps.probe', 100000), 'a typo must not silently disable the cap');
 
-        config(['query-ricer-extreme.store_caps.probe' => '0']);
-        $this->assertNull($capValue->invoke($provider, 'query-ricer-extreme.store_caps.probe', 100000), 'a literal 0 disables the cap on purpose');
+        config(['quantum-slipstream-drive.store_caps.probe' => '0']);
+        $this->assertNull($capValue->invoke($provider, 'quantum-slipstream-drive.store_caps.probe', 100000), 'a literal 0 disables the cap on purpose');
 
-        config(['query-ricer-extreme.store_caps.probe' => '250']);
-        $this->assertSame(250, $capValue->invoke($provider, 'query-ricer-extreme.store_caps.probe', 100000), 'a numeric string is parsed');
+        config(['quantum-slipstream-drive.store_caps.probe' => '250']);
+        $this->assertSame(250, $capValue->invoke($provider, 'quantum-slipstream-drive.store_caps.probe', 100000), 'a numeric string is parsed');
 
-        config(['query-ricer-extreme.store_caps.probe' => 5000]);
-        $this->assertSame(5000, $capValue->invoke($provider, 'query-ricer-extreme.store_caps.probe', 100000), 'an int passes through');
+        config(['quantum-slipstream-drive.store_caps.probe' => 5000]);
+        $this->assertSame(5000, $capValue->invoke($provider, 'quantum-slipstream-drive.store_caps.probe', 100000), 'an int passes through');
     }
 }

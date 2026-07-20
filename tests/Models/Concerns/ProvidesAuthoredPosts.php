@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Models\Concerns;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Models\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Vusys\QueryRicerExtreme\Tests\Models\Post;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
 
 /**
  * A relation method hosted in a trait rather than directly on the model, to

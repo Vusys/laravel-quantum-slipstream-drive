@@ -2,32 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Relations;
+namespace Vusys\QuantumSlipstreamDrive\Relations;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Vusys\QueryRicerExtreme\Coverage\ColumnSet;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
-use Vusys\QueryRicerExtreme\Enums\LifecycleState;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\Enums\RelationKind;
-use Vusys\QueryRicerExtreme\Explanation;
-use Vusys\QueryRicerExtreme\Graph\EdgeConfidence;
-use Vusys\QueryRicerExtreme\Graph\EdgeSource;
-use Vusys\QueryRicerExtreme\Graph\IdentityGraph;
-use Vusys\QueryRicerExtreme\Graph\ModelIdentity;
-use Vusys\QueryRicerExtreme\Graph\RelationCoverage;
-use Vusys\QueryRicerExtreme\Graph\RelationEdge;
-use Vusys\QueryRicerExtreme\Knowledge\RelationFact;
-use Vusys\QueryRicerExtreme\Predicate\AndNode;
-use Vusys\QueryRicerExtreme\Predicate\PredicateEvaluator;
-use Vusys\QueryRicerExtreme\Predicate\PredicateExtractor;
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
-use Vusys\QueryRicerExtreme\Query\ModelMetadata;
-use Vusys\QueryRicerExtreme\Query\ScopeFingerprinter;
-use Vusys\QueryRicerExtreme\Store\IdentityEntry;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Enums\LifecycleState;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\Enums\RelationKind;
+use Vusys\QuantumSlipstreamDrive\Explanation;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeConfidence;
+use Vusys\QuantumSlipstreamDrive\Graph\EdgeSource;
+use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
+use Vusys\QuantumSlipstreamDrive\Graph\RelationCoverage;
+use Vusys\QuantumSlipstreamDrive\Graph\RelationEdge;
+use Vusys\QuantumSlipstreamDrive\Knowledge\RelationFact;
+use Vusys\QuantumSlipstreamDrive\Predicate\AndNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateExtractor;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
+use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityEntry;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 /**
  * @template TRelatedModel of Model
@@ -569,7 +569,7 @@ final class MemoryMorphMany extends MorphMany
 
     private function isGraphEnabled(): bool
     {
-        return (bool) config('query-ricer-extreme.relation_graph.enabled', true);
+        return (bool) config('quantum-slipstream-drive.relation_graph.enabled', true);
     }
 
     /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Driver;
 
 /**
  * MySQL's default collations (utf8mb4_0900_ai_ci, utf8mb4_unicode_ci, etc.)

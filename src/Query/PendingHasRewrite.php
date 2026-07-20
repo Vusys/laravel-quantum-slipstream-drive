@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Query;
+namespace Vusys\QuantumSlipstreamDrive\Query;
 
-use Vusys\QueryRicerExtreme\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 
 final readonly class PendingHasRewrite
 {

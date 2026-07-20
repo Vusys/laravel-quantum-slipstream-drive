@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Driver;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Driver;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Vusys\QueryRicerExtreme\Driver\ColumnSemantics;
-use Vusys\QueryRicerExtreme\Driver\ColumnType;
-use Vusys\QueryRicerExtreme\Driver\SqliteSemantics;
-use Vusys\QueryRicerExtreme\Driver\StringComparisonMode;
-use Vusys\QueryRicerExtreme\Enums\EvaluationResult;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnType;
+use Vusys\QuantumSlipstreamDrive\Driver\SqliteSemantics;
+use Vusys\QuantumSlipstreamDrive\Driver\StringComparisonMode;
+use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
 
 final class SqliteSemanticsTest extends TestCase
 {

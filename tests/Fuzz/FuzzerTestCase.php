@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Fuzz;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Fuzz;
 
 use Closure;
 use PHPUnit\Framework\AssertionFailedError;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 abstract class FuzzerTestCase extends TestCase
 {

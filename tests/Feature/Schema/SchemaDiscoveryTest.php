@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature\Schema;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Schema;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class SchemaDiscoveryTest extends TestCase
 {
@@ -231,7 +231,7 @@ final class SchemaDiscoveryTest extends TestCase
     #[Test]
     public function disabled_via_config_returns_empty(): void
     {
-        config(['query-ricer-extreme.schema_discovery.enabled' => false]);
+        config(['quantum-slipstream-drive.schema_discovery.enabled' => false]);
 
         $this->assertSame([], $this->discovery->uniqueIndexesFor(User::class));
     }

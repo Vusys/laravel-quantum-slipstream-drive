@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\Test;
 use Psr\Log\LoggerInterface;
-use Vusys\QueryRicerExtreme\Events\QueryDecided;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Events\QueryDecided;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class DecisionStreamTest extends TestCase
 {
@@ -28,16 +28,16 @@ final class DecisionStreamTest extends TestCase
     private function enableObservability(?string $channel = null, string $level = 'info'): void
     {
         config([
-            'query-ricer-extreme.observability.enabled' => true,
-            'query-ricer-extreme.observability.channel' => $channel,
-            'query-ricer-extreme.observability.level' => $level,
+            'quantum-slipstream-drive.observability.enabled' => true,
+            'quantum-slipstream-drive.observability.channel' => $channel,
+            'quantum-slipstream-drive.observability.level' => $level,
         ]);
     }
 
     #[Test]
     public function no_event_dispatched_when_disabled(): void
     {
-        config(['query-ricer-extreme.observability.enabled' => false]);
+        config(['quantum-slipstream-drive.observability.enabled' => false]);
         Event::fake([QueryDecided::class]);
 
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);

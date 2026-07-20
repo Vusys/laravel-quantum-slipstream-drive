@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Test;
-use Vusys\QueryRicerExtreme\Enums\FactConfidence;
-use Vusys\QueryRicerExtreme\Enums\FactSource;
-use Vusys\QueryRicerExtreme\Enums\PlanType;
-use Vusys\QueryRicerExtreme\IdentityMap;
-use Vusys\QueryRicerExtreme\Knowledge\AttributeFact;
-use Vusys\QueryRicerExtreme\Store\IdentityMapStore;
-use Vusys\QueryRicerExtreme\Tests\Models\User;
-use Vusys\QueryRicerExtreme\Tests\TestCase;
+use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
+use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
+use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
+use Vusys\QuantumSlipstreamDrive\IdentityMap;
+use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
+use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 final class UniqueKeyTest extends TestCase
 {
@@ -27,7 +27,7 @@ final class UniqueKeyTest extends TestCase
         $this->store = resolve(IdentityMapStore::class);
         $this->store->flush();
 
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => [
                 'unique' => [
                     ['email'],
@@ -85,7 +85,7 @@ final class UniqueKeyTest extends TestCase
     #[Test]
     public function compound_unique_key_hit(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => [
                 'unique' => [
                     ['name', 'email'],
@@ -111,7 +111,7 @@ final class UniqueKeyTest extends TestCase
     #[Test]
     public function compound_key_partial_match_does_not_short_circuit(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => [
                 'unique' => [
                     ['name', 'email'],
@@ -162,8 +162,8 @@ final class UniqueKeyTest extends TestCase
     public function no_unique_key_config_falls_through_to_sql(): void
     {
         config([
-            'query-ricer-extreme.models' => [],
-            'query-ricer-extreme.schema_discovery.enabled' => false,
+            'quantum-slipstream-drive.models' => [],
+            'quantum-slipstream-drive.schema_discovery.enabled' => false,
         ]);
         $this->store->flush();
 
@@ -738,7 +738,7 @@ final class UniqueKeyTest extends TestCase
     {
         // Two indexes: ['email', 'name'] (compound) and ['email'] (single).
         // Query only has 'email', so compound index cannot match — single must be tried.
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => [
                 'unique' => [
                     ['email', 'name'],  // first: needs both columns
@@ -769,7 +769,7 @@ final class UniqueKeyTest extends TestCase
     #[Test]
     public function compound_key_absence_tracked_regardless_of_column_order(): void
     {
-        config(['query-ricer-extreme.models' => [
+        config(['quantum-slipstream-drive.models' => [
             User::class => [
                 'unique' => [
                     ['name', 'email'],
@@ -1311,12 +1311,12 @@ final class UniqueKeyTest extends TestCase
         // must be skipped without error, yielding no unique indexes. Disable
         // schema discovery so we isolate the malformed-config behaviour.
         config([
-            'query-ricer-extreme.models' => [
+            'quantum-slipstream-drive.models' => [
                 User::class => [
                     'unique' => ['email'],
                 ],
             ],
-            'query-ricer-extreme.schema_discovery.enabled' => false,
+            'quantum-slipstream-drive.schema_discovery.enabled' => false,
         ]);
         $this->store->flush();
 

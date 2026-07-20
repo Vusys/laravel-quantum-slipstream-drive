@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Fuzz;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Fuzz;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;

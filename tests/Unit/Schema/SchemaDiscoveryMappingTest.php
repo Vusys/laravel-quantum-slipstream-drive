@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Tests\Unit\Schema;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Unit\Schema;
 
 use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
@@ -10,9 +10,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use Vusys\QueryRicerExtreme\Driver\ColumnType;
-use Vusys\QueryRicerExtreme\Driver\StringComparisonMode;
-use Vusys\QueryRicerExtreme\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Driver\ColumnType;
+use Vusys\QuantumSlipstreamDrive\Driver\StringComparisonMode;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 
 /**
  * Drives the private mapping helpers in SchemaDiscovery directly via reflection
@@ -140,7 +140,7 @@ final class SchemaDiscoveryMappingTest extends TestCase
         $container = new Container;
         Container::setInstance($container);
         $container->instance('config', new Repository([
-            'query-ricer-extreme' => [
+            'quantum-slipstream-drive' => [
                 'database_semantics' => [
                     'mysql' => ['string_comparisons' => 'nonsense'],
                 ],

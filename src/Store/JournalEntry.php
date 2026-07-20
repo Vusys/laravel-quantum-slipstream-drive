@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QueryRicerExtreme\Store;
+namespace Vusys\QuantumSlipstreamDrive\Store;
 
 final readonly class JournalEntry
 {
