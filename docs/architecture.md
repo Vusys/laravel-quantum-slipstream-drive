@@ -56,17 +56,22 @@ This fingerprinting is what makes the package safe under Laravel Octane: two con
 4. **Coverage candidate** — a predicate-only WHERE clause with no key constraints; eligible for the coverage registry.
 5. **Structural-hazard bypass** — anything else: the query falls straight through to SQL.
 
-Structural hazards that trigger bypass include: joins, unions, `GROUP BY`, `HAVING`, pessimistic locks (`lockForUpdate`, `sharedLock`), non-string SELECT columns introduced by `withCount` or `selectRaw`, and `orWhere` clauses. The extractor is stateless and pure — it only reads the query object, never modifying it.
+Structural hazards that trigger bypass include: joins, unions, `GROUP BY`, `HAVING`, pessimistic locks (`lockForUpdate`, `sharedLock`), and non-string SELECT columns introduced by `withCount` or `selectRaw`. The extractor is stateless and pure — it only reads the query object, never modifying it.
+
+`orWhere` clauses and nested `where(function ($q) { … })` groups are **not** hazards: `PredicateExtractor::fromWheres()` rebuilds the WHERE list into a boolean tree that honours SQL precedence (AND binds tighter than OR), so `where(...)->orWhere(...)` and grouped disjunctions are eligible for the coverage path. A disjunction is only bypassed when an AND-connected term (a global scope or a `whereHas` rewrite) would have to be pruned from the middle of an OR sequence — dropping it would widen the recorded region and falsely claim coverage — so those queries conservatively fall through to SQL.
 
 ## Predicate evaluation
 
-When the extractor identifies predicates that should be evaluated in memory, `PredicateExtractor` converts the Eloquent WHERE clause list into a typed tree. The tree has five node types:
+When the extractor identifies predicates that should be evaluated in memory, `PredicateExtractor` converts the Eloquent WHERE clause list into a typed tree. The tree has six node types:
 
-- **`AndNode`** — a list of child nodes that must all evaluate to `Match`.
+- **`AndNode`** — a list of child nodes that must all evaluate to `Match`. An empty `AndNode` is the tautology (matches everything).
+- **`OrNode`** — a list of child nodes where `Match` from any one is enough. An empty `OrNode` is the contradiction (matches nothing). Unknown propagates: with no matching branch, a single `Unknown` branch makes the whole node `Unknown`.
 - **`ComparisonNode`** — a single column/operator/value triple; supports `=`, `!=`, `<>`, `>`, `>=`, `<`, `<=`.
 - **`InNode`** — `whereIn` (positive) or `whereNotIn` (negated).
 - **`NullNode`** — `whereNull` or `whereNotNull`.
 - **`BetweenNode`** — `whereBetween` (positive) or `whereNotBetween` (negated).
+
+`SubsetChecker` reasons about `OrNode` too: a query is a subset of a recorded `OrNode` when it implies any one branch, and a query `OrNode` is a subset of a recorded region only when *every* branch is — so a disjunction reuses cached coverage only when provably contained by it.
 
 `PredicateEvaluator` walks the tree against the `AttributeKnowledge` of a cached entry and returns one of three results:
 

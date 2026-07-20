@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Vusys\QuantumSlipstreamDrive\Predicate;
 
+use Illuminate\Database\Query\Builder;
+
 final class PredicateExtractor
 {
     private const array SUPPORTED_OPERATORS = ['=', '!=', '<>', '>', '>=', '<', '<='];
@@ -12,6 +14,11 @@ final class PredicateExtractor
     public static function fromWhere(array $where): ?PredicateNode
     {
         $type = $where['type'] ?? null;
+
+        if ($type === 'Nested') {
+            return self::fromNested($where);
+        }
+
         $column = $where['column'] ?? null;
 
         if (! is_string($column) || $column === '') {
@@ -27,6 +34,60 @@ final class PredicateExtractor
             'between', 'Between' => self::fromBetweenWhere($column, $where),
             default => null,
         };
+    }
+
+    /**
+     * Build a single predicate tree from a flat Laravel wheres list, honouring
+     * boolean precedence: AND binds tighter than OR, so a run of AND-connected
+     * terms forms one group and consecutive groups are combined under an OrNode.
+     *
+     * Returns null when any clause cannot be expressed as a predicate node, so
+     * callers conservatively fall through to SQL.
+     *
+     * @param  array<int, array<string, mixed>>  $wheres
+     */
+    public static function fromWheres(array $wheres): ?PredicateNode
+    {
+        /** @var list<list<PredicateNode>> $groups */
+        $groups = [];
+        /** @var list<PredicateNode> $current */
+        $current = [];
+
+        foreach (array_values($wheres) as $i => $where) {
+            $node = self::fromWhere($where);
+
+            if (! $node instanceof PredicateNode) {
+                return null;
+            }
+
+            if ($i > 0 && ($where['boolean'] ?? 'and') === 'or') {
+                $groups[] = $current;
+                $current = [];
+            }
+
+            $current[] = $node;
+        }
+
+        $groups[] = $current;
+
+        $branches = array_map(
+            static fn (array $group): PredicateNode => count($group) === 1 ? $group[0] : new AndNode($group),
+            $groups,
+        );
+
+        return count($branches) === 1 ? $branches[0] : new OrNode($branches);
+    }
+
+    /** @param array<string, mixed> $where */
+    private static function fromNested(array $where): ?PredicateNode
+    {
+        $sub = $where['query'] ?? null;
+
+        if (! $sub instanceof Builder) {
+            return null;
+        }
+
+        return self::fromWheres($sub->wheres);
     }
 
     /** @param array<string, mixed> $where */
