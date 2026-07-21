@@ -617,6 +617,34 @@ final class IdentityMapStore
     }
 
     /**
+     * Drop recorded unique-key absence for a model class. A mass update can make a
+     * previously-absent unique value present (a restore, or a write to the indexed
+     * column), so its stale absence must not survive to answer a later lookup.
+     */
+    public function forgetUniqueAbsence(string $modelClass): void
+    {
+        $this->uniqueKeyIndex->forgetAbsent($modelClass);
+    }
+
+    /**
+     * Whether $values would resurrect a soft-deleted row — i.e. it sets the
+     * model's soft-delete column back to null. Used to decide whether a mass
+     * update must evict an already-deleted cached entry rather than skip it.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    private function updateResurrects(Model $model, array $values): bool
+    {
+        if (! method_exists($model, 'getDeletedAtColumn')) {
+            return false;
+        }
+
+        $column = $model->getDeletedAtColumn();
+
+        return array_key_exists($column, $values) && $values[$column] === null;
+    }
+
+    /**
      * Apply a mass-update to mapped entries for $modelClass without going to SQL.
      *
      * Entries whose predicate evaluates to Match have $values applied to their
@@ -644,10 +672,24 @@ final class IdentityMapStore
             if ($entry->modelClass !== $modelClass) {
                 continue;
             }
+
+            $evalResult = $evaluator->evaluate($entry->attributes, $predicate);
+
             if ($entry->state !== LifecycleState::Exists) {
+                // A restore (an update clearing the soft-delete column) resurrects
+                // a non-live cached entry — a transition that cannot be modeled in
+                // place, and which would otherwise leave a stale row and a stale
+                // unique-index pointer behind. Evict it (unless it provably cannot
+                // match) so the next read re-fetches the true, live row. Any other
+                // update on an already-deleted entry is a no-op for its lifecycle
+                // and is left untouched.
+                if ($evalResult !== EvaluationResult::Reject && $this->updateResurrects($entry->model, $values)) {
+                    $this->snapshotForJournal($mapKey);
+                    $keysToEvict[] = $mapKey;
+                }
+
                 continue;
             }
-            $evalResult = $evaluator->evaluate($entry->attributes, $predicate);
 
             if ($evalResult === EvaluationResult::Match) {
                 $this->snapshotForJournal($mapKey);

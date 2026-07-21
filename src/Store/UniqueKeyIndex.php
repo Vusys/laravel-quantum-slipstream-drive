@@ -51,6 +51,13 @@ final class UniqueKeyIndex
 
             $this->index[$fp] = $mapKey;
             unset($this->absent[$fp]);
+
+            // A recorded absence is keyed by scope fingerprint, so a lookup under a
+            // different scope (e.g. withTrashed) may have marked this same value
+            // absent. Now that a row carries it, clear the absence under every scope
+            // for this value — over-clearing only forgoes a cache hit, whereas a
+            // lingering cross-scope absence would wrongly answer a later lookup.
+            $this->forgetAbsentForValue($entry->connection, $entry->modelClass, $entry->table, $values);
         }
     }
 
@@ -67,6 +74,42 @@ final class UniqueKeyIndex
     public function isAbsent(string $uniqueFingerprint): bool
     {
         return isset($this->absent[$uniqueFingerprint]);
+    }
+
+    /**
+     * Drop the "no row has this unique value" markers for a model class while
+     * keeping the positive index. A mass update can turn an absent unique value
+     * present — a restore clearing deleted_at, or a write setting the column — so
+     * a lingering absence would otherwise make a later unique lookup miss a now
+     * live row and wrongly resolve to null.
+     */
+    public function forgetAbsent(string $modelClass): void
+    {
+        foreach (array_keys($this->absent) as $key) {
+            if (str_contains($key, "|{$modelClass}|")) {
+                unset($this->absent[$key]);
+            }
+        }
+    }
+
+    /**
+     * Clear the "no row has this unique value" markers for one value across every
+     * scope fingerprint. The fingerprint packs the scope between the table and the
+     * value suffix, so match on the connection/class/table prefix and the value
+     * suffix while ignoring the scope segment in between.
+     *
+     * @param  array<string, mixed>  $values  already ksorted
+     */
+    private function forgetAbsentForValue(string $connection, string $modelClass, string $table, array $values): void
+    {
+        $prefix = "{$connection}|{$modelClass}|{$table}|";
+        $suffix = '|UQ:'.serialize($values);
+
+        foreach (array_keys($this->absent) as $key) {
+            if (str_starts_with($key, $prefix) && str_ends_with($key, $suffix)) {
+                unset($this->absent[$key]);
+            }
+        }
     }
 
     public function recordAbsent(string $uniqueFingerprint): void
