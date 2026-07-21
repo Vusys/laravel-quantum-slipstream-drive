@@ -223,7 +223,15 @@ final class MemoryBelongsToMany extends BelongsToMany
             $graph->removePivotEdge($parentIdentity, $relationName, $relatedIdentity);
         }
 
-        // Coverage status is preserved: detach with specific ids on covered region leaves it covered.
+        // Complete coverage status is preserved: removePivotEdge prunes the shared
+        // edge bucket that a complete-coverage read serves from. Filtered coverage,
+        // however, keeps its matched edge set on the coverage object itself — which
+        // removePivotEdge does not touch — so drop it to avoid serving a detached row.
+        $existing = $graph->pivotCoverageFor($parentIdentity, $relationName);
+
+        if ($existing !== null && $existing->predicate !== null) {
+            $graph->forgetPivotCoverage($parentIdentity, $relationName);
+        }
 
         return $detached;
     }
