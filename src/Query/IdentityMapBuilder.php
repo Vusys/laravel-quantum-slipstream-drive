@@ -1700,11 +1700,14 @@ class IdentityMapBuilder extends Builder
         }
 
         $backfiller = resolve(ColumnBackfiller::class);
-        $backfillEnabled = $columns !== [] && $backfiller->isEnabled();
+        // A '*' request is never backfillable (it wants every column), so it keeps
+        // the coverage ColumnSet gate in every mode. Only specific columns can be
+        // filled with one batched keyed SELECT below.
+        $backfillEnabled = $columns !== [] && ! in_array('*', $columns, true) && $backfiller->isEnabled();
 
-        // When backfill is off, the coverage's recorded column set is the fast
-        // gate. When it is on, a missing column is filled with one batched keyed
-        // SELECT below rather than falling through to a full re-query.
+        // When backfill can't help, the coverage's recorded column set is the fast
+        // gate; when it can, a missing column is filled below rather than forcing a
+        // full re-query.
         if ($columns !== [] && ! $backfillEnabled && ! $entry->columns->covers($columns)) {
             return null;
         }
