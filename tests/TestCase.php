@@ -61,13 +61,6 @@ abstract class TestCase extends OrchestraTestCase
             $table->timestamps();
         });
 
-        Schema::create('taggables', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
-            $table->morphs('taggable');
-            $table->timestamps();
-        });
-
         Schema::create('uuid_users', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('name');
@@ -88,6 +81,13 @@ abstract class TestCase extends OrchestraTestCase
             $table->string('name');
             $table->smallInteger('priority')->default(0);
             $table->string('color', 7)->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('taggables', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
+            $table->morphs('taggable');
             $table->timestamps();
         });
 

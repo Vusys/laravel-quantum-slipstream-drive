@@ -263,9 +263,10 @@ final class IdentityMapInvariants
     /**
      * An aggregate (count / sum / min / max / exists) served through the engine
      * from a covered region must equal the same aggregate with the map disabled.
-     * Both sides run on the same connection, so any divergence is the engine
-     * computing a stale total from memory rather than a driver quirk. The closure
-     * re-runs the exact aggregate once each way.
+     * The comparison is numeric-aware: the engine returns a clean int/float from
+     * memory, while a driver may hand back a numeric string for sum/count over SQL
+     * (mysql, pgsql), so a numeric result is compared by value while null and bool
+     * keep their exact identity. The closure re-runs the exact aggregate each way.
      *
      * @param  Closure(): mixed  $aggregate
      */
@@ -274,8 +275,8 @@ final class IdentityMapInvariants
         return Invariant::make(
             sprintf('aggregate [%s] matches a bypassed read', $label),
             function () use ($label, $aggregate): void {
-                $mapped = $aggregate();
-                $bypassed = IdentityMap::disabled($aggregate);
+                $mapped = self::normalizeNumeric($aggregate());
+                $bypassed = self::normalizeNumeric(IdentityMap::disabled($aggregate));
 
                 Assert::assertSame(
                     $bypassed,
@@ -442,6 +443,20 @@ final class IdentityMapInvariants
     private static function stringKey(mixed $key): string
     {
         return is_scalar($key) ? (string) $key : get_debug_type($key);
+    }
+
+    /**
+     * Normalize a numeric aggregate result to a float so an int computed in memory
+     * and a numeric string returned by a driver compare equal, while leaving null
+     * (empty min/max) and bool (exists) untouched so their identity still matters.
+     */
+    private static function normalizeNumeric(mixed $value): mixed
+    {
+        if (is_bool($value) || $value === null) {
+            return $value;
+        }
+
+        return is_numeric($value) ? (float) $value : $value;
     }
 
     /**
