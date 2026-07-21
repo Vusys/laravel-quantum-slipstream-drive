@@ -77,7 +77,11 @@ final class SyncPivotRepresentationTest extends TestCase
         $bypass = IdentityMap::disabled(fn (): mixed => $this->pivotActiveByTag($post->id));
 
         $this->assertSame($bypass, $engine, 'sync-cached pivot must match SQL byte-for-byte');
-        $this->assertSame([$tag->id => 0], $engine);
+        // The plain pivot has no cast, so the stored value round-trips in the
+        // driver's own representation of a false boolean (int 0 on sqlite/mysql,
+        // bool false on pgsql) — assert it is falsy without pinning the type.
+        $this->assertArrayHasKey($tag->id, $engine);
+        $this->assertFalse((bool) $engine[$tag->id]);
     }
 
     #[Test]
