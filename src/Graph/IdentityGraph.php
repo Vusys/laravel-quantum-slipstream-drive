@@ -310,6 +310,21 @@ final class IdentityGraph
                 unset($this->pivotCoverage[$coverageKey]);
             }
         }
+
+        // A change to a related row can add it to (or remove it from) a filtered
+        // pivot coverage's predicate set. Filtered coverage records only the edges
+        // that matched at load time, so any write to the related class must drop it —
+        // unfiltered pivot coverage stays, since it serves fresh data from the store.
+        foreach (array_keys($this->pivotCoverageKeysByClass[$identity->modelClass] ?? []) as $coverageKey) {
+            $coverage = $this->pivotCoverage[$coverageKey] ?? null;
+
+            if ($coverage instanceof PivotCoverage
+                && $coverage->predicate instanceof PredicateNode
+                && $coverage->relatedModelClass === $identity->modelClass
+            ) {
+                unset($this->pivotCoverage[$coverageKey]);
+            }
+        }
     }
 
     public function invalidateModelClass(string $modelClass): void
