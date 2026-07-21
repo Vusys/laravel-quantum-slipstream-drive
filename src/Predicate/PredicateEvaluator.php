@@ -146,6 +146,10 @@ final class PredicateEvaluator
 
     private function evaluateComparison(AttributeKnowledge $attributes, ComparisonNode $node, bool $processTruth): EvaluationResult
     {
+        if (str_contains($node->column, '->')) {
+            return $this->evaluateJsonComparison($attributes, $node, $processTruth);
+        }
+
         $fact = $attributes->get($node->column);
 
         if (! $fact instanceof AttributeFact) {
@@ -168,6 +172,87 @@ final class PredicateEvaluator
             ),
             default => EvaluationResult::Unknown,
         };
+    }
+
+    /**
+     * Evaluate a JSON-path equality predicate (`where('meta->plan', 'pro')`).
+     *
+     * Only the subset that resolves identically on every supported driver is
+     * answered in memory: string-valued leaves compared with `=` / `!=` / `<>`.
+     * The extracted-text comparison is routed through the same driver semantics
+     * as scalar columns with unknown collation, so a byte-equal match resolves
+     * confidently everywhere while a case-varied one defers on MySQL (where the
+     * default collation folds case) and stays byte-deterministic on Postgres and
+     * SQLite. Everything else — range operators, non-string leaves, a missing
+     * path, JSON null, or a non-JSON base value — returns Unknown and defers to
+     * SQL, mirroring each driver's `JSON_EXTRACT` typing rather than guessing.
+     */
+    private function evaluateJsonComparison(AttributeKnowledge $attributes, ComparisonNode $node, bool $processTruth): EvaluationResult
+    {
+        if (! in_array($node->operator, ['=', '!=', '<>'], true)) {
+            return EvaluationResult::Unknown;
+        }
+
+        $predicateValue = $node->value;
+
+        if (! is_string($predicateValue)) {
+            return EvaluationResult::Unknown;
+        }
+
+        $segments = explode('->', $node->column);
+        $baseColumn = array_shift($segments);
+
+        if ($baseColumn === '' || $segments === []) {
+            return EvaluationResult::Unknown;
+        }
+
+        $fact = $attributes->get($baseColumn);
+
+        if (! $fact instanceof AttributeFact) {
+            return EvaluationResult::Unknown;
+        }
+
+        $raw = $processTruth ? $fact->currentValue : $fact->originalValue;
+        $extracted = $this->extractJsonPath($raw, $segments);
+
+        if (! is_string($extracted)) {
+            return EvaluationResult::Unknown;
+        }
+
+        return $this->semantics->compare($extracted, $node->operator, $predicateValue, ColumnSemantics::unknown());
+    }
+
+    /**
+     * Navigate a decoded JSON object graph by successive object keys, returning
+     * the leaf value. Returns null (which the caller treats as "defer to SQL")
+     * when the base value is not decodable JSON or the path is absent — a bracket
+     * array-index segment simply fails the key lookup and defers too.
+     *
+     * @param  list<string>  $segments
+     */
+    private function extractJsonPath(mixed $raw, array $segments): mixed
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+
+            if ($decoded === null && trim($raw) !== 'null') {
+                return null;
+            }
+
+            $raw = $decoded;
+        }
+
+        $cursor = $raw;
+
+        foreach ($segments as $segment) {
+            if (! is_array($cursor) || ! array_key_exists($segment, $cursor)) {
+                return null;
+            }
+
+            $cursor = $cursor[$segment];
+        }
+
+        return $cursor;
     }
 
     private function evaluateLike(AttributeKnowledge $attributes, LikeNode $node, bool $processTruth): EvaluationResult
