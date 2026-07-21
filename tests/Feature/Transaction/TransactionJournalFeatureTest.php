@@ -238,7 +238,7 @@ final class TransactionJournalFeatureTest extends TestCase
         $this->assertSame('Carol', $this->reloadName($carol->id));
     }
 
-    private function reloadName(int $id): ?string
+    private function reloadName(int $id): string
     {
         $model = User::find($id);
         $this->assertInstanceOf(User::class, $model);
