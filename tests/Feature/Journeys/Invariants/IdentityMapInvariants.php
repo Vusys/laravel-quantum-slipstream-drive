@@ -110,6 +110,32 @@ final class IdentityMapInvariants
     }
 
     /**
+     * An aggregate (count / sum / min / max / exists) served through the engine
+     * from a covered region must equal the same aggregate with the map disabled.
+     * Both sides run on the same connection, so any divergence is the engine
+     * computing a stale total from memory rather than a driver quirk. The closure
+     * re-runs the exact aggregate once each way.
+     *
+     * @param  Closure(): mixed  $aggregate
+     */
+    public static function aggregateMatchesBypass(string $label, Closure $aggregate): Invariant
+    {
+        return Invariant::make(
+            sprintf('aggregate [%s] matches a bypassed read', $label),
+            function () use ($label, $aggregate): void {
+                $mapped = $aggregate();
+                $bypassed = IdentityMap::disabled($aggregate);
+
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('aggregate [%s] diverged from a bypassed read', $label),
+                );
+            },
+        );
+    }
+
+    /**
      * Every child's resolved polymorphic parent, read through the engine, must
      * equal the same parent read with the map disabled. This is the inverse of
      * relationMatchesBypass for a morphTo: for each child the $parentOf closure
