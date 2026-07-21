@@ -70,6 +70,46 @@ final class IdentityMapInvariants
     }
 
     /**
+     * Every parent's children, read through the engine's relation graph, must
+     * equal the same children read with the map disabled. This is the check that
+     * "relation reads never return deleted or stale children": for each parent the
+     * $children closure re-runs the relation query, once each way.
+     *
+     * @param  class-string<Model>  $parentModel
+     * @param  Closure(Model): mixed  $children  Given a parent, return its child rows (e.g. $p->posts()->get()).
+     * @param  non-empty-list<string>  $childColumns
+     */
+    public static function relationMatchesBypass(string $label, string $parentModel, Closure $children, array $childColumns): Invariant
+    {
+        $project = static function () use ($parentModel, $children, $childColumns): array {
+            $instance = new $parentModel;
+
+            $out = [];
+            foreach ($instance->newQuery()->orderBy($instance->getKeyName())->get() as $parent) {
+                $out[self::stringKey($parent->getKey())] = self::projectRows($children($parent), $childColumns);
+            }
+
+            ksort($out);
+
+            return $out;
+        };
+
+        return Invariant::make(
+            sprintf('relation [%s] reads match a bypassed read', $label),
+            function () use ($label, $project): void {
+                $mapped = $project();
+                $bypassed = IdentityMap::disabled($project);
+
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('relation [%s] served a deleted or stale child set', $label),
+                );
+            },
+        );
+    }
+
+    /**
      * Project the whole table down to an ordered list of column maps, keyed by
      * primary key so the two reads line up row for row. Reads cast values
      * (getAttribute) so an in-memory mutation and a fresh DB read are compared on
