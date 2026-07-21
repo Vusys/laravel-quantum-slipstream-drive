@@ -39,6 +39,9 @@ final class PolymorphicM2MJourney extends Journey
     /** @var non-empty-list<string> */
     private const array VIDEO_COLUMNS = ['id', 'title'];
 
+    /** @var non-empty-list<string> */
+    private const array PIVOT_COLUMNS = ['active', 'priority', 'role'];
+
     #[\Override]
     public function steps(): array
     {
@@ -189,12 +192,15 @@ final class PolymorphicM2MJourney extends Journey
                 fn (Model $parent): mixed => $parent instanceof Tag ? $parent->taggedVideos()->get() : [],
                 self::VIDEO_COLUMNS,
             ),
-            // The belongsToMany pivot on the same Post/Tag models must stay correct.
-            IdentityMapInvariants::relationMatchesBypass(
+            // The belongsToMany pivot on the same Post/Tag models must stay correct,
+            // including its pivot attributes — the 'mutate belongs-to-many pivot'
+            // step exists precisely to catch stale/wrong active/priority/role values.
+            IdentityMapInvariants::relationPivotMatchesBypass(
                 'post.tags (belongsToMany)',
                 Post::class,
                 fn (Model $parent): mixed => $parent instanceof Post ? $parent->tags()->get() : [],
                 self::TAG_COLUMNS,
+                self::PIVOT_COLUMNS,
             ),
         ];
     }
