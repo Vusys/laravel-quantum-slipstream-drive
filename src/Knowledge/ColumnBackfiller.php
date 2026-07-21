@@ -119,6 +119,95 @@ final readonly class ColumnBackfiller
         return $entry->attributes->satisfies($missingColumns);
     }
 
+    /**
+     * Batched sibling of {@see backfill()}: fetch the missing columns for a whole
+     * covered set in a single keyed `SELECT ... WHERE pk IN (...)` and merge per
+     * row, preserving dirty in-memory attributes.
+     *
+     * All entries must share the same model class and primary-key name — the
+     * coverage-served path guarantees this, since they are rows of one covered
+     * table under one scope fingerprint. Returns true when every entry now
+     * satisfies $missingColumns; false if any row no longer exists (delete race)
+     * or a column stayed uncovered, in which case the caller falls through to a
+     * full SQL query.
+     *
+     * @param  list<IdentityEntry>  $entries
+     * @param  list<string>  $missingColumns
+     */
+    public function backfillMany(array $entries, array $missingColumns): bool
+    {
+        if ($entries === [] || $missingColumns === []) {
+            return true;
+        }
+
+        $modelClass = $entries[0]->modelClass;
+
+        if (! is_subclass_of($modelClass, Model::class)) {
+            return false;
+        }
+
+        $primaryKeyName = $entries[0]->primaryKeyName;
+        $columnsToFetch = $missingColumns;
+
+        if (! in_array($primaryKeyName, $columnsToFetch, true)) {
+            array_unshift($columnsToFetch, $primaryKeyName);
+        }
+
+        $primaryKeyValues = [];
+
+        foreach ($entries as $entry) {
+            $primaryKeyValues[] = $entry->primaryKeyValue;
+        }
+
+        $fresh = $this->store->disabled(static function () use ($modelClass, $primaryKeyName, $primaryKeyValues, $columnsToFetch): array {
+            $builder = $modelClass::query();
+
+            if ($builder instanceof IdentityMapBuilder) {
+                $builder = $builder->withoutIdentityMap();
+            }
+
+            return $builder->whereIn($primaryKeyName, $primaryKeyValues)->get($columnsToFetch)->all();
+        });
+
+        $this->store->capture(new Explanation(
+            type: PlanType::BackfillColumnsFromDatabase,
+            modelClass: $modelClass,
+            reason: 'coverage-partial-column-batched-backfill',
+            sqlExecuted: true,
+            missingKeys: $missingColumns,
+            memoryKeys: $primaryKeyValues,
+        ));
+
+        $freshByKey = [];
+
+        foreach ($fresh as $row) {
+            $key = $row->getKey();
+
+            if (is_int($key) || is_string($key)) {
+                $freshByKey[$key] = $row;
+            }
+        }
+
+        foreach ($entries as $entry) {
+            $row = $freshByKey[$entry->primaryKeyValue] ?? null;
+
+            if (! $row instanceof Model) {
+                // The row vanished between coverage capture and now — stale entry.
+                $this->store->forget($entry->model);
+
+                return false;
+            }
+
+            $this->merge($entry, $row);
+
+            if (! $entry->attributes->satisfies($missingColumns)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function merge(IdentityEntry $entry, Model $fresh): void
     {
         $cachedModel = $entry->model;
