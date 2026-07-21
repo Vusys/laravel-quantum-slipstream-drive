@@ -70,6 +70,35 @@ final class IdentityMapInvariants
     }
 
     /**
+     * The order-sensitive sibling of queryMatchesBypass: the rows an ordered
+     * query returns through the engine must match a map-disabled read *in the same
+     * sequence*. queryMatchesBypass keys by primary key and sorts, so it can never
+     * catch a wrong order; this one preserves the returned sequence as a list and
+     * compares position by position. It is the guard for "byte-for-byte identical
+     * rows must also mean identical order" — the property the Postgres
+     * locale-collation fix restored.
+     *
+     * @param  Closure(): iterable<mixed>  $query  Re-runnable ordered query (e.g. ->get()->all()).
+     * @param  non-empty-list<string>  $columns
+     */
+    public static function orderedQueryMatchesBypass(string $label, Closure $query, array $columns): Invariant
+    {
+        return Invariant::make(
+            sprintf('ordered query [%s] matches a bypassed read', $label),
+            function () use ($label, $query, $columns): void {
+                $mapped = self::projectSequence($query(), $columns);
+                $bypassed = self::projectSequence(IdentityMap::disabled($query), $columns);
+
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('ordered query [%s] served rows in a different order than a bypassed read', $label),
+                );
+            },
+        );
+    }
+
+    /**
      * Every parent's children, read through the engine's relation graph, must
      * equal the same children read with the map disabled. This is the check that
      * "relation reads never return deleted or stale children": for each parent the
@@ -276,6 +305,36 @@ final class IdentityMapInvariants
         ksort($projected);
 
         return $projected;
+    }
+
+    /**
+     * Project rows into an order-preserving list of column maps — the same
+     * per-row shape projectRows produces, but as a sequence keyed by position
+     * instead of primary key, so the comparison is sensitive to order.
+     *
+     * @param  non-empty-list<string>  $columns
+     * @return list<array<string, mixed>>
+     */
+    private static function projectSequence(mixed $rows, array $columns): array
+    {
+        $sequence = [];
+
+        if (is_iterable($rows)) {
+            foreach ($rows as $row) {
+                if (! $row instanceof Model) {
+                    continue;
+                }
+
+                $values = [];
+                foreach ($columns as $column) {
+                    $values[$column] = $row->getAttribute($column);
+                }
+
+                $sequence[] = $values;
+            }
+        }
+
+        return $sequence;
     }
 
     private static function stringKey(mixed $key): string
