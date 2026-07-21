@@ -54,7 +54,7 @@ final class DriverSemanticsCrossCheckTest extends TestCase
     private function engineIds(callable $query): array
     {
         /** @var list<int> $ids */
-        $ids = $query()->pluck('id')->map(static fn (mixed $id): int => (int) $id)->sort()->values()->all();
+        $ids = $query()->pluck('id')->map(static fn (mixed $id): int => (int) (is_numeric($id) ? $id : 0))->sort()->values()->all();
 
         return $ids;
     }
@@ -66,14 +66,14 @@ final class DriverSemanticsCrossCheckTest extends TestCase
     {
         /** @var list<int> $ids */
         $ids = IdentityMap::disabled(
-            fn () => $query()->pluck('id')->map(static fn (mixed $id): int => (int) $id)->sort()->values()->all()
+            fn () => $query()->pluck('id')->map(static fn (mixed $id): int => (int) (is_numeric($id) ? $id : 0))->sort()->values()->all()
         );
 
         return $ids;
     }
 
     /**
-     * @return list<array{string, string, int|string}>
+     * @return array<string, array{string, string, int|string}>
      */
     public static function comparisonPredicates(): array
     {
@@ -118,6 +118,12 @@ final class DriverSemanticsCrossCheckTest extends TestCase
 
         $cases = [];
         foreach (self::cartesian($values, $operators) as [$value, $operator]) {
+            if (! is_string($value)) {
+                continue;
+            }
+            if (! is_string($operator)) {
+                continue;
+            }
             $cases["name {$operator} '{$value}'"] = [$operator, $value];
         }
 
@@ -140,7 +146,7 @@ final class DriverSemanticsCrossCheckTest extends TestCase
     }
 
     /**
-     * @return list<array{string, string}>
+     * @return array<string, array{string, string}>
      */
     public static function likePatterns(): array
     {
@@ -172,7 +178,7 @@ final class DriverSemanticsCrossCheckTest extends TestCase
     }
 
     /**
-     * @return list<array{bool}>
+     * @return array<string, array{bool}>
      */
     public static function nullChecks(): array
     {
@@ -204,7 +210,7 @@ final class DriverSemanticsCrossCheckTest extends TestCase
      * sort NULLs first ascending, Postgres sorts them last). The engine must never
      * hand back an order that disagrees with the live backend for any direction.
      *
-     * @return list<array{string}>
+     * @return array<string, array{'asc'|'desc'}>
      */
     public static function orderDirections(): array
     {
@@ -220,10 +226,12 @@ final class DriverSemanticsCrossCheckTest extends TestCase
     {
         $this->seedUsers();
 
+        $dir = $direction === 'desc' ? 'desc' : 'asc';
+
         // Ordered result: keep the DB's exact order (do not re-sort in PHP), so a
         // wrong NULL placement would surface as a mismatch against the oracle.
-        $ordered = fn (): array => User::orderBy('score', $direction)->orderBy('id')->get()
-            ->pluck('id')->map(static fn (mixed $id): int => (int) $id)->values()->all();
+        $ordered = fn (): array => User::orderBy('score', $dir)->orderBy('id')->get()
+            ->pluck('id')->map(static fn (mixed $id): int => (int) (is_numeric($id) ? $id : 0))->values()->all();
 
         $engine = $ordered();
         $oracle = IdentityMap::disabled($ordered);

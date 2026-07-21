@@ -468,29 +468,19 @@ final class QueryCorrectnessTest extends FuzzerTestCase
     {
         $target = $population[mt_rand(0, count($population) - 1)];
 
-        switch (mt_rand(0, 4)) {
-            case 0:
-                DB::table('users')->where('id', $target->id)->update(['active' => (bool) mt_rand(0, 1)]);
-                break;
-            case 1:
-                DB::table('users')->where('id', $target->id)->update(['score' => mt_rand(0, 100)]);
-                break;
-            case 2:
-                DB::table('users')->where('active', (bool) mt_rand(0, 1))->update(['score' => mt_rand(0, 100)]);
-                break;
-            case 3:
-                // Raw hard-delete bypasses the soft-delete scope on purpose.
-                DB::table('users')->where('id', $target->id)->delete();
-                break;
-            default:
-                DB::table('users')->insert([
-                    'name' => "raw-{$seed}-{$step}",
-                    'email' => "raw-{$seed}-{$step}-".mt_rand(0, 999_999)."@example.com",
-                    'active' => (bool) mt_rand(0, 1),
-                    'score' => mt_rand(0, 100),
-                ]);
-                break;
-        }
+        match (mt_rand(0, 4)) {
+            0 => DB::table('users')->where('id', $target->id)->update(['active' => (bool) mt_rand(0, 1)]),
+            1 => DB::table('users')->where('id', $target->id)->update(['score' => mt_rand(0, 100)]),
+            2 => DB::table('users')->where('active', (bool) mt_rand(0, 1))->update(['score' => mt_rand(0, 100)]),
+            // Raw hard-delete bypasses the soft-delete scope on purpose.
+            3 => DB::table('users')->where('id', $target->id)->delete(),
+            default => DB::table('users')->insert([
+                'name' => "raw-{$seed}-{$step}",
+                'email' => "raw-{$seed}-{$step}-".mt_rand(0, 999_999).'@example.com',
+                'active' => (bool) mt_rand(0, 1),
+                'score' => mt_rand(0, 100),
+            ]),
+        };
     }
 
     /** @return array{0: string, 1: 'asc'|'desc'} */

@@ -163,7 +163,12 @@ final class StoreCapsTest extends TestCase
         foreach (range(1, 500) as $i) {
             $store->recordAbsent('default', User::class, 'users', 'id', $i, 'fp');
             $stats = $store->debugStats();
-            $peak = max($peak, $stats['entries'] + $stats['absent']);
+            $entries = $stats['entries'];
+            $absent = $stats['absent'];
+
+            if (is_int($entries) && is_int($absent)) {
+                $peak = max($peak, $entries + $absent);
+            }
         }
 
         $this->assertLessThanOrEqual(5, $peak, 'the combined budget is never breached under sustained load');
