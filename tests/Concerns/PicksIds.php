@@ -23,4 +23,25 @@ trait PicksIds
 
         return is_numeric($picked) ? (int) $picked : null;
     }
+
+    /**
+     * The string-keyed sibling of pickId(), for models with non-incrementing
+     * primary keys (UUIDs). Returns the picked key verbatim as a string so the
+     * caller can whereKey()/find() a UuidUser without losing precision to an int
+     * cast.
+     *
+     * @param  array<array-key, mixed>  $keys
+     */
+    protected function pickKey(Context $ctx, array $keys): ?string
+    {
+        $keys = array_values($keys);
+
+        if ($keys === []) {
+            return null;
+        }
+
+        $picked = $ctx->pick($keys);
+
+        return is_scalar($picked) ? (string) $picked : null;
+    }
 }
