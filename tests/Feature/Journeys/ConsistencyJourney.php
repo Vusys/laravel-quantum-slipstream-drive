@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys;
 
 use Illuminate\Support\Facades\DB;
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\PicksIds;
 use Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys\Invariants\IdentityMapInvariants;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 use Vusys\Runabout\Context;
@@ -24,6 +25,8 @@ use Vusys\Runabout\Step;
  */
 final class ConsistencyJourney extends Journey
 {
+    use PicksIds;
+
     /** @var non-empty-list<string> */
     private const array COLUMNS = ['id', 'name', 'active', 'score'];
 
@@ -34,7 +37,7 @@ final class ConsistencyJourney extends Journey
             Step::make('warm find')
                 ->repeatable(max: 6)
                 ->act(function (Context $ctx): void {
-                    $id = $this->pickId($ctx);
+                    $id = $this->pickUserId($ctx);
                     if ($id !== null) {
                         User::find($id);
                     }
@@ -43,7 +46,7 @@ final class ConsistencyJourney extends Journey
             Step::make('save mutation')
                 ->repeatable(max: 6)
                 ->act(function (Context $ctx): void {
-                    $id = $this->pickId($ctx);
+                    $id = $this->pickUserId($ctx);
                     if ($id === null) {
                         return;
                     }
@@ -68,7 +71,7 @@ final class ConsistencyJourney extends Journey
             Step::make('raw update')
                 ->repeatable(max: 6)
                 ->act(function (Context $ctx): void {
-                    $id = $this->pickId($ctx);
+                    $id = $this->pickUserId($ctx);
                     if ($id === null) {
                         return;
                     }
@@ -93,7 +96,7 @@ final class ConsistencyJourney extends Journey
             Step::make('raw delete')
                 ->repeatable(max: 4)
                 ->act(function (Context $ctx): void {
-                    $id = $this->pickId($ctx);
+                    $id = $this->pickUserId($ctx);
                     if ($id === null) {
                         return;
                     }
@@ -112,17 +115,8 @@ final class ConsistencyJourney extends Journey
         ];
     }
 
-    private function pickId(Context $ctx): ?int
+    private function pickUserId(Context $ctx): ?int
     {
-        /** @var list<mixed> $ids */
-        $ids = User::query()->pluck('id')->all();
-
-        if ($ids === []) {
-            return null;
-        }
-
-        $picked = $ctx->pick($ids);
-
-        return is_numeric($picked) ? (int) $picked : null;
+        return $this->pickId($ctx, User::query()->pluck('id')->all());
     }
 }

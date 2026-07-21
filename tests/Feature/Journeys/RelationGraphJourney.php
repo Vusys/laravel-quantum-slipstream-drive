@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys;
 
 use Illuminate\Database\Eloquent\Model;
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\PicksIds;
 use Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys\Invariants\IdentityMapInvariants;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\Tag;
@@ -26,6 +27,8 @@ use Vusys\Runabout\Step;
  */
 final class RelationGraphJourney extends Journey
 {
+    use PicksIds;
+
     /** @var non-empty-list<string> */
     private const array POST_COLUMNS = ['id', 'user_id', 'title', 'published'];
 
@@ -157,21 +160,5 @@ final class RelationGraphJourney extends Journey
         $post = $id === null ? null : Post::find($id);
 
         return $post instanceof Post ? $post : null;
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $ids
-     */
-    private function pickId(Context $ctx, array $ids): ?int
-    {
-        $ids = array_values($ids);
-
-        if ($ids === []) {
-            return null;
-        }
-
-        $picked = $ctx->pick($ids);
-
-        return is_numeric($picked) ? (int) $picked : null;
     }
 }

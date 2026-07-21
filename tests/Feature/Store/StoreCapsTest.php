@@ -179,7 +179,7 @@ final class StoreCapsTest extends TestCase
     {
         $store = new IdentityMapStore(null, maxEntries: 2);
 
-        // Record an absence for id=1, then overflow the cap so the whole store flushes.
+        // Overflow the cap so the whole store flushes.
         $store->recordAbsent('default', User::class, 'users', 'id', 1, 'fp');
         $store->recordAbsent('default', User::class, 'users', 'id', 2, 'fp');
         $store->recordAbsent('default', User::class, 'users', 'id', 3, 'fp');
@@ -199,7 +199,7 @@ final class StoreCapsTest extends TestCase
         $store->remember($target, true);
         $this->assertNotNull($store->findEntry($target), 'entry is live before the cap trips');
 
-        // Push new keys until the cap flushes the whole store.
+        // Overflow the cap so the whole store flushes.
         foreach (range(1, 5) as $i) {
             $store->remember(User::create(['name' => "Filler{$i}", 'email' => "filler{$i}@example.com"]), true);
         }

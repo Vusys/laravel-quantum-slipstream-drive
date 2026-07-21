@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys;
 
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\PicksIds;
 use Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys\Invariants\IdentityMapInvariants;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 use Vusys\Runabout\Context;
@@ -23,6 +24,8 @@ use Vusys\Runabout\Step;
  */
 final class CoverageInvalidationJourney extends Journey
 {
+    use PicksIds;
+
     /** @var non-empty-list<string> */
     private const array COLUMNS = ['id', 'name', 'active', 'score'];
 
@@ -129,27 +132,11 @@ final class CoverageInvalidationJourney extends Journey
 
     private function pickLiveId(Context $ctx): ?int
     {
-        return $this->pickFrom($ctx, User::query()->pluck('id')->all());
+        return $this->pickId($ctx, User::query()->pluck('id')->all());
     }
 
     private function pickTrashedId(Context $ctx): ?int
     {
-        return $this->pickFrom($ctx, User::onlyTrashed()->pluck('id')->all());
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $ids
-     */
-    private function pickFrom(Context $ctx, array $ids): ?int
-    {
-        $ids = array_values($ids);
-
-        if ($ids === []) {
-            return null;
-        }
-
-        $picked = $ctx->pick($ids);
-
-        return is_numeric($picked) ? (int) $picked : null;
+        return $this->pickId($ctx, User::onlyTrashed()->pluck('id')->all());
     }
 }

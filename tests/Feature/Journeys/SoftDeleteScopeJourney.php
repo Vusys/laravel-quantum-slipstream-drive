@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys;
 
+use Vusys\QuantumSlipstreamDrive\Tests\Concerns\PicksIds;
 use Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys\Invariants\IdentityMapInvariants;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 use Vusys\Runabout\Context;
@@ -23,6 +24,8 @@ use Vusys\Runabout\Step;
  */
 final class SoftDeleteScopeJourney extends Journey
 {
+    use PicksIds;
+
     /** @var non-empty-list<string> */
     private const array COLUMNS = ['id', 'name', 'active'];
 
@@ -156,21 +159,5 @@ final class SoftDeleteScopeJourney extends Journey
     private function pickAnyId(Context $ctx): ?int
     {
         return $this->pickId($ctx, User::withTrashed()->pluck('id')->all());
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $ids
-     */
-    private function pickId(Context $ctx, array $ids): ?int
-    {
-        $ids = array_values($ids);
-
-        if ($ids === []) {
-            return null;
-        }
-
-        $picked = $ctx->pick($ids);
-
-        return is_numeric($picked) ? (int) $picked : null;
     }
 }
