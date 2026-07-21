@@ -5,9 +5,16 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Driver;
 
 /**
- * PostgreSQL uses case-sensitive equality and ordering by default. Byte-equality
- * maps to database equality unless the column is a citext extension type, which
- * the resolver must surface via ColumnSemantics::stringComparison = CaseInsensitive.
+ * PostgreSQL uses case-sensitive equality by default: byte-equality maps to
+ * database equality (its default collations are deterministic) unless the column
+ * is a citext extension type, surfaced via
+ * ColumnSemantics::stringComparison = CaseInsensitive.
+ *
+ * String *ordering* is a different matter: it follows the database's locale
+ * collation (e.g. en_US.UTF-8), which does not match PHP byte order — under that
+ * collation 'alice' sorts before 'Alice', the opposite of strcmp(). Because the
+ * server's collation cannot be reproduced faithfully in PHP, relational string
+ * comparisons (<, <=, >, >=) defer to SQL rather than risk a wrong answer.
  *
  * Postgres orders NULLs LAST for ASC and FIRST for DESC by default.
  */
@@ -32,12 +39,10 @@ final class PostgresSemantics extends AbstractDriverSemantics
     }
 
     #[\Override]
-    protected function orderStrings(string $left, string $right, ColumnSemantics $column): int
+    protected function orderStrings(string $left, string $right, ColumnSemantics $column): ?int
     {
-        if ($column->stringComparison === StringComparisonMode::CaseInsensitive) {
-            return strcasecmp($left, $right) <=> 0;
-        }
-
-        return strcmp($left, $right) <=> 0;
+        // Ordering follows the server's locale collation, which PHP cannot
+        // reproduce — defer to SQL for every relational string comparison.
+        return null;
     }
 }

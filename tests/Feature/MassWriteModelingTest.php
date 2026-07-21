@@ -155,6 +155,108 @@ final class MassWriteModelingTest extends TestCase
     }
 
     // =========================================================================
+    // Mass-write precision: the right entries change, the rest stay byte-intact (#93)
+    // =========================================================================
+
+    #[Test]
+    public function mass_update_with_range_predicate_updates_only_matching_entries(): void
+    {
+        $low = User::create(['name' => 'Low', 'email' => 'low@example.com', 'active' => false, 'score' => 10]);
+        $mid = User::create(['name' => 'Mid', 'email' => 'mid@example.com', 'active' => false, 'score' => 50]);
+        $high = User::create(['name' => 'High', 'email' => 'high@example.com', 'active' => false, 'score' => 90]);
+
+        // Warm every entry.
+        User::find($low->id);
+        User::find($mid->id);
+        User::find($high->id);
+
+        User::where('score', '>', 50)->update(['active' => true]);
+
+        $sql = $this->countSql(function () use ($low, $mid, $high): void {
+            $lowFound = User::find($low->id);
+            $midFound = User::find($mid->id);
+            $highFound = User::find($high->id);
+            $this->assertInstanceOf(User::class, $lowFound);
+            $this->assertInstanceOf(User::class, $midFound);
+            $this->assertInstanceOf(User::class, $highFound);
+
+            $this->assertFalse((bool) $lowFound->active, 'score 10 is below the boundary — untouched');
+            $this->assertFalse((bool) $midFound->active, 'score 50 is on the boundary of a strict > — untouched');
+            $this->assertTrue((bool) $highFound->active, 'score 90 matches — updated in memory');
+        });
+
+        $this->assertSame(0, $sql, 'a predicate-scoped update leaves every entry resolvable from memory');
+    }
+
+    #[Test]
+    public function mass_update_leaves_non_updated_columns_of_matching_entries_intact(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => false, 'score' => 100]);
+        User::find($alice->id);
+
+        User::where('score', '>', 50)->update(['active' => true]);
+
+        $sql = $this->countSql(function () use ($alice): void {
+            $found = User::find($alice->id);
+            $this->assertInstanceOf(User::class, $found);
+            $this->assertTrue((bool) $found->active, 'the targeted column changed');
+            $this->assertSame('Alice', $found->name, 'an unlisted column is left exactly as it was');
+            $this->assertSame(100, (int) $found->score, 'the predicate column itself is untouched');
+        });
+
+        $this->assertSame(0, $sql);
+    }
+
+    #[Test]
+    public function mass_update_keeps_unique_key_lookups_valid_for_rejected_entries(): void
+    {
+        config(['quantum-slipstream-drive.models' => [
+            User::class => ['unique' => [['email']]],
+        ]]);
+        app()->forgetInstance(IdentityMapStore::class);
+        $this->store = resolve(IdentityMapStore::class);
+
+        $matching = User::create(['name' => 'Match', 'email' => 'match@example.com', 'active' => false, 'score' => 90]);
+        $rejected = User::create(['name' => 'Reject', 'email' => 'reject@example.com', 'active' => false, 'score' => 10]);
+
+        User::where('email', 'match@example.com')->first();
+        User::where('email', 'reject@example.com')->first();
+
+        User::where('score', '>', 50)->update(['active' => true]);
+
+        $sql = $this->countSql(function (): void {
+            $stillThere = User::where('email', 'reject@example.com')->first();
+            $this->assertInstanceOf(User::class, $stillThere);
+            $this->assertFalse((bool) $stillThere->active, 'a rejected entry keeps its pre-write value');
+        });
+
+        $this->assertSame(0, $sql, 'the unique-key index for a rejected entry is never disturbed by the scoped write');
+
+        unset($matching, $rejected);
+    }
+
+    #[Test]
+    public function mass_soft_delete_with_predicate_marks_only_matching_entries(): void
+    {
+        $doomed = User::create(['name' => 'Doomed', 'email' => 'doomed@example.com', 'score' => 90]);
+        $spared = User::create(['name' => 'Spared', 'email' => 'spared@example.com', 'score' => 10]);
+
+        User::find($doomed->id);
+        User::find($spared->id);
+
+        User::where('score', '>', 50)->delete();
+
+        $sql = $this->countSql(function () use ($doomed, $spared): void {
+            $this->assertNull(User::find($doomed->id), 'the matching user reads as soft-deleted from memory');
+            $survivor = User::find($spared->id);
+            $this->assertInstanceOf(User::class, $survivor);
+            $this->assertSame(10, (int) $survivor->score, 'the rejected user stays alive and unchanged');
+        });
+
+        $this->assertSame(0, $sql, 'both outcomes are served from memory after a scoped soft-delete');
+    }
+
+    // =========================================================================
     // Mass-delete (soft): identity map predicate evaluation
     // =========================================================================
 
