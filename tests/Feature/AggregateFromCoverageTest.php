@@ -385,8 +385,12 @@ final class AggregateFromCoverageTest extends TestCase
     public function partial_column_coverage_forces_aggregate_fallthrough_to_sql(): void
     {
         // Coverage records ['id', 'name'] only — 'score' is not loaded into the
-        // identity map. An aggregate over 'score' must fall through to SQL
-        // rather than reading null attribute values out of partially-loaded models.
+        // identity map. Under query_normally an aggregate over 'score' must fall
+        // through to SQL rather than reading null attribute values out of
+        // partially-loaded models. (With backfill_missing_columns the coverage
+        // path instead fills the missing column — see CoverageColumnBackfillTest.)
+        config(['quantum-slipstream-drive.partial_models' => 'query_normally']);
+
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true, 'score' => 10]);
         User::where('active', true)->get(['id', 'name']);
 
