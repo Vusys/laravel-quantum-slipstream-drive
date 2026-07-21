@@ -245,6 +245,28 @@ final class PivotPredicateCoverageTest extends TestCase
     }
 
     #[Test]
+    public function detaching_a_covered_row_invalidates_filtered_pivot_coverage(): void
+    {
+        $post = $this->seedPost();
+
+        $post->tags()->wherePivot('active', true)->get(); // filtered coverage {Editor, Viewer}
+
+        // Detach a specific id that is part of the recorded filtered set. Filtered
+        // coverage keeps its edge set on the coverage object, so a specific-id
+        // detach must invalidate it rather than keep serving the removed row.
+        $editor = Tag::where('name', 'Editor')->firstOrFail();
+        $post->tags()->detach($editor->id);
+
+        $names = null;
+        $sql = $this->countSql(function () use ($post, &$names): void {
+            $names = $post->tags()->wherePivot('active', true)->get()->pluck('name')->sort()->values()->all();
+        });
+
+        $this->assertGreaterThan(0, $sql, 'a specific-id detach must invalidate filtered pivot coverage');
+        $this->assertSame(['Viewer'], $names);
+    }
+
+    #[Test]
     public function unfiltered_read_is_not_downgraded_by_a_later_filtered_load(): void
     {
         $post = $this->seedPost();
