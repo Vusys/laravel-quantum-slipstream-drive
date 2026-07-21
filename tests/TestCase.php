@@ -21,6 +21,8 @@ abstract class TestCase extends OrchestraTestCase
     #[\Override]
     protected function defineDatabaseMigrations(): void
     {
+        Schema::dropIfExists('images');
+        Schema::dropIfExists('profiles');
         Schema::dropIfExists('gadgets');
         Schema::dropIfExists('cast_samples');
         Schema::dropIfExists('post_tag');
@@ -112,11 +114,30 @@ abstract class TestCase extends OrchestraTestCase
             $table->string('code');
             $table->integer('qty')->default(0);
         });
+
+        Schema::create('profiles', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('headline');
+            $table->boolean('public')->default(true);
+            $table->timestamps();
+            $table->unique('user_id');
+        });
+
+        Schema::create('images', function (Blueprint $table): void {
+            $table->id();
+            $table->morphs('imageable');
+            $table->string('url');
+            $table->boolean('primary')->default(false);
+            $table->timestamps();
+        });
     }
 
     #[\Override]
     protected function tearDown(): void
     {
+        Schema::dropIfExists('images');
+        Schema::dropIfExists('profiles');
         Schema::dropIfExists('gadgets');
         Schema::dropIfExists('cast_samples');
         Schema::dropIfExists('post_tag');
