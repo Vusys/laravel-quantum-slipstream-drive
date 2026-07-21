@@ -21,6 +21,8 @@ abstract class TestCase extends OrchestraTestCase
     #[\Override]
     protected function defineDatabaseMigrations(): void
     {
+        Schema::dropIfExists('taggables');
+        Schema::dropIfExists('videos');
         Schema::dropIfExists('images');
         Schema::dropIfExists('profiles');
         Schema::dropIfExists('gadgets');
@@ -32,9 +34,17 @@ abstract class TestCase extends OrchestraTestCase
         Schema::dropIfExists('labels');
         Schema::dropIfExists('uuid_users');
         Schema::dropIfExists('users');
+        Schema::dropIfExists('countries');
+
+        Schema::create('countries', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
 
         Schema::create('users', function (Blueprint $table): void {
             $table->id();
+            $table->foreignId('country_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
             $table->string('email')->unique();
             $table->boolean('active')->default(true);
@@ -42,6 +52,20 @@ abstract class TestCase extends OrchestraTestCase
             $table->text('bio')->nullable();
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        Schema::create('videos', function (Blueprint $table): void {
+            $table->id();
+            $table->string('title');
+            $table->boolean('published')->default(false);
+            $table->timestamps();
+        });
+
+        Schema::create('taggables', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
+            $table->morphs('taggable');
+            $table->timestamps();
         });
 
         Schema::create('uuid_users', function (Blueprint $table): void {
@@ -136,6 +160,8 @@ abstract class TestCase extends OrchestraTestCase
     #[\Override]
     protected function tearDown(): void
     {
+        Schema::dropIfExists('taggables');
+        Schema::dropIfExists('videos');
         Schema::dropIfExists('images');
         Schema::dropIfExists('profiles');
         Schema::dropIfExists('gadgets');
@@ -147,6 +173,7 @@ abstract class TestCase extends OrchestraTestCase
         Schema::dropIfExists('labels');
         Schema::dropIfExists('uuid_users');
         Schema::dropIfExists('users');
+        Schema::dropIfExists('countries');
         DB::disconnect();
         parent::tearDown();
     }

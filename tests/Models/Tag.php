@@ -7,6 +7,7 @@ namespace Vusys\QuantumSlipstreamDrive\Tests\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
 use Vusys\QuantumSlipstreamDrive\Tests\Concerns\UsesContextConnection;
 use Vusys\QuantumSlipstreamDrive\Tests\Factories\TagFactory;
@@ -44,5 +45,17 @@ final class Tag extends Model
         return $this->belongsToMany(Post::class)
             ->withPivot(['active', 'priority', 'role'])
             ->withTimestamps();
+    }
+
+    /** @return MorphToMany<Post, $this> */
+    public function taggedPosts(): MorphToMany
+    {
+        return $this->morphedByMany(Post::class, 'taggable');
+    }
+
+    /** @return MorphToMany<Video, $this> */
+    public function taggedVideos(): MorphToMany
+    {
+        return $this->morphedByMany(Video::class, 'taggable');
     }
 }

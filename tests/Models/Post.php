@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Vusys\QuantumSlipstreamDrive\HasIdentityMap;
 use Vusys\QuantumSlipstreamDrive\Tests\Concerns\UsesContextConnection;
 use Vusys\QuantumSlipstreamDrive\Tests\Factories\PostFactory;
@@ -76,6 +77,12 @@ final class Post extends Model
     public function image(): MorphOne
     {
         return $this->morphOne(Image::class, 'imageable');
+    }
+
+    /** @return MorphToMany<Tag, $this> */
+    public function topics(): MorphToMany
+    {
+        return $this->morphToMany(Tag::class, 'taggable');
     }
 
     /** @return BelongsToMany<Tag, $this> */
