@@ -266,6 +266,14 @@ final class MemoryBelongsToMany extends BelongsToMany
         // sync($ids, detaching=true) — intended set is the complete set.
         $graph->clearPivotEdgesFor($parentIdentity, $relationName);
 
+        $knownPivotColumns = $this->knownPivotColumns();
+        // The caller passes pivot values as PHP types (e.g. a bool `active`), but
+        // the database stores and returns them in its own representation (an int
+        // `0`/`1`) and this relation's pivot casts must apply exactly as on read.
+        // Caching the raw input would let a memory-served pivot diverge
+        // byte-for-byte from SQL, so re-read the just-written rows instead.
+        $freshPivotAttributes = $this->syncedPivotAttributes($knownPivotColumns);
+
         foreach ($intended as [$relatedKey, $pivotAttrs]) {
             $relatedIdentity = $this->relatedIdentityFromKey($relatedKey);
 
@@ -274,7 +282,7 @@ final class MemoryBelongsToMany extends BelongsToMany
                 relationName: $relationName,
                 related: $relatedIdentity,
                 pivotTable: $this->table,
-                pivotAttributes: $pivotAttrs,
+                pivotAttributes: $freshPivotAttributes[(string) $relatedKey] ?? $pivotAttrs,
                 source: EdgeSource::Pivot,
                 confidence: EdgeConfidence::Certain,
                 version: 1,
@@ -287,7 +295,7 @@ final class MemoryBelongsToMany extends BelongsToMany
             relatedModelClass: $this->related::class,
             pivotTable: $this->table,
             complete: true,
-            knownPivotColumns: $this->knownPivotColumns(),
+            knownPivotColumns: $knownPivotColumns,
         ));
 
         return $changes;
@@ -771,6 +779,14 @@ final class MemoryBelongsToMany extends BelongsToMany
             return null;
         }
 
+        // A belongsToMany read materializes full related models. A partial entry
+        // (e.g. one recorded by a prior pluck('id') / column-subset select) knows
+        // only some columns, so serving it would hand back nulls for the columns
+        // it never loaded. Bail to SQL rather than serve an incomplete related row.
+        if (! $entry->attributes->satisfies(['*'])) {
+            return null;
+        }
+
         return $entry;
     }
 
@@ -1035,6 +1051,46 @@ final class MemoryBelongsToMany extends BelongsToMany
         }
 
         return $attrs;
+    }
+
+    /**
+     * Re-read the pivot rows just written by a detaching sync() and reduce each
+     * to the attribute representation a fresh relation read would produce —
+     * hydrated through this relation's own pivot model so its casts apply exactly
+     * as on read (a plain Pivot yields the raw int, a `using()` cast pivot yields
+     * the cast value). Keyed by stringified related key. This reads directly from
+     * the pivot table (a base query builder, so no coverage side effects) and is
+     * the source of truth the cached edges must carry.
+     *
+     * @param  list<string>  $knownPivotColumns
+     * @return array<string, array<string, mixed>>
+     */
+    private function syncedPivotAttributes(array $knownPivotColumns): array
+    {
+        $out = [];
+
+        foreach ($this->newPivotQuery()->get() as $row) {
+            /** @var array<string, mixed> $raw */
+            $raw = (array) $row;
+
+            $key = $raw[$this->relatedPivotKey] ?? null;
+            if (! is_int($key) && ! is_string($key)) {
+                continue;
+            }
+
+            $pivot = $this->newPivot($raw, true);
+
+            $attrs = [];
+            foreach ($knownPivotColumns as $column) {
+                if (array_key_exists($column, $pivot->getAttributes())) {
+                    $attrs[$column] = $pivot->getAttribute($column);
+                }
+            }
+
+            $out[(string) $key] = $attrs;
+        }
+
+        return $out;
     }
 
     /** @return list<string> */
