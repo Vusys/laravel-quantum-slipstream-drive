@@ -110,6 +110,53 @@ final class IdentityMapInvariants
     }
 
     /**
+     * The cast-aware sibling of readsMatchBypass: every row of $model, read once
+     * through the engine and once with the map disabled, must be equal after each
+     * cast column is normalized to a comparable scalar (a Carbon to a formatted
+     * string, a backed enum to its value). Two reads that decode to the same value
+     * would otherwise fail assertSame on object identity, hiding the property we
+     * actually care about — that a memory-served row survives the cast boundary
+     * identically to a fresh DB read.
+     *
+     * @param  class-string<Model>  $model
+     * @param  non-empty-list<string>  $columns
+     */
+    public static function castReadsMatchBypass(string $model, array $columns): Invariant
+    {
+        $project = static function () use ($model, $columns): array {
+            $instance = new $model;
+
+            $out = [];
+            foreach ($instance->newQuery()->orderBy($instance->getKeyName())->get() as $row) {
+                $values = [];
+                foreach ($columns as $column) {
+                    $values[$column] = self::normalizeCast($row->getAttribute($column));
+                }
+
+                $out[self::stringKey($row->getKey())] = $values;
+            }
+
+            ksort($out);
+
+            return $out;
+        };
+
+        return Invariant::make(
+            sprintf('%s cast-normalized reads match a bypassed read', class_basename($model)),
+            function () use ($model, $project): void {
+                $mapped = $project();
+                $bypassed = IdentityMap::disabled($project);
+
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('cast-normalized read of %s diverged from a bypassed read', class_basename($model)),
+                );
+            },
+        );
+    }
+
+    /**
      * An aggregate (count / sum / min / max / exists) served through the engine
      * from a covered region must equal the same aggregate with the map disabled.
      * Both sides run on the same connection, so any divergence is the engine
@@ -234,5 +281,27 @@ final class IdentityMapInvariants
     private static function stringKey(mixed $key): string
     {
         return is_scalar($key) ? (string) $key : get_debug_type($key);
+    }
+
+    /**
+     * Reduce a cast attribute to a value comparable across two independent reads:
+     * backed enums to their scalar, date/times to a microsecond-precise string,
+     * arrays element-wise, everything else untouched.
+     */
+    private static function normalizeCast(mixed $value): mixed
+    {
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s.u');
+        }
+
+        if (is_array($value)) {
+            return array_map(self::normalizeCast(...), $value);
+        }
+
+        return $value;
     }
 }
