@@ -139,6 +139,81 @@ final class IdentityMapInvariants
     }
 
     /**
+     * Like relationMatchesBypass, but also compares each child's *pivot*
+     * attributes. For every parent the $childrenOf closure returns the related
+     * rows (each carrying a ->pivot); the child is reduced to its $childColumns
+     * plus its normalized $pivotColumns, so a sync/detach/updateExistingPivot the
+     * engine's PivotCoverage failed to invalidate — a stale pivot flag, a detached
+     * row still served, a priority left at its old value — is caught after every
+     * step.
+     *
+     * @param  class-string<Model>  $parentModel
+     * @param  Closure(Model): mixed  $childrenOf
+     * @param  non-empty-list<string>  $childColumns
+     * @param  non-empty-list<string>  $pivotColumns
+     */
+    public static function relationPivotMatchesBypass(
+        string $label,
+        string $parentModel,
+        Closure $childrenOf,
+        array $childColumns,
+        array $pivotColumns,
+    ): Invariant {
+        $project = static function () use ($parentModel, $childrenOf, $childColumns, $pivotColumns): array {
+            $instance = new $parentModel;
+
+            $out = [];
+            foreach ($instance->newQuery()->orderBy($instance->getKeyName())->get() as $parent) {
+                $children = $childrenOf($parent);
+                $rows = [];
+
+                if (is_iterable($children)) {
+                    foreach ($children as $child) {
+                        if (! $child instanceof Model) {
+                            continue;
+                        }
+
+                        $values = [];
+                        foreach ($childColumns as $column) {
+                            $values[$column] = $child->getAttribute($column);
+                        }
+
+                        $pivot = $child->getAttribute('pivot');
+                        $pivotValues = [];
+                        foreach ($pivotColumns as $column) {
+                            $pivotValues[$column] = $pivot instanceof Model ? self::normalizeCast($pivot->getAttribute($column)) : null;
+                        }
+                        $values['@pivot'] = $pivotValues;
+
+                        $rows[self::stringKey($child->getKey())] = $values;
+                    }
+                }
+
+                ksort($rows);
+                $out[self::stringKey($parent->getKey())] = $rows;
+            }
+
+            ksort($out);
+
+            return $out;
+        };
+
+        return Invariant::make(
+            sprintf('relation+pivot [%s] reads match a bypassed read', $label),
+            function () use ($label, $project): void {
+                $mapped = $project();
+                $bypassed = IdentityMap::disabled($project);
+
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('relation+pivot [%s] served a stale pivot or detached child', $label),
+                );
+            },
+        );
+    }
+
+    /**
      * The cast-aware sibling of readsMatchBypass: every row of $model, read once
      * through the engine and once with the map disabled, must be equal after each
      * cast column is normalized to a comparable scalar (a Carbon to a formatted
