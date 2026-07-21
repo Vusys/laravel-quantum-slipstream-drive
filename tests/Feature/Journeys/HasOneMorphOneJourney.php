@@ -86,7 +86,9 @@ final class HasOneMorphOneJourney extends Journey
                 ->repeatable(max: 4)
                 ->act(function (Context $ctx): void {
                     $post = $this->pickPost($ctx);
-                    if ($post instanceof Post) {
+                    // morphOne is one-per-post; only create when the post has none
+                    // (the unique index would otherwise reject a second image).
+                    if ($post instanceof Post && ! $post->image()->exists()) {
                         $post->image()->create([
                             'url' => 'img-'.$ctx->randomInt(1, 1_000_000).'.png',
                             'primary' => $ctx->randomInt(0, 1) === 1,

@@ -154,6 +154,8 @@ abstract class TestCase extends OrchestraTestCase
             $table->string('url');
             $table->boolean('primary')->default(false);
             $table->timestamps();
+            // morphOne is one-per-owner: keep the fixture from ever holding two.
+            $table->unique(['imageable_type', 'imageable_id']);
         });
     }
 
