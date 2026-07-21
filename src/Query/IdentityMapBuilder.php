@@ -1329,6 +1329,12 @@ class IdentityMapBuilder extends Builder
             } else {
                 $registry->flushByColumns($modelClass, array_keys($augmentedValues));
             }
+
+            // applyMassUpdate refreshes matched entries but leaves unique-key
+            // absence markers untouched. A mass update (notably a restore setting
+            // deleted_at back to null) can make an absent unique value present, so
+            // drop the class's absence markers to avoid a stale null resolution.
+            $store->forgetUniqueAbsence($modelClass);
         } else {
             $store->flush($modelClass);
             $registry->flushModelClass($modelClass);

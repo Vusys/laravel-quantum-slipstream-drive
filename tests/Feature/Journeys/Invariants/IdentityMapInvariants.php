@@ -287,6 +287,33 @@ final class IdentityMapInvariants
     }
 
     /**
+     * A find-by-unique-column resolution served through the engine (e.g.
+     * firstWhere('email', ...) answered from UniqueKeyIndex) must resolve to the
+     * same row — or the same null — as a map-disabled read. The closure returns a
+     * scalar identity of the resolved row (its key, or null when absent), run once
+     * each way; a stale index that still maps a renamed-away or deleted unique
+     * value to its old row surfaces as the two diverging.
+     *
+     * @param  Closure(): mixed  $resolve
+     */
+    public static function lookupMatchesBypass(string $label, Closure $resolve): Invariant
+    {
+        return Invariant::make(
+            sprintf('unique lookup [%s] matches a bypassed read', $label),
+            function () use ($label, $resolve): void {
+                $mapped = $resolve();
+                $bypassed = IdentityMap::disabled($resolve);
+
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('unique lookup [%s] resolved a stale or wrong row', $label),
+                );
+            },
+        );
+    }
+
+    /**
      * Every child's resolved polymorphic parent, read through the engine, must
      * equal the same parent read with the map disabled. This is the inverse of
      * relationMatchesBypass for a morphTo: for each child the $parentOf closure
