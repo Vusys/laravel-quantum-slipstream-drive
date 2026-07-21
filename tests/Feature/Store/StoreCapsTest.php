@@ -155,6 +155,77 @@ final class StoreCapsTest extends TestCase
     }
 
     #[Test]
+    public function sustained_writes_far_past_the_cap_never_exceed_the_configured_limit(): void
+    {
+        $store = new IdentityMapStore(null, maxEntries: 5);
+
+        $peak = 0;
+        foreach (range(1, 500) as $i) {
+            $store->recordAbsent('default', User::class, 'users', 'id', $i, 'fp');
+            $stats = $store->debugStats();
+            $entries = $stats['entries'];
+            $absent = $stats['absent'];
+
+            if (is_int($entries) && is_int($absent)) {
+                $peak = max($peak, $entries + $absent);
+            }
+        }
+
+        $this->assertLessThanOrEqual(5, $peak, 'the combined budget is never breached under sustained load');
+    }
+
+    #[Test]
+    public function a_cap_flush_clears_stale_absence_so_a_real_row_is_never_masked(): void
+    {
+        $store = new IdentityMapStore(null, maxEntries: 2);
+
+        // Overflow the cap so the whole store flushes.
+        $store->recordAbsent('default', User::class, 'users', 'id', 1, 'fp');
+        $store->recordAbsent('default', User::class, 'users', 'id', 2, 'fp');
+        $store->recordAbsent('default', User::class, 'users', 'id', 3, 'fp');
+
+        $this->assertFalse(
+            $store->isAbsent('default', User::class, 'users', 'id', 1, 'fp'),
+            'the flushed absence must not linger — a row inserted for id=1 must not be hidden by a stale marker',
+        );
+    }
+
+    #[Test]
+    public function a_cap_flush_drops_live_entries_so_nothing_stale_is_served(): void
+    {
+        $store = new IdentityMapStore(null, maxEntries: 3);
+
+        $target = User::create(['name' => 'Target', 'email' => 'target@example.com']);
+        $store->remember($target, true);
+        $this->assertNotNull($store->findEntry($target), 'entry is live before the cap trips');
+
+        // Overflow the cap so the whole store flushes.
+        foreach (range(1, 5) as $i) {
+            $store->remember(User::create(['name' => "Filler{$i}", 'email' => "filler{$i}@example.com"]), true);
+        }
+
+        $this->assertNull(
+            $store->findEntry($target),
+            'a cap flush drops the earliest entry rather than serving it stale',
+        );
+        $this->assertLessThanOrEqual(3, $store->debugStats()['entries']);
+    }
+
+    #[Test]
+    public function unique_index_stays_within_cap_across_repeated_flushes(): void
+    {
+        $store = new IdentityMapStore(null, maxUniqueKeys: 3);
+
+        $peak = 0;
+        foreach (range(1, 100) as $i) {
+            $store->remember(User::create(['name' => "U{$i}", 'email' => "u{$i}@example.com"]), true);
+            $peak = max($peak, $store->debugStats()['unique_index']);
+        }
+
+        $this->assertLessThanOrEqual(3, $peak, 'the unique-key index never exceeds its cap no matter how many flush cycles pass');
+    }
+
+    #[Test]
     public function a_malformed_cap_value_falls_back_to_the_default_rather_than_disabling(): void
     {
         $provider = new QuantumSlipstreamDriveServiceProvider(app());

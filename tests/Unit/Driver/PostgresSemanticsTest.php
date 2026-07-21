@@ -47,22 +47,38 @@ final class PostgresSemanticsTest extends TestCase
     }
 
     #[Test]
-    public function string_ordering_with_case_sensitive_default(): void
+    public function string_ordering_defers_because_postgres_collation_is_locale_dependent(): void
     {
+        // Postgres's default (locale) collation does not order strings by byte
+        // value — under en_US.UTF-8, 'alice' sorts before 'Alice', the opposite
+        // of strcmp(). Since we cannot reproduce the server's collation in PHP,
+        // string ordering must defer to SQL rather than guess a byte order.
         $s = new PostgresSemantics;
-        self::assertSame(-1, $s->compareForOrder('alice', 'bob', ColumnSemantics::unknown()));
-        self::assertSame(0, $s->compareForOrder('alice', 'alice', ColumnSemantics::unknown()));
-        self::assertSame(1, $s->compareForOrder('bob', 'alice', ColumnSemantics::unknown()));
+        self::assertNull($s->compareForOrder('alice', 'bob', ColumnSemantics::unknown()));
+        self::assertNull($s->compareForOrder('bob', 'alice', ColumnSemantics::unknown()));
     }
 
     #[Test]
-    public function citext_ordering_folds_case(): void
+    public function citext_ordering_defers_too(): void
     {
+        // citext ordering is likewise the underlying locale collation, case-folded
+        // — not reproducible as a strcasecmp(), so it must also defer.
         $s = new PostgresSemantics;
         $col = new ColumnSemantics(ColumnType::String, null, StringComparisonMode::CaseInsensitive);
-        self::assertSame(-1, $s->compareForOrder('alice', 'BOB', $col));
-        self::assertSame(0, $s->compareForOrder('Alice', 'alice', $col));
-        self::assertSame(1, $s->compareForOrder('BOB', 'alice', $col));
+        self::assertNull($s->compareForOrder('alice', 'BOB', $col));
+    }
+
+    #[Test]
+    public function relational_string_predicates_defer_to_sql(): void
+    {
+        // The bug this guards: a WHERE name < 'Alice' must not be answered from
+        // memory with PHP byte order, because Postgres would include locale-ordered
+        // rows (e.g. 'alice') that strcmp() excludes.
+        $s = new PostgresSemantics;
+        self::assertSame(EvaluationResult::Unknown, $s->compare('alice', '<', 'Alice', ColumnSemantics::unknown()));
+        self::assertSame(EvaluationResult::Unknown, $s->compare('Bob', '>', 'Alice', ColumnSemantics::unknown()));
+        self::assertSame(EvaluationResult::Unknown, $s->compare('alice', '<=', 'bob', ColumnSemantics::unknown()));
+        self::assertSame(EvaluationResult::Unknown, $s->compare('bob', '>=', 'alice', ColumnSemantics::unknown()));
     }
 
     #[Test]

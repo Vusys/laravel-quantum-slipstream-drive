@@ -115,6 +115,138 @@ final class TransactionJournalFeatureTest extends TestCase
     }
 
     #[Test]
+    public function three_level_nesting_rolls_back_each_savepoint_independently(): void
+    {
+        $user = User::create(['name' => 'L0', 'email' => 'levels@example.com']);
+        $userId = $user->id;
+        $this->store->flush();
+
+        $fresh = User::find($userId);
+        $this->assertInstanceOf(User::class, $fresh);
+
+        DB::beginTransaction();
+        $fresh->name = 'L1';
+        $fresh->save();
+
+        DB::beginTransaction();
+        $fresh->name = 'L2';
+        $fresh->save();
+
+        DB::beginTransaction();
+        $fresh->name = 'L3';
+        $fresh->save();
+
+        DB::rollBack();
+        $this->assertSame('L2', $this->reloadName($userId), 'innermost rollback restores L2');
+
+        DB::rollBack();
+        $this->assertSame('L1', $this->reloadName($userId), 'middle rollback restores L1');
+
+        DB::rollBack();
+        $this->assertSame('L0', $this->reloadName($userId), 'outer rollback restores the pre-transaction value');
+    }
+
+    #[Test]
+    public function inner_commit_then_outer_rollback_still_restores_pre_transaction_state(): void
+    {
+        $user = User::create(['name' => 'Origin', 'email' => 'promote@example.com']);
+        $userId = $user->id;
+        $this->store->flush();
+
+        $fresh = User::find($userId);
+        $this->assertInstanceOf(User::class, $fresh);
+
+        DB::beginTransaction();
+        DB::beginTransaction();
+        $fresh->name = 'InnerCommitted';
+        $fresh->save();
+        DB::commit();
+
+        $this->assertSame('InnerCommitted', $this->reloadName($userId), 'inner commit keeps the write visible under the outer tx');
+
+        DB::rollBack();
+
+        $this->assertSame(
+            'Origin',
+            $this->reloadName($userId),
+            'a released savepoint is still undone when the enclosing transaction rolls back',
+        );
+    }
+
+    #[Test]
+    public function partial_rollback_restores_only_the_entry_touched_at_the_inner_level(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        $this->store->flush();
+
+        $aliceFresh = User::find($alice->id);
+        $bobFresh = User::find($bob->id);
+        $this->assertInstanceOf(User::class, $aliceFresh);
+        $this->assertInstanceOf(User::class, $bobFresh);
+
+        DB::beginTransaction();
+        $aliceFresh->name = 'AliceOuter';
+        $aliceFresh->save();
+
+        DB::beginTransaction();
+        $bobFresh->name = 'BobInner';
+        $bobFresh->save();
+        DB::rollBack();
+
+        $this->assertSame('AliceOuter', $this->reloadName($alice->id), 'the outer-level entry is untouched by the inner rollback');
+        $this->assertSame('Bob', $this->reloadName($bob->id), 'only the inner-level entry is restored');
+
+        DB::rollBack();
+
+        $this->assertSame('Alice', $this->reloadName($alice->id), 'the final rollback restores the outer-level entry too');
+    }
+
+    #[Test]
+    public function full_rollback_restores_every_entry_modified_across_all_levels(): void
+    {
+        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        $carol = User::create(['name' => 'Carol', 'email' => 'carol@example.com']);
+        $this->store->flush();
+
+        $aliceFresh = User::find($alice->id);
+        $bobFresh = User::find($bob->id);
+        $carolFresh = User::find($carol->id);
+        $this->assertInstanceOf(User::class, $aliceFresh);
+        $this->assertInstanceOf(User::class, $bobFresh);
+        $this->assertInstanceOf(User::class, $carolFresh);
+
+        DB::beginTransaction();
+        $aliceFresh->name = 'A*';
+        $aliceFresh->save();
+
+        DB::beginTransaction();
+        $bobFresh->name = 'B*';
+        $bobFresh->save();
+
+        DB::beginTransaction();
+        $carolFresh->name = 'C*';
+        $carolFresh->save();
+
+        DB::rollBack();
+        DB::rollBack();
+        DB::rollBack();
+
+        $this->assertSame('Alice', $this->reloadName($alice->id));
+        $this->assertSame('Bob', $this->reloadName($bob->id));
+        $this->assertSame('Carol', $this->reloadName($carol->id));
+    }
+
+    private function reloadName(int $id): string
+    {
+        $model = User::find($id);
+        $this->assertInstanceOf(User::class, $model);
+
+        return $model->name;
+    }
+
+    #[Test]
     public function commit_keeps_in_transaction_writes_visible_in_map(): void
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
