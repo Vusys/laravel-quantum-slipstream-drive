@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Tests\Fuzz;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\Group;
 use Vusys\QuantumSlipstreamDrive\IdentityMap;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\Post;
@@ -409,6 +410,87 @@ final class QueryCorrectnessTest extends FuzzerTestCase
 
             $this->assertSame($oracle, $actual, "wherePivot(role, {$probe}) [seed={$seed} step={$step}]");
         });
+    }
+
+    /**
+     * Oracle: a raw DB::table() write (update / delete / insert) interleaved with
+     * warmed reads must never leave the identity map serving stale rows. After the
+     * write, the engine read must equal the bypassed read over the post-write DB.
+     * Exercises the RawWriteInterceptor (#94 / #73).
+     */
+    public function test_raw_builder_writes_keep_reads_consistent_with_oracle(): void
+    {
+        /** @var list<User> $population */
+        $population = [];
+
+        $this->eachSeed(function (int $seed, int $step) use (&$population): void {
+            if ($step === 0) {
+                $population = $this->buildPopulation();
+            }
+
+            if ($population === []) {
+                return;
+            }
+
+            IdentityMap::flush();
+
+            // Randomly warm either full coverage or a subset of individual entries,
+            // so the raw write has to invalidate coverage regions and single rows.
+            if (mt_rand(0, 1) === 1) {
+                User::query()->get();
+            } else {
+                $warmCount = mt_rand(0, count($population));
+                foreach (array_slice($population, 0, $warmCount) as $user) {
+                    User::find($user->id);
+                }
+            }
+
+            $this->applyRandomRawWrite($population, $seed, $step);
+
+            $applyShape = $this->randomPredicateShape();
+
+            $actual = $applyShape(User::query())->get()->pluck('id')->sort()->values()->all();
+            $oracle = IdentityMap::disabled(
+                fn () => $applyShape(User::query())->get()->pluck('id')->sort()->values()->all()
+            );
+
+            $this->assertSame($oracle, $actual, "raw write then read [seed={$seed} step={$step}]");
+        });
+    }
+
+    /**
+     * Perform one randomly-chosen raw query-builder write directly against the
+     * `users` table, bypassing Eloquent entirely.
+     *
+     * @param  list<User>  $population
+     */
+    private function applyRandomRawWrite(array $population, int $seed, int $step): void
+    {
+        $target = $population[mt_rand(0, count($population) - 1)];
+
+        switch (mt_rand(0, 4)) {
+            case 0:
+                DB::table('users')->where('id', $target->id)->update(['active' => (bool) mt_rand(0, 1)]);
+                break;
+            case 1:
+                DB::table('users')->where('id', $target->id)->update(['score' => mt_rand(0, 100)]);
+                break;
+            case 2:
+                DB::table('users')->where('active', (bool) mt_rand(0, 1))->update(['score' => mt_rand(0, 100)]);
+                break;
+            case 3:
+                // Raw hard-delete bypasses the soft-delete scope on purpose.
+                DB::table('users')->where('id', $target->id)->delete();
+                break;
+            default:
+                DB::table('users')->insert([
+                    'name' => "raw-{$seed}-{$step}",
+                    'email' => "raw-{$seed}-{$step}-".mt_rand(0, 999_999)."@example.com",
+                    'active' => (bool) mt_rand(0, 1),
+                    'score' => mt_rand(0, 100),
+                ]);
+                break;
+        }
     }
 
     /** @return array{0: string, 1: 'asc'|'desc'} */
