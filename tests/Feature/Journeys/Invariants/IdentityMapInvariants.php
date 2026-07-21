@@ -110,6 +110,51 @@ final class IdentityMapInvariants
     }
 
     /**
+     * Every child's resolved polymorphic parent, read through the engine, must
+     * equal the same parent read with the map disabled. This is the inverse of
+     * relationMatchesBypass for a morphTo: for each child the $parentOf closure
+     * resolves ->commentable (or any morphTo) once each way, and the parent is
+     * reduced to its morph class + key so a stale MemoryMorphTo that keeps
+     * pointing at a reparented or deleted owner is caught.
+     *
+     * @param  class-string<Model>  $childModel
+     * @param  Closure(Model): ?Model  $parentOf  Given a child, return its resolved morph parent (or null).
+     */
+    public static function morphParentMatchesBypass(string $label, string $childModel, Closure $parentOf): Invariant
+    {
+        $project = static function () use ($childModel, $parentOf): array {
+            $instance = new $childModel;
+
+            $out = [];
+            foreach ($instance->newQuery()->orderBy($instance->getKeyName())->get() as $child) {
+                $parent = $parentOf($child);
+
+                $out[self::stringKey($child->getKey())] = $parent instanceof Model
+                    ? ['type' => $parent->getMorphClass(), 'key' => self::stringKey($parent->getKey())]
+                    : null;
+            }
+
+            ksort($out);
+
+            return $out;
+        };
+
+        return Invariant::make(
+            sprintf('morph parent [%s] reads match a bypassed read', $label),
+            function () use ($label, $project): void {
+                $mapped = $project();
+                $bypassed = IdentityMap::disabled($project);
+
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('morph parent [%s] resolved a reparented or deleted owner', $label),
+                );
+            },
+        );
+    }
+
+    /**
      * Project the whole table down to an ordered list of column maps, keyed by
      * primary key so the two reads line up row for row. Reads cast values
      * (getAttribute) so an in-memory mutation and a fresh DB read are compared on
