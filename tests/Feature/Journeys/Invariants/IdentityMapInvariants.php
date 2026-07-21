@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Journeys\Invariants;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Arr;
-use RuntimeException;
+use PHPUnit\Framework\Assert;
 use Vusys\QuantumSlipstreamDrive\IdentityMap;
 use Vusys\Runabout\Invariant;
 
@@ -34,25 +33,25 @@ final class IdentityMapInvariants
                 $mapped = self::project($model, $columns);
                 $bypassed = IdentityMap::disabled(static fn (): array => self::project($model, $columns));
 
-                if ($mapped !== $bypassed) {
-                    throw new RuntimeException(sprintf(
-                        'identity-map read of %s diverged from a bypassed read: %s vs %s',
-                        class_basename($model),
-                        self::encode($mapped),
-                        self::encode($bypassed),
-                    ));
-                }
+                Assert::assertSame(
+                    $bypassed,
+                    $mapped,
+                    sprintf('identity-map read of %s diverged from a bypassed read', class_basename($model)),
+                );
             },
         );
     }
 
     /**
      * Project the whole table down to an ordered list of column maps, keyed by
-     * primary key so the two reads line up row for row.
+     * primary key so the two reads line up row for row. Reads cast values
+     * (getAttribute) so an in-memory mutation and a fresh DB read are compared on
+     * equal footing — the difference we care about is the value, not whether it
+     * is stored as an int or a bool.
      *
      * @param  class-string<Model>  $model
      * @param  non-empty-list<string>  $columns
-     * @return array<int|string, array<string, mixed>>
+     * @return array<string, array<string, mixed>>
      */
     private static function project(string $model, array $columns): array
     {
@@ -60,15 +59,15 @@ final class IdentityMapInvariants
 
         $rows = [];
         foreach ($model::query()->orderBy($key)->get() as $row) {
-            $rows[self::stringKey($row->getKey())] = Arr::only($row->getAttributes(), $columns);
+            $projected = [];
+            foreach ($columns as $column) {
+                $projected[$column] = $row->getAttribute($column);
+            }
+
+            $rows[self::stringKey($row->getKey())] = $projected;
         }
 
         return $rows;
-    }
-
-    private static function encode(mixed $rows): string
-    {
-        return json_encode($rows) ?: '[unencodable]';
     }
 
     private static function stringKey(mixed $key): string
