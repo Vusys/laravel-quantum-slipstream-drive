@@ -779,11 +779,16 @@ final class MemoryBelongsToMany extends BelongsToMany
             return null;
         }
 
-        // A belongsToMany read materializes full related models. A partial entry
-        // (e.g. one recorded by a prior pluck('id') / column-subset select) knows
-        // only some columns, so serving it would hand back nulls for the columns
-        // it never loaded. Bail to SQL rather than serve an incomplete related row.
-        if (! $entry->attributes->satisfies(['*'])) {
+        // A belongsToMany read materializes full related models. A stub entry that
+        // carries only its primary key (recorded by a prior id-only select such as
+        // select('id')->get()) would be cloned into a related row whose other
+        // columns read back as null. Bail to SQL rather than serve it. A related
+        // model loaded through the relation itself keeps every column (its select
+        // is `<table>.*`), so this only rejects genuine key-only stubs.
+        $carried = $entry->model->getAttributes();
+        unset($carried[$related->getKeyName()]);
+
+        if ($carried === []) {
             return null;
         }
 
