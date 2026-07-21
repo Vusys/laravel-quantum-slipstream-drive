@@ -60,7 +60,7 @@ final class NestedTransactionJourney extends Journey
                 ->repeatable(max: 6)
                 ->act(function (Context $ctx): void {
                     try {
-                        DB::transaction(function () use ($ctx): void {
+                        DB::transaction(function () use ($ctx): never {
                             $this->mutate($ctx);
 
                             throw new TrailRollback;
@@ -75,7 +75,7 @@ final class NestedTransactionJourney extends Journey
                 ->repeatable(max: 5)
                 ->act(function (Context $ctx): void {
                     try {
-                        DB::transaction(function () use ($ctx): void {
+                        DB::transaction(function () use ($ctx): never {
                             $seq = count($ctx->list('created'));
                             $ctx->push('created', $seq);
 
@@ -102,7 +102,7 @@ final class NestedTransactionJourney extends Journey
                     }
 
                     try {
-                        DB::transaction(function () use ($ctx, $id): void {
+                        DB::transaction(function () use ($ctx, $id): never {
                             DB::table('users')->where('id', $id)->update(['score' => $ctx->randomInt(0, 100)]);
 
                             throw new TrailRollback;
@@ -117,7 +117,7 @@ final class NestedTransactionJourney extends Journey
                 ->repeatable(max: 5)
                 ->act(function (Context $ctx): void {
                     try {
-                        DB::transaction(function () use ($ctx): void {
+                        DB::transaction(function () use ($ctx): never {
                             $this->mutate($ctx);
 
                             DB::transaction(function () use ($ctx): void {
@@ -139,7 +139,7 @@ final class NestedTransactionJourney extends Journey
                         $this->mutate($ctx);
 
                         try {
-                            DB::transaction(function () use ($ctx): void {
+                            DB::transaction(function () use ($ctx): never {
                                 $this->mutate($ctx);
 
                                 throw new TrailRollback;
