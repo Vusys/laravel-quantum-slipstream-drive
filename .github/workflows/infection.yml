@@ -23,7 +23,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
@@ -86,7 +86,7 @@ jobs:
           - { db: pgsql,  db_connection: pgsql, db_host: '127.0.0.1', db_port: '5432', db_database: testing, db_username: postgres, db_password: password }
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Start database
         if: matrix.db != 'sqlite'
