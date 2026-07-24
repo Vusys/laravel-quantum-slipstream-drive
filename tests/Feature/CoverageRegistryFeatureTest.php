@@ -716,6 +716,11 @@ final class CoverageRegistryFeatureTest extends TestCase
     #[Test]
     public function partial_column_coverage_falls_through_for_uncovered_column(): void
     {
+        // query_normally is conservative: a column outside the coverage ColumnSet
+        // forces a re-query. (backfill_missing_columns fills it instead — covered
+        // by CoverageColumnBackfillTest.)
+        config(['quantum-slipstream-drive.partial_models' => 'query_normally']);
+
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::get(['id', 'name']);
 
@@ -743,6 +748,10 @@ final class CoverageRegistryFeatureTest extends TestCase
     #[Test]
     public function full_select_falls_through_when_coverage_recorded_with_partial_columns(): void
     {
+        // A wildcard request is never backfillable, so this fallthrough holds in
+        // both modes; pin query_normally so the assertion is env-independent.
+        config(['quantum-slipstream-drive.partial_models' => 'query_normally']);
+
         User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
         User::get(['id', 'name']);
 

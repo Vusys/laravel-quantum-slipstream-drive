@@ -1705,16 +1705,24 @@ class IdentityMapBuilder extends Builder
             return null;
         }
 
-        if ($columns !== [] && ! $entry->columns->covers($columns)) {
+        $backfiller = resolve(ColumnBackfiller::class);
+        // A '*' request is never backfillable (it wants every column), so it keeps
+        // the coverage ColumnSet gate in every mode. Only specific columns can be
+        // filled with one batched keyed SELECT below.
+        $backfillEnabled = $columns !== [] && ! in_array('*', $columns, true) && $backfiller->isEnabled();
+
+        // When backfill can't help, the coverage's recorded column set is the fast
+        // gate; when it can, a missing column is filled below rather than forcing a
+        // full re-query.
+        if ($columns !== [] && ! $backfillEnabled && ! $entry->columns->covers($columns)) {
             return null;
         }
 
         $pkName = $model->getKeyName();
-        $evaluator = PredicateEvaluator::forModel($model);
-        $processTruth = $this->isProcessTruth();
-        $hasRewrites = $this->pendingHasRewrites !== [];
-        $graph = $hasRewrites ? resolve(IdentityGraph::class) : null;
-        $result = [];
+
+        // Gather the covered store entries first so a partial-column request can be
+        // served with a single batched backfill instead of a full re-query.
+        $mapEntries = [];
 
         foreach ($entry->primaryKeys as $pk) {
             $mapEntry = $store->find($connection, $model::class, ModelMetadata::table($model), $pkName, $pk, $fingerprint);
@@ -1723,6 +1731,20 @@ class IdentityMapBuilder extends Builder
                 return null;
             }
 
+            $mapEntries[] = $mapEntry;
+        }
+
+        if ($backfillEnabled && ! $this->backfillCoverageColumns($backfiller, $mapEntries, $columns)) {
+            return null;
+        }
+
+        $evaluator = PredicateEvaluator::forModel($model);
+        $processTruth = $this->isProcessTruth();
+        $hasRewrites = $this->pendingHasRewrites !== [];
+        $graph = $hasRewrites ? resolve(IdentityGraph::class) : null;
+        $result = [];
+
+        foreach ($mapEntries as $mapEntry) {
             if ($columns !== [] && ! $mapEntry->attributes->satisfies($columns)) {
                 return null;
             }
@@ -1759,6 +1781,47 @@ class IdentityMapBuilder extends Builder
         }
 
         return $result;
+    }
+
+    /**
+     * Fill columns missing from the covered rows with one batched keyed SELECT.
+     *
+     * Collects the union of columns absent across the covered entries and defers
+     * to {@see ColumnBackfiller::backfillMany()} for a single query. Returns true
+     * when nothing was missing or the backfill succeeded, false when the batched
+     * fetch could not cover the request (caller then falls through to SQL).
+     *
+     * @param  list<IdentityEntry>  $mapEntries
+     * @param  list<string>  $columns
+     */
+    private function backfillCoverageColumns(ColumnBackfiller $backfiller, array $mapEntries, array $columns): bool
+    {
+        $missing = [];
+        $seen = [];
+        $needy = [];
+
+        foreach ($mapEntries as $mapEntry) {
+            $rowMissing = $backfiller->missingColumns($mapEntry, $columns);
+
+            if ($rowMissing === []) {
+                continue;
+            }
+
+            $needy[] = $mapEntry;
+
+            foreach ($rowMissing as $column) {
+                if (! isset($seen[$column])) {
+                    $seen[$column] = true;
+                    $missing[] = $column;
+                }
+            }
+        }
+
+        if ($needy === []) {
+            return true;
+        }
+
+        return $backfiller->backfillMany($needy, $missing);
     }
 
     /**

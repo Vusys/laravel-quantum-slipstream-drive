@@ -7,6 +7,7 @@ namespace Vusys\QuantumSlipstreamDrive\Relations;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Vusys\QuantumSlipstreamDrive\Coverage\SubsetChecker;
 use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
 use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
 use Vusys\QuantumSlipstreamDrive\Driver\ConservativeSemantics;
@@ -82,8 +83,9 @@ final class MemoryBelongsToMany extends BelongsToMany
         $relatedNodes = $extraction[0];
         $pivotNodes = $extraction[1];
         $pivotColumnsRequested = $extraction[2];
+        $subsetNodes = $extraction[3];
 
-        $fromGraph = $this->getFromGraph($store, $relatedNodes, $pivotNodes, $pivotColumnsRequested);
+        $fromGraph = $this->getFromGraph($store, $relatedNodes, $pivotNodes, $pivotColumnsRequested, $subsetNodes);
 
         if ($fromGraph instanceof Collection) {
             /** @var Collection<int, TRelatedModel> $fromGraph */
@@ -94,6 +96,10 @@ final class MemoryBelongsToMany extends BelongsToMany
 
         if ($relatedNodes === [] && $pivotNodes === []) {
             $this->recordGraphCoverageForParent($this->parent, $r);
+        } else {
+            // A hazard-free filtered load returns the complete set matching its
+            // predicate — record it so a later subset read can reuse it.
+            $this->recordFilteredGraphCoverageForParent($this->parent, $r, new AndNode($subsetNodes));
         }
 
         return $r;
@@ -217,7 +223,15 @@ final class MemoryBelongsToMany extends BelongsToMany
             $graph->removePivotEdge($parentIdentity, $relationName, $relatedIdentity);
         }
 
-        // Coverage status is preserved: detach with specific ids on covered region leaves it covered.
+        // Complete coverage status is preserved: removePivotEdge prunes the shared
+        // edge bucket that a complete-coverage read serves from. Filtered coverage,
+        // however, keeps its matched edge set on the coverage object itself — which
+        // removePivotEdge does not touch — so drop it to avoid serving a detached row.
+        $existing = $graph->pivotCoverageFor($parentIdentity, $relationName);
+
+        if ($existing !== null && $existing->predicate !== null) {
+            $graph->forgetPivotCoverage($parentIdentity, $relationName);
+        }
 
         return $detached;
     }
@@ -467,6 +481,7 @@ final class MemoryBelongsToMany extends BelongsToMany
      * @param  list<PredicateNode>  $relatedNodes
      * @param  list<PredicateNode>  $pivotNodes
      * @param  list<string>  $pivotColumnsRequested
+     * @param  list<PredicateNode>  $subsetNodes
      * @return Collection<int, TRelatedModel>|null
      */
     private function getFromGraph(
@@ -474,6 +489,7 @@ final class MemoryBelongsToMany extends BelongsToMany
         array $relatedNodes,
         array $pivotNodes,
         array $pivotColumnsRequested,
+        array $subsetNodes,
     ): ?Collection {
         if (! $this->isGraphEnabled()) {
             return null;
@@ -494,7 +510,24 @@ final class MemoryBelongsToMany extends BelongsToMany
         $graph = resolve(IdentityGraph::class);
         $coverage = $graph->pivotCoverageFor($parentIdentity, $relationName);
 
-        if ($coverage === null || ! $coverage->complete) {
+        if ($coverage === null) {
+            return null;
+        }
+
+        if ($coverage->complete && $coverage->predicate === null) {
+            $pivotEdges = $graph->pivotEdgesFrom($parentIdentity, $relationName);
+        } elseif ($coverage->predicate instanceof PredicateNode) {
+            // Filtered coverage serves only reads whose predicate is provably a
+            // subset of the recorded load predicate; supersets and disjoint reads
+            // fall through to SQL.
+            $queryPredicate = new AndNode($subsetNodes);
+
+            if (! (new SubsetChecker)->isSubset($queryPredicate, $coverage->predicate)) {
+                return null;
+            }
+
+            $pivotEdges = $coverage->filteredEdges;
+        } else {
             return null;
         }
 
@@ -504,7 +537,6 @@ final class MemoryBelongsToMany extends BelongsToMany
             }
         }
 
-        $pivotEdges = $graph->pivotEdgesFrom($parentIdentity, $relationName);
         $evaluator = PredicateEvaluator::forModel($this->related);
         $processTruth = PredicateEvaluator::isProcessTruthMode();
         $relatedPredicate = $relatedNodes === [] ? null : new AndNode($relatedNodes);
@@ -803,8 +835,10 @@ final class MemoryBelongsToMany extends BelongsToMany
     }
 
     /**
-     * @return array{0: list<PredicateNode>, 1: list<PredicateNode>, 2: list<string>}|null
-     *                                                                                     Returns [relatedNodes, pivotNodes, requestedPivotColumns] or null when a where could not be parsed.
+     * @return array{0: list<PredicateNode>, 1: list<PredicateNode>, 2: list<string>, 3: list<PredicateNode>}|null
+     *                                                                                                             Returns [relatedNodes, pivotNodes, requestedPivotColumns, subsetNodes] or null when a where could not be
+     *                                                                                                             parsed. `subsetNodes` is the combined load predicate used for coverage subset checks: pivot terms keep
+     *                                                                                                             their pivot-table qualification so they never collide with same-named related-model columns.
      */
     private function extractExtraPredicates(): ?array
     {
@@ -813,6 +847,7 @@ final class MemoryBelongsToMany extends BelongsToMany
         $relatedNodes = [];
         $pivotNodes = [];
         $pivotColumnsRequested = [];
+        $subsetNodes = [];
 
         foreach ($wheres as $where) {
             if ($this->isBaseFkConstraint($where)) {
@@ -842,6 +877,16 @@ final class MemoryBelongsToMany extends BelongsToMany
                 return null;
             }
 
+            // The subset predicate keeps pivot columns qualified; the related node
+            // for a pivot where has its column stripped for attribute evaluation.
+            $subsetNode = $isPivotWhere ? PredicateExtractor::fromWhere($where) : $node;
+
+            if (! $subsetNode instanceof PredicateNode) {
+                return null;
+            }
+
+            $subsetNodes[] = $subsetNode;
+
             if ($isPivotWhere) {
                 $pivotColumn = substr($column, strlen($this->table.'.'));
                 $pivotColumnsRequested[] = $pivotColumn;
@@ -851,7 +896,7 @@ final class MemoryBelongsToMany extends BelongsToMany
             }
         }
 
-        return [$relatedNodes, $pivotNodes, array_values(array_unique($pivotColumnsRequested))];
+        return [$relatedNodes, $pivotNodes, array_values(array_unique($pivotColumnsRequested)), $subsetNodes];
     }
 
     /** @param array<string, mixed> $where */
@@ -1032,6 +1077,74 @@ final class MemoryBelongsToMany extends BelongsToMany
             pivotTable: $this->table,
             complete: true,
             knownPivotColumns: $knownPivotColumns,
+        ));
+    }
+
+    /**
+     * Record coverage for a filtered pivot load. The recorded predicate lets a
+     * later read reuse the result only when its own predicate is a provable
+     * subset. The matched edge set is stored on the coverage itself (not in the
+     * shared pivot-edge bucket) so distinct filtered loads never intermix. An
+     * existing unfiltered (complete) coverage is never downgraded.
+     *
+     * @param  Collection<int, TRelatedModel>  $children
+     */
+    private function recordFilteredGraphCoverageForParent(Model $parent, Collection $children, PredicateNode $loadPredicate): void
+    {
+        if (! $this->isGraphEnabled()) {
+            return;
+        }
+
+        $relationName = $this->getRelationName();
+
+        if ($relationName === '') {
+            return;
+        }
+
+        $parentIdentity = ModelIdentity::fromModel($parent);
+
+        if (! $parentIdentity instanceof ModelIdentity) {
+            return;
+        }
+
+        $graph = resolve(IdentityGraph::class);
+        $existing = $graph->pivotCoverageFor($parentIdentity, $relationName);
+
+        if ($existing !== null && $existing->complete && $existing->predicate === null) {
+            return;
+        }
+
+        $knownPivotColumns = $this->knownPivotColumns();
+        $filteredEdges = [];
+
+        foreach ($children as $child) {
+            $relatedIdentity = ModelIdentity::fromModel($child);
+
+            if (! $relatedIdentity instanceof ModelIdentity) {
+                return;
+            }
+
+            $filteredEdges[] = new PivotEdge(
+                parent: $parentIdentity,
+                relationName: $relationName,
+                related: $relatedIdentity,
+                pivotTable: $this->table,
+                pivotAttributes: $this->pivotAttributesFromModel($child, $knownPivotColumns),
+                source: EdgeSource::Pivot,
+                confidence: EdgeConfidence::Certain,
+                version: 1,
+            );
+        }
+
+        $graph->addPivotCoverage(new PivotCoverage(
+            parent: $parentIdentity,
+            relationName: $relationName,
+            relatedModelClass: $this->related::class,
+            pivotTable: $this->table,
+            complete: false,
+            knownPivotColumns: $knownPivotColumns,
+            predicate: $loadPredicate,
+            filteredEdges: $filteredEdges,
         ));
     }
 
