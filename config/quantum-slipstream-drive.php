@@ -152,6 +152,34 @@ return [
     ],
 
     /*
+     * Raw query-builder read serving. `DB::table('users')->find(1)` bypasses
+     * Eloquent entirely, so by default it always issues SQL even when the row is
+     * already cached in the identity map. When enabled, the package intercepts
+     * raw single-key and bounded key-set reads against a mapped table and serves
+     * them from a database-native row snapshot captured on an earlier full-column
+     * SELECT — issuing zero SQL and returning `stdClass` rows byte-identical to a
+     * bypassed query.
+     *
+     * The snapshot is only ever taken from a genuine full-column database read
+     * (never from create()/mass-write, whose in-memory attributes are cast PHP
+     * types and may omit default columns), and is invalidated the instant the
+     * cached row changes. A raw read that isn't fully covered falls through to
+     * SQL unchanged. Correctness is never traded for a hit: a covered read
+     * returns exactly what SQL would, or it runs SQL.
+     *
+     *   enabled — turn raw read-serving on. Default off (risk-managed): it
+     *             installs a per-driver connection resolver so raw builder reads
+     *             can be intercepted. When false, nothing is installed and raw
+     *             reads behave exactly as stock Laravel.
+     *
+     * Enable before the connection is first resolved (e.g. via env in a real
+     * app). Toggling at runtime requires a reconnect (`DB::purge()`).
+     */
+    'raw_reads' => [
+        'enabled' => (bool) env('IDENTITY_MAP_RAW_READS', false),
+    ],
+
+    /*
      * Streaming decision log. When enabled the package emits an Explanation
      * for every finalised plan, in addition to anything captured by
      * IdentityMap::explain(). Two sinks fire per decision:

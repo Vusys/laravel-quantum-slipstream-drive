@@ -47,6 +47,27 @@ final class IdentityMapStore
     /** @var array<string, array<string, true>> */
     private array $absentKeysByClass = [];
 
+    /**
+     * Reverse-index for raw-row serving: physical row key
+     * ("{connection}|{table}|{pkName}|{pkValue}") → set of mapKeys whose entry
+     * may hold a native row snapshot for that physical row. A physical row can
+     * back several mapKeys (one per scope fingerprint). Like
+     * {@see $entryKeysByClass} the index is maintained at capture and may name
+     * stale mapKeys; {@see findRawRow()} validates each candidate against the
+     * live entry (state + version) before serving, so a stale pointer is a
+     * harmless miss, never a stale read.
+     *
+     * @var array<string, array<string, true>>
+     */
+    private array $rawRowIndex = [];
+
+    /**
+     * Cached raw_reads.enabled flag, populated lazily and reset by flush() so a
+     * config change between tests is picked up. Gates the (per-full-read)
+     * snapshot capture so a disabled feature costs nothing.
+     */
+    private ?bool $rawReadsEnabled = null;
+
     private readonly UniqueKeyIndex $uniqueKeyIndex;
 
     private bool $disabled = false;
@@ -177,6 +198,100 @@ final class IdentityMapStore
         if (isset($this->entries[$mapKey])) {
             $this->entries[$mapKey]->attributes->allColumnsKnown = true;
         }
+    }
+
+    /**
+     * Snapshot a model's database-native full row for raw `DB::table()` read
+     * serving. Only ever called from the read path with a model freshly
+     * hydrated from a full-column SELECT, so getAttributes() holds the exact
+     * pre-cast row the driver returned — the same bytes a raw query yields.
+     *
+     * No-op when the feature is disabled, so a full read costs nothing extra
+     * unless raw serving is on.
+     */
+    public function captureRawRow(Model $model, ?string $fingerprint = null): void
+    {
+        if (! ($this->rawReadsEnabled ??= config('quantum-slipstream-drive.raw_reads.enabled') === true)) {
+            return;
+        }
+
+        $key = $model->getKey();
+
+        if (! is_int($key) && ! is_string($key)) {
+            return;
+        }
+
+        $fingerprint ??= ScopeFingerprinter::fromModel($model);
+        $mapKey = $this->makeKey($model, $key, $fingerprint);
+
+        $entry = $this->entries[$mapKey] ?? null;
+
+        if ($entry === null || $entry->state !== LifecycleState::Exists) {
+            return;
+        }
+
+        $entry->rawRow = $model->getAttributes();
+        $entry->rawRowVersion = $entry->version;
+
+        $physicalKey = $this->makePhysicalKey(
+            ModelMetadata::connection($model),
+            ModelMetadata::table($model),
+            $model->getKeyName(),
+            $key,
+        );
+        $this->rawRowIndex[$physicalKey][$mapKey] = true;
+    }
+
+    /**
+     * Resolve a database-native full row for a raw single-key read, or null
+     * when no fresh snapshot covers it (the caller then falls through to SQL).
+     *
+     * A snapshot is served only while its entry is live and unchanged since
+     * capture (version match), so a raw read never returns a row the database
+     * would not.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findRawRow(
+        string $connection,
+        string $table,
+        string $primaryKeyName,
+        int|string $primaryKeyValue,
+    ): ?array {
+        if ($this->disabled) {
+            return null;
+        }
+
+        $physicalKey = $this->makePhysicalKey($connection, $table, $primaryKeyName, $primaryKeyValue);
+
+        foreach (array_keys($this->rawRowIndex[$physicalKey] ?? []) as $mapKey) {
+            $entry = $this->entries[$mapKey] ?? null;
+
+            if ($entry === null) {
+                unset($this->rawRowIndex[$physicalKey][$mapKey]);
+
+                continue;
+            }
+
+            if (
+                $entry->state === LifecycleState::Exists
+                && $entry->rawRow !== null
+                && $entry->rawRowVersion === $entry->version
+            ) {
+                return $entry->rawRow;
+            }
+        }
+
+        return null;
+    }
+
+    private function makePhysicalKey(
+        string $connection,
+        string $table,
+        string $primaryKeyName,
+        int|string $primaryKeyValue,
+    ): string {
+        return "{$connection}|{$table}|{$primaryKeyName}|{$primaryKeyValue}";
     }
 
     public function afterSaved(Model $model): void
@@ -386,7 +501,9 @@ final class IdentityMapStore
             $this->absent = [];
             $this->entryKeysByClass = [];
             $this->absentKeysByClass = [];
+            $this->rawRowIndex = [];
             $this->observabilityEnabled = null;
+            $this->rawReadsEnabled = null;
             $this->uniqueKeyIndex->flush();
             resolve(SchemaDiscovery::class)->flush();
             ScopeFingerprinter::flush();

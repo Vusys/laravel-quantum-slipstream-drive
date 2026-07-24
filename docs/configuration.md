@@ -119,6 +119,18 @@ Controls how the predicate evaluator resolves **string** equality per connection
 
 Set the relevant driver's env var when your MySQL/MariaDB deployment uses a case-insensitive collation (`utf8mb4_unicode_ci`, `utf8mb4_general_ci`, etc.) and you observe predicate-evaluation mismatches. See [Driver semantics](architecture.md#driver-semantics-database_semantics).
 
+## `raw_reads`
+
+| Key | Env | Default |
+|---|---|---|
+| `raw_reads.enabled` | `IDENTITY_MAP_RAW_READS` | `false` |
+
+Serve raw `DB::table()` reads from the identity map. When `enabled` is `true`, raw single-key and bounded key-set reads of the full row against a mapped table are answered from a database-native row snapshot — zero SQL, returning `stdClass` rows byte-identical to a bypassed query. Anything not fully covered by a fresh snapshot falls through to SQL unchanged.
+
+Off by default and risk-managed: enabling installs a per-driver connection resolver so raw reads can be intercepted. Enable it before the connection is first resolved (via env in a real app); toggling at runtime requires a reconnect (`DB::purge()`).
+
+See [Raw read-serving](raw-reads.md).
+
 ## `observability`
 
 | Key | Env | Default |
