@@ -4,9 +4,12 @@ The identity map intercepts **Eloquent** reads. A raw query-builder read —
 `DB::table('users')->find(1)` — bypasses Eloquent entirely, so by default it
 always issues SQL even when that exact row is already cached.
 
-With raw read-serving enabled, the package answers raw single-key and bounded
-key-set reads of the full row from the identity map, issuing **zero SQL** and
-returning `stdClass` rows byte-identical to a bypassed query.
+With raw read-serving enabled, the package answers raw single-key and key-set
+reads of the full row from the identity map, issuing **zero SQL** and returning
+`stdClass` rows byte-identical to a bypassed query. There is no fixed cap on a
+key set's size — a `whereIn` of any length is served as long as **every** key in
+it is covered by a current snapshot; the moment one key is uncovered the whole
+read falls through to SQL.
 
 ```php
 'raw_reads' => [

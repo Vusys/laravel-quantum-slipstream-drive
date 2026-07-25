@@ -155,8 +155,9 @@ return [
      * Raw query-builder read serving. `DB::table('users')->find(1)` bypasses
      * Eloquent entirely, so by default it always issues SQL even when the row is
      * already cached in the identity map. When enabled, the package intercepts
-     * raw single-key and bounded key-set reads against a mapped table and serves
-     * them from a database-native row snapshot captured on an earlier full-column
+     * raw single-key and fully-covered key-set reads against a mapped table (a
+     * key set of any size, so long as every key is currently snapshotted) and
+     * serves them from a database-native row snapshot captured on a full-column
      * SELECT — issuing zero SQL and returning `stdClass` rows byte-identical to a
      * bypassed query.
      *

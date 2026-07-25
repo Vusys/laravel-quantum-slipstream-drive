@@ -72,8 +72,8 @@ final class RawReadServingTest extends TestCase
         });
 
         $this->assertSame(0, $sql, 'a covered raw single-key read must issue zero SQL');
-        $this->assertEquals($ground, $served, 'served raw row must equal a bypassed query byte-for-byte');
         $this->assertIsObject($served);
+        $this->assertSame((array) $ground, (array) $served, 'served raw row must equal a bypassed query byte-for-byte');
     }
 
     #[Test]
@@ -92,7 +92,8 @@ final class RawReadServingTest extends TestCase
         });
 
         $this->assertSame(0, $sql);
-        $this->assertEquals($ground, $served);
+        $this->assertIsObject($served);
+        $this->assertSame((array) $ground, (array) $served);
     }
 
     #[Test]
@@ -169,7 +170,49 @@ final class RawReadServingTest extends TestCase
         });
 
         $this->assertSame(0, $sql, 'a fully covered key-set read must issue zero SQL');
-        $this->assertEquals($ground, $served, 'served key-set (pk-ascending) must equal the bypassed rows');
+
+        $this->assertIsArray($ground);
+        $this->assertIsArray($served);
+        $orderById = static function (array $rows): array {
+            $rows = array_map(static fn (mixed $row): array => (array) $row, $rows);
+            usort($rows, static fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
+
+            return $rows;
+        };
+
+        $this->assertSame(
+            $orderById($ground),
+            $orderById($served),
+            'served key-set (pk-ascending) must equal the bypassed rows',
+        );
+    }
+
+    #[Test]
+    public function covered_key_set_raw_read_with_non_primary_key_order_falls_through_and_matches_sql_order(): void
+    {
+        $zoe = User::create(['name' => 'Zoe', 'email' => 'zoe@example.com', 'active' => true]);
+        $amy = User::create(['name' => 'Amy', 'email' => 'amy@example.com', 'active' => true]);
+        $this->store->flush();
+
+        $ground = $this->bypassed(fn (): array => DB::table('users')->whereIn('id', [$zoe->id, $amy->id])->orderBy('name')->get()->all());
+
+        User::findMany([$zoe->id, $amy->id]);
+
+        $served = null;
+        $sql = $this->countSql(function () use ($zoe, $amy, &$served): void {
+            $served = DB::table('users')->whereIn('id', [$zoe->id, $amy->id])->orderBy('name')->get()->all();
+        });
+
+        $this->assertSame(1, $sql, 'an explicit non-primary-key orderBy cannot be honoured from the snapshot; must hit SQL');
+
+        $this->assertIsArray($ground);
+        $this->assertIsArray($served);
+
+        $names = array_map(static fn (mixed $row): mixed => ((array) $row)['name'], $served);
+        $this->assertSame(['Amy', 'Zoe'], $names, 'served rows must follow the SQL orderBy(name), not pk-ascending');
+
+        $toArrays = static fn (array $rows): array => array_map(static fn (mixed $row): array => (array) $row, $rows);
+        $this->assertSame($toArrays($ground), $toArrays($served), 'result must match the bypassed SQL query exactly');
     }
 
     #[Test]

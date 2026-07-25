@@ -151,6 +151,7 @@ class RawServingQueryBuilder extends QueryBuilder
     {
         if (
             ($this->joins !== null && $this->joins !== [])
+            || ($this->orders !== null && $this->orders !== [])
             || ($this->groups !== null && $this->groups !== [])
             || ($this->havings !== null && $this->havings !== [])
             || ($this->unions !== null && $this->unions !== [])
