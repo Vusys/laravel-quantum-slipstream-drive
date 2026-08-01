@@ -10,11 +10,6 @@ use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
-/**
- * Guards the default-disabled state: this class never enables
- * `quantum-slipstream-drive.raw_reads.enabled`, so a warmed row must still be
- * served by a real SQL query — the feature is off unless explicitly turned on.
- */
 final class RawReadServingDisabledTest extends TestCase
 {
     #[Test]

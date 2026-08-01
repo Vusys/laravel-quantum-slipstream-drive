@@ -61,6 +61,8 @@ Anything that can't be answered from a snapshot, exactly:
   the row set, unions, locks.
 - A key-set read where **any** key is uncovered (the whole read runs so no row is
   silently dropped).
+- A key-set read with an explicit `ORDER BY` — the snapshot only guarantees the
+  primary-key-ascending order described above, so an ordered read runs SQL.
 - The write-invalidated window: the first read after a change re-snapshots.
 
 ## Warming

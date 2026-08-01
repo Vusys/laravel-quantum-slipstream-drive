@@ -72,7 +72,7 @@ final class RawReadServingTest extends TestCase
         });
 
         $this->assertSame(0, $sql, 'a covered raw single-key read must issue zero SQL');
-        $this->assertIsObject($served);
+        $this->assertInstanceOf(\stdClass::class, $served);
         $this->assertSame((array) $ground, (array) $served, 'served raw row must equal a bypassed query byte-for-byte');
     }
 
@@ -92,7 +92,7 @@ final class RawReadServingTest extends TestCase
         });
 
         $this->assertSame(0, $sql);
-        $this->assertIsObject($served);
+        $this->assertInstanceOf(\stdClass::class, $served);
         $this->assertSame((array) $ground, (array) $served);
     }
 
@@ -174,7 +174,7 @@ final class RawReadServingTest extends TestCase
         $this->assertIsArray($ground);
         $this->assertIsArray($served);
         $orderById = static function (array $rows): array {
-            $rows = array_map(static fn (mixed $row): array => (array) $row, $rows);
+            $rows = array_map(static fn (\stdClass $row): array => (array) $row, $rows);
             usort($rows, static fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
 
             return $rows;
