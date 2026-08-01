@@ -237,7 +237,7 @@ final class IdentityGraphTest extends TestCase
     }
 
     #[Test]
-    public function max_edges_allows_storage_up_to_limit_then_flushes(): void
+    public function max_edges_allows_storage_up_to_limit_then_evicts_the_oldest_bucket(): void
     {
         $graph = new IdentityGraph(maxEdges: 2);
         $userA = $this->userIdentity(1);
@@ -254,7 +254,51 @@ final class IdentityGraphTest extends TestCase
         $this->assertSame(2, $graph->edgeCount());
 
         $graph->addEdge($this->makeEdge($userC, $postC));
-        $this->assertSame(0, $graph->edgeCount(), 'graph flushes when limit is reached');
+        $this->assertSame(2, $graph->edgeCount(), 'the breach evicts the coldest bucket, then stores the new edge');
+        $this->assertSame([], $graph->edgesFrom($userA, 'posts'), 'the least-recently-used bucket is the one evicted');
+        $this->assertCount(1, $graph->edgesFrom($userB, 'posts'));
+        $this->assertCount(1, $graph->edgesFrom($userC, 'posts'));
+    }
+
+    #[Test]
+    public function a_recently_read_edge_bucket_survives_the_cap_breach(): void
+    {
+        $graph = new IdentityGraph(maxEdges: 2);
+        $userA = $this->userIdentity(1);
+        $userB = $this->userIdentity(2);
+        $userC = $this->userIdentity(3);
+
+        $graph->addEdge($this->makeEdge($userA, $this->postIdentity(10)));
+        $graph->addEdge($this->makeEdge($userB, $this->postIdentity(20)));
+
+        // Reading A's bucket makes B's the least recently used.
+        $graph->edgesFrom($userA, 'posts');
+
+        $graph->addEdge($this->makeEdge($userC, $this->postIdentity(30)));
+
+        $this->assertCount(1, $graph->edgesFrom($userA, 'posts'), 'the hot bucket survives');
+        $this->assertSame([], $graph->edgesFrom($userB, 'posts'), 'the cold bucket is evicted');
+    }
+
+    #[Test]
+    public function evicting_an_edge_bucket_drops_its_coverage_grant_with_it(): void
+    {
+        $graph = new IdentityGraph(maxEdges: 2);
+        $userA = $this->userIdentity(1);
+        $userB = $this->userIdentity(2);
+        $userC = $this->userIdentity(3);
+
+        $graph->addEdge($this->makeEdge($userA, $this->postIdentity(10)));
+        $graph->addCoverage($this->makeCoverage($userA, childPrimaryKeys: [10]));
+        $graph->addEdge($this->makeEdge($userB, $this->postIdentity(20)));
+
+        $graph->addEdge($this->makeEdge($userC, $this->postIdentity(30)));
+
+        $this->assertSame([], $graph->edgesFrom($userA, 'posts'), 'A holds the coldest bucket');
+        $this->assertNull(
+            $graph->coverageFor($userA, 'posts'),
+            'a coverage grant must never outlive the edge bucket it describes',
+        );
     }
 
     #[Test]
@@ -292,7 +336,7 @@ final class IdentityGraphTest extends TestCase
     }
 
     #[Test]
-    public function max_coverage_allows_storage_up_to_limit_then_flushes(): void
+    public function max_coverage_allows_storage_up_to_limit_then_evicts_the_oldest_grant(): void
     {
         $graph = new IdentityGraph(maxCoverage: 2);
         $userA = $this->userIdentity(1);
@@ -306,7 +350,30 @@ final class IdentityGraphTest extends TestCase
         $this->assertSame(2, $graph->coverageCount());
 
         $graph->addCoverage($this->makeCoverage($userC, childPrimaryKeys: [30]));
-        $this->assertSame(0, $graph->coverageCount(), 'graph flushes when limit is reached');
+        $this->assertSame(2, $graph->coverageCount(), 'the breach evicts the coldest grant, then stores the new one');
+        $this->assertNull($graph->coverageFor($userA, 'posts'), 'the least-recently-used grant is the one evicted');
+        $this->assertNotNull($graph->coverageFor($userB, 'posts'));
+        $this->assertNotNull($graph->coverageFor($userC, 'posts'));
+    }
+
+    #[Test]
+    public function a_recently_read_coverage_grant_survives_the_cap_breach(): void
+    {
+        $graph = new IdentityGraph(maxCoverage: 2);
+        $userA = $this->userIdentity(1);
+        $userB = $this->userIdentity(2);
+        $userC = $this->userIdentity(3);
+
+        $graph->addCoverage($this->makeCoverage($userA, childPrimaryKeys: [10]));
+        $graph->addCoverage($this->makeCoverage($userB, childPrimaryKeys: [20]));
+
+        // Reading A's grant makes B's the least recently used.
+        $graph->coverageFor($userA, 'posts');
+
+        $graph->addCoverage($this->makeCoverage($userC, childPrimaryKeys: [30]));
+
+        $this->assertNotNull($graph->coverageFor($userA, 'posts'), 'the hot grant survives');
+        $this->assertNull($graph->coverageFor($userB, 'posts'), 'the cold grant is evicted');
     }
 
     #[Test]

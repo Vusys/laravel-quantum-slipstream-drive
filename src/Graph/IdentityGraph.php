@@ -5,10 +5,18 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Graph;
 
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Support\EvictionBatch;
 
 final class IdentityGraph
 {
-    /** @var array<string, list<RelationEdge>> */
+    /**
+     * Edge buckets and coverage grants are all kept in least-recently-used
+     * order: every insert and hit moves the key to the end of its map, so
+     * cap-breach eviction shears whole buckets (or grants) off the front
+     * instead of flushing the graph.
+     *
+     * @var array<string, list<RelationEdge>>
+     */
     private array $edges = [];
 
     /** @var array<string, RelationCoverage> */
@@ -61,6 +69,7 @@ final class IdentityGraph
         foreach ($existing as $i => $current) {
             if ($current->to->key() === $edge->to->key()) {
                 $existing[$i] = $edge;
+                unset($this->edges[$bucket]);
                 $this->edges[$bucket] = $existing;
                 $this->edgesBucketsByClass[$edge->to->modelClass][$bucket] = true;
 
@@ -69,12 +78,14 @@ final class IdentityGraph
         }
 
         if ($this->maxEdges !== null && $this->totalEdgeCount() >= $this->maxEdges) {
-            $this->flush();
-
-            return;
+            $this->evictColdestEdges();
+            // Eviction may have dropped the very bucket being appended to; a
+            // stale $existing would resurrect its evicted edges uncounted.
+            $existing = $this->edges[$bucket] ?? [];
         }
 
         $existing[] = $edge;
+        unset($this->edges[$bucket]);
         $this->edges[$bucket] = $existing;
         $this->edgeCount++;
         $this->edgesBucketsByClass[$edge->from->modelClass][$bucket] = true;
@@ -86,6 +97,7 @@ final class IdentityGraph
         $key = RelationCoverageKey::make($coverage->parent, $coverage->relationName);
 
         if (isset($this->coverage[$key])) {
+            unset($this->coverage[$key]);
             $this->coverage[$key] = $coverage;
             $this->coverageKeysByClass[$coverage->relatedModelClass][$key] = true;
 
@@ -93,9 +105,7 @@ final class IdentityGraph
         }
 
         if ($this->maxCoverage !== null && $this->totalCoverageCount() >= $this->maxCoverage) {
-            $this->flush();
-
-            return;
+            $this->evictColdestCoverage();
         }
 
         $this->coverage[$key] = $coverage;
@@ -111,6 +121,7 @@ final class IdentityGraph
         foreach ($existing as $i => $current) {
             if ($current->related->key() === $edge->related->key()) {
                 $existing[$i] = $edge;
+                unset($this->pivotEdges[$bucket]);
                 $this->pivotEdges[$bucket] = $existing;
                 $this->pivotEdgesBucketsByClass[$edge->related->modelClass][$bucket] = true;
 
@@ -119,12 +130,14 @@ final class IdentityGraph
         }
 
         if ($this->maxEdges !== null && $this->totalEdgeCount() >= $this->maxEdges) {
-            $this->flush();
-
-            return;
+            $this->evictColdestEdges();
+            // Eviction may have dropped the very bucket being appended to; a
+            // stale $existing would resurrect its evicted edges uncounted.
+            $existing = $this->pivotEdges[$bucket] ?? [];
         }
 
         $existing[] = $edge;
+        unset($this->pivotEdges[$bucket]);
         $this->pivotEdges[$bucket] = $existing;
         $this->pivotEdgeCount++;
         $this->pivotEdgesBucketsByClass[$edge->parent->modelClass][$bucket] = true;
@@ -136,6 +149,7 @@ final class IdentityGraph
         $key = RelationCoverageKey::make($coverage->parent, $coverage->relationName);
 
         if (isset($this->pivotCoverage[$key])) {
+            unset($this->pivotCoverage[$key]);
             $this->pivotCoverage[$key] = $coverage;
             $this->pivotCoverageKeysByClass[$coverage->relatedModelClass][$key] = true;
 
@@ -143,9 +157,7 @@ final class IdentityGraph
         }
 
         if ($this->maxCoverage !== null && $this->totalCoverageCount() >= $this->maxCoverage) {
-            $this->flush();
-
-            return;
+            $this->evictColdestCoverage();
         }
 
         $this->pivotCoverage[$key] = $coverage;
@@ -156,23 +168,59 @@ final class IdentityGraph
     /** @return list<RelationEdge> */
     public function edgesFrom(ModelIdentity $from, string $relationName): array
     {
-        return $this->edges[$from->key().'|'.$relationName] ?? [];
+        $bucketKey = $from->key().'|'.$relationName;
+        $bucket = $this->edges[$bucketKey] ?? null;
+
+        if ($bucket === null) {
+            return [];
+        }
+
+        unset($this->edges[$bucketKey]);
+        $this->edges[$bucketKey] = $bucket;
+
+        return $bucket;
     }
 
     public function coverageFor(ModelIdentity $parent, string $relationName): ?RelationCoverage
     {
-        return $this->coverage[RelationCoverageKey::make($parent, $relationName)] ?? null;
+        $key = RelationCoverageKey::make($parent, $relationName);
+        $coverage = $this->coverage[$key] ?? null;
+
+        if ($coverage !== null) {
+            unset($this->coverage[$key]);
+            $this->coverage[$key] = $coverage;
+        }
+
+        return $coverage;
     }
 
     /** @return list<PivotEdge> */
     public function pivotEdgesFrom(ModelIdentity $parent, string $relationName): array
     {
-        return $this->pivotEdges[$parent->key().'|'.$relationName] ?? [];
+        $bucketKey = $parent->key().'|'.$relationName;
+        $bucket = $this->pivotEdges[$bucketKey] ?? null;
+
+        if ($bucket === null) {
+            return [];
+        }
+
+        unset($this->pivotEdges[$bucketKey]);
+        $this->pivotEdges[$bucketKey] = $bucket;
+
+        return $bucket;
     }
 
     public function pivotCoverageFor(ModelIdentity $parent, string $relationName): ?PivotCoverage
     {
-        return $this->pivotCoverage[RelationCoverageKey::make($parent, $relationName)] ?? null;
+        $key = RelationCoverageKey::make($parent, $relationName);
+        $coverage = $this->pivotCoverage[$key] ?? null;
+
+        if ($coverage !== null) {
+            unset($this->pivotCoverage[$key]);
+            $this->pivotCoverage[$key] = $coverage;
+        }
+
+        return $coverage;
     }
 
     public function removePivotEdge(ModelIdentity $parent, string $relationName, ModelIdentity $related): void
@@ -432,6 +480,103 @@ final class IdentityGraph
             }
         }
         unset($this->pivotCoverageKeysByClass[$modelClass]);
+    }
+
+    /**
+     * Shed the least-recently-used tenth of the edge budget instead of
+     * flushing the graph. Whole buckets go at once, split proportionally
+     * between plain and pivot edges, and each evicted bucket takes its
+     * same-key coverage grant with it: unfiltered pivot coverage serves the
+     * bucket's edges directly, so a surviving grant over a missing bucket
+     * would answer with rows the database still has. Dropping bucket and
+     * grant together only ever costs a fall-through to SQL.
+     */
+    private function evictColdestEdges(): void
+    {
+        if ($this->maxEdges === null) {
+            return;
+        }
+
+        $total = $this->edgeCount + $this->pivotEdgeCount;
+
+        if ($total === 0) {
+            return;
+        }
+
+        $target = min(EvictionBatch::size($this->maxEdges), $total);
+        $fromPlain = intdiv($target * $this->edgeCount, $total);
+
+        $removed = $this->evictEdgeBucketsFromFront($fromPlain, pivot: false);
+        $removed += $this->evictEdgeBucketsFromFront($target - $removed, pivot: true);
+
+        if ($removed < $target) {
+            $this->evictEdgeBucketsFromFront($target - $removed, pivot: false);
+        }
+    }
+
+    private function evictEdgeBucketsFromFront(int $edgeTarget, bool $pivot): int
+    {
+        if ($edgeTarget <= 0) {
+            return 0;
+        }
+
+        if ($pivot) {
+            $edgeMap = &$this->pivotEdges;
+            $coverageMap = &$this->pivotCoverage;
+        } else {
+            $edgeMap = &$this->edges;
+            $coverageMap = &$this->coverage;
+        }
+
+        $removed = 0;
+
+        foreach (array_keys($edgeMap) as $bucketKey) {
+            $removed += count($edgeMap[$bucketKey]);
+            unset($edgeMap[$bucketKey], $coverageMap[$bucketKey]);
+
+            if ($removed >= $edgeTarget) {
+                break;
+            }
+        }
+
+        if ($pivot) {
+            $this->pivotEdgeCount -= $removed;
+        } else {
+            $this->edgeCount -= $removed;
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Shed the least-recently-used tenth of the coverage budget. Coverage is
+     * a pure grant — relation coverage re-resolves its child keys against the
+     * live store, pivot coverage is dropped alongside its bucket — so an
+     * evicted grant only sends the next relation read back to SQL.
+     */
+    private function evictColdestCoverage(): void
+    {
+        if ($this->maxCoverage === null) {
+            return;
+        }
+
+        $total = count($this->coverage) + count($this->pivotCoverage);
+
+        if ($total === 0) {
+            return;
+        }
+
+        $target = min(EvictionBatch::size($this->maxCoverage), $total);
+        $fromPivot = min($target - intdiv($target * count($this->coverage), $total), count($this->pivotCoverage));
+        $fromPlain = min($target - $fromPivot, count($this->coverage));
+
+        foreach (array_slice(array_keys($this->coverage), 0, $fromPlain) as $key) {
+            unset($this->coverage[$key]);
+        }
+
+        foreach (array_slice(array_keys($this->pivotCoverage), 0, $fromPivot) as $key) {
+            unset($this->pivotCoverage[$key]);
+        }
     }
 
     public function flush(): void

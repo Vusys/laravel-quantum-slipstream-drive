@@ -84,7 +84,7 @@ Backfill fires only for point lookups (`find()`, unique-key lookups, and `Memory
 The [identity graph](architecture.md#identity-graph-relation_graph) records model-to-model relation edges so that relation queries — `whereHas`, `whereDoesntHave`, and `belongsToMany` traversal — can be answered from memory.
 
 - `enabled` — turn the graph on or off entirely. Disabled, relation traversal falls back to per-relation memory paths or SQL.
-- `max_edges` / `max_coverage_entries` — hard caps. When either is exceeded the graph is flushed entirely (the safest behaviour). A malformed value falls back to the default rather than coercing to `0`; a literal `0` removes the cap.
+- `max_edges` / `max_coverage_entries` — hard caps. A breach evicts the least-recently-used tenth of the budget instead of flushing the graph; an evicted edge bucket takes its same-key coverage grant with it, so a relation is never served from a half-evicted bucket. A malformed value falls back to the default rather than coercing to `0`; a literal `0` removes the cap.
 
 ## `store_caps`
 
@@ -94,11 +94,11 @@ The [identity graph](architecture.md#identity-graph-relation_graph) records mode
 | `store_caps.max_unique_keys` | `IDENTITY_MAP_MAX_UNIQUE_KEYS` | `100000` |
 | `store_caps.max_coverage_entries` | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | `50000` |
 
-Per-scope size caps. The store, unique-key index, and coverage registry accumulate state for the life of a scope — bounded for a normal request, but a single long-running queue job iterating millions of rows would otherwise grow them without limit. When a store exceeds its cap it is **flushed in full**: flush-all is the only safe semantics, because coverage and absence reasoning reference live entries and evicting individual ones could answer a query the database would not.
+Per-scope size caps. The store, unique-key index, and coverage registry accumulate state for the life of a scope — bounded for a normal request, but a single long-running queue job iterating millions of rows would otherwise grow them without limit. When a store exceeds its cap it **evicts its least-recently-used tenth** and keeps the hot remainder. Partial eviction is safe because every consumer re-validates its references at serve time — a coverage region that lost an entry falls through to SQL instead of answering short — so an eviction only ever costs a cold read, never a wrong answer.
 
-- `max_entries` — caps `IdentityMapStore` live entries + absence markers combined. Flush-all on overflow.
-- `max_unique_keys` — caps the `UniqueKeyIndex` (live + absent fingerprints). Flushes only the index — point lookups miss to SQL until rebuilt.
-- `max_coverage_entries` — caps recorded `CoverageRegistry` regions. Flush-all on overflow.
+- `max_entries` — caps `IdentityMapStore` live entries + absence markers combined. A breach evicts the coldest keys and prunes coverage regions that referenced them.
+- `max_unique_keys` — caps the `UniqueKeyIndex` (live + absent fingerprints). A breach evicts only the coldest fingerprints — point lookups miss to SQL until re-indexed.
+- `max_coverage_entries` — caps recorded `CoverageRegistry` regions. A breach evicts the coldest regions; a region is a pure grant, so dropping one just sends that query back to SQL.
 
 Values are parsed and validated in the service provider, so a malformed env value falls back to the safe default instead of coercing to `0`. Set any cap to a literal `0` to disable it (unbounded). See [Store size caps](architecture.md#store-size-caps-store_caps).
 

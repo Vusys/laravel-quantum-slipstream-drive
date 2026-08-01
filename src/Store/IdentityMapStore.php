@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
 use Vusys\QuantumSlipstreamDrive\Enums\EvaluationResult;
 use Vusys\QuantumSlipstreamDrive\Enums\FactConfidence;
 use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
@@ -23,22 +24,38 @@ use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
 use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
 use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
+use Vusys\QuantumSlipstreamDrive\Support\EvictionBatch;
 
 final class IdentityMapStore
 {
     /** @var array<string, IdentityEntry> */
     private array $entries = [];
 
-    /** @var array<string, true> */
+    /**
+     * Absence markers, keyed like $entries. The value is the recency stamp
+     * from {@see $clock} at the last record or hit, so cap-breach eviction
+     * can drop the coldest markers first. Presence of the key is the fact;
+     * the stamp carries no meaning beyond eviction ordering.
+     *
+     * @var array<string, int>
+     */
     private array $absent = [];
+
+    /**
+     * Monotonic access clock shared by entries and absence markers. Bumped on
+     * every touch; never reset except by flush(), so relative order is all it
+     * guarantees.
+     */
+    private int $clock = 0;
 
     /**
      * Reverse-index: modelClass → set of mapKeys.
      *
-     * Maintained at insert; not pruned on individual evictions, so entries
-     * may name keys that are no longer in $entries / $absent. Used by
-     * flush(modelClass) to avoid scanning every key in the maps. A stale
-     * entry is a harmless no-op unset; full flush() resets both indexes.
+     * Maintained at insert and pruned by cap-breach eviction, but not by
+     * every individual unset, so entries may name keys that are no longer in
+     * $entries / $absent. Used by flush(modelClass) to avoid scanning every
+     * key in the maps. A stale entry is a harmless no-op unset; full flush()
+     * resets both indexes.
      *
      * @var array<string, array<string, true>>
      */
@@ -103,6 +120,82 @@ final class IdentityMapStore
             && (count($this->entries) + count($this->absent)) >= $this->maxEntries;
     }
 
+    private function touchEntry(?IdentityEntry $entry): ?IdentityEntry
+    {
+        if ($entry instanceof IdentityEntry) {
+            $entry->lastTouched = ++$this->clock;
+        }
+
+        return $entry;
+    }
+
+    /**
+     * Shed the least-recently-touched tenth of the combined entry + absence
+     * budget instead of flushing the whole store.
+     *
+     * Partial eviction is safe because nothing serves an answer from a
+     * dangling reference: coverage regions and relation coverage re-resolve
+     * every recorded primary key against the live store at serve time and
+     * fall through to SQL when one is missing; unique-key and raw-row index
+     * pointers are validated (and lazily pruned) on lookup. Dropping an
+     * entry or an absence marker therefore only ever costs a query — never a
+     * wrong answer. Coverage entries that referenced an evicted row are
+     * pruned eagerly anyway: they could no longer serve anything, and would
+     * otherwise linger as dead weight against the registry's own cap.
+     */
+    private function evictColdest(): void
+    {
+        if ($this->maxEntries === null) {
+            return;
+        }
+
+        // A soft-deleted key can be present in both maps at once; max() keeps
+        // it hot as long as either side is.
+        $stamps = [];
+
+        foreach ($this->entries as $mapKey => $entry) {
+            $stamps[$mapKey] = $entry->lastTouched;
+        }
+
+        foreach ($this->absent as $mapKey => $stamp) {
+            $stamps[$mapKey] = max($stamps[$mapKey] ?? 0, $stamp);
+        }
+
+        asort($stamps);
+
+        $evictedPksByClass = [];
+
+        foreach (array_slice(array_keys($stamps), 0, EvictionBatch::size($this->maxEntries)) as $mapKey) {
+            $entry = $this->entries[$mapKey] ?? null;
+
+            if ($entry instanceof IdentityEntry) {
+                $evictedPksByClass[$entry->modelClass][$entry->primaryKeyValue] = true;
+                unset($this->entryKeysByClass[$entry->modelClass][$mapKey]);
+                unset($this->rawRowIndex[$this->makePhysicalKey(
+                    $entry->connection,
+                    $entry->table,
+                    $entry->primaryKeyName,
+                    $entry->primaryKeyValue,
+                )][$mapKey]);
+            }
+
+            if (isset($this->absent[$mapKey])) {
+                // mapKey format: "{connection}|{modelClass}|..."
+                $parts = explode('|', $mapKey, 3);
+
+                if (isset($parts[1])) {
+                    unset($this->absentKeysByClass[$parts[1]][$mapKey]);
+                }
+            }
+
+            unset($this->entries[$mapKey], $this->absent[$mapKey]);
+        }
+
+        if ($evictedPksByClass !== []) {
+            resolve(CoverageRegistry::class)->evictReferencing($evictedPksByClass);
+        }
+    }
+
     public function setPendingFingerprint(?string $fingerprint): void
     {
         $this->pendingFingerprint = $fingerprint;
@@ -131,6 +224,7 @@ final class IdentityMapStore
 
         if (isset($this->entries[$mapKey])) {
             $entry = $this->entries[$mapKey];
+            $entry->lastTouched = ++$this->clock;
 
             // A partial-column hydration (pluck / select(subset)) must not replace
             // a richer cached instance with a narrower one — that would drop columns
@@ -155,9 +249,7 @@ final class IdentityMapStore
             // (the marker is unset below), so only a genuinely new key counts
             // as growth against the cap.
             if (! isset($this->absent[$mapKey]) && $this->atEntryCap()) {
-                $this->flush();
-
-                return;
+                $this->evictColdest();
             }
 
             $attributes = new AttributeKnowledge;
@@ -175,6 +267,7 @@ final class IdentityMapStore
                 relations: new RelationKnowledge,
                 state: LifecycleState::Exists,
                 version: 1,
+                lastTouched: ++$this->clock,
             );
             $this->entryKeysByClass[$model::class][$mapKey] = true;
         }
@@ -278,6 +371,8 @@ final class IdentityMapStore
                 && $entry->rawRow !== null
                 && $entry->rawRowVersion === $entry->version
             ) {
+                $entry->lastTouched = ++$this->clock;
+
                 return $entry->rawRow;
             }
         }
@@ -309,6 +404,7 @@ final class IdentityMapStore
 
         if (isset($this->entries[$mapKey])) {
             $entry = $this->entries[$mapKey];
+            $entry->lastTouched = ++$this->clock;
             $entry->model = $model;
             $entry->state = LifecycleState::Exists;
             $entry->version++;
@@ -354,7 +450,7 @@ final class IdentityMapStore
 
             // The model is definitively soft-deleted within this process; record absence
             // immediately so subsequent default-scope finds skip SQL entirely.
-            $this->absent[$mapKey] = true;
+            $this->absent[$mapKey] = ++$this->clock;
             $this->absentKeysByClass[$model::class][$mapKey] = true;
         } else {
             $fingerprint = ScopeFingerprinter::fromModel($model);
@@ -408,7 +504,7 @@ final class IdentityMapStore
         $fingerprint = ScopeFingerprinter::fromModel($model);
         $mapKey = $this->makeKey($model, $key, $fingerprint);
 
-        return $this->entries[$mapKey] ?? null;
+        return $this->touchEntry($this->entries[$mapKey] ?? null);
     }
 
     public function find(
@@ -428,7 +524,7 @@ final class IdentityMapStore
             $fingerprint,
         );
 
-        return $this->entries[$mapKey] ?? null;
+        return $this->touchEntry($this->entries[$mapKey] ?? null);
     }
 
     public function isAbsent(
@@ -448,7 +544,13 @@ final class IdentityMapStore
             $fingerprint,
         );
 
-        return isset($this->absent[$mapKey]);
+        if (! isset($this->absent[$mapKey])) {
+            return false;
+        }
+
+        $this->absent[$mapKey] = ++$this->clock;
+
+        return true;
     }
 
     public function recordAbsent(
@@ -469,14 +571,12 @@ final class IdentityMapStore
         );
 
         if (! isset($this->absent[$mapKey]) && ! isset($this->entries[$mapKey]) && $this->atEntryCap()) {
-            $this->flush();
-
-            return;
+            $this->evictColdest();
         }
 
         $this->snapshotForJournal($mapKey);
 
-        $this->absent[$mapKey] = true;
+        $this->absent[$mapKey] = ++$this->clock;
         $this->absentKeysByClass[$modelClass][$mapKey] = true;
     }
 
@@ -499,6 +599,7 @@ final class IdentityMapStore
         if ($modelClass === null) {
             $this->entries = [];
             $this->absent = [];
+            $this->clock = 0;
             $this->entryKeysByClass = [];
             $this->absentKeysByClass = [];
             $this->rawRowIndex = [];
@@ -698,7 +799,7 @@ final class IdentityMapStore
             }
         }
 
-        return $entry;
+        return $this->touchEntry($entry);
     }
 
     /**
@@ -884,7 +985,7 @@ final class IdentityMapStore
 
                 if ($softDeletes) {
                     $entry->state = LifecycleState::SoftDeleted;
-                    $this->absent[$mapKey] = true;
+                    $this->absent[$mapKey] = ++$this->clock;
                     $this->absentKeysByClass[$modelClass][$mapKey] = true;
                 } else {
                     $entry->state = LifecycleState::Deleted;
@@ -991,7 +1092,7 @@ final class IdentityMapStore
     {
         foreach ($entries as $journalEntry) {
             if ($journalEntry->wasAbsent) {
-                $this->absent[$journalEntry->entryKey] = true;
+                $this->absent[$journalEntry->entryKey] = ++$this->clock;
                 $this->absentKeysByClass[$journalEntry->modelClass][$journalEntry->entryKey] = true;
             } else {
                 unset($this->absent[$journalEntry->entryKey]);

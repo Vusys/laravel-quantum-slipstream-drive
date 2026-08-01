@@ -77,12 +77,16 @@ return [
      * queries can be answered from memory when coverage is complete.
      *
      *   enabled                          — turn the graph on or off entirely.
-     *   max_edges / max_coverage_entries — hard caps; when exceeded the graph
-     *                                      is flushed entirely (safest). Parsed
-     *                                      and validated like store_caps below:
-     *                                      a malformed value falls back to the
-     *                                      default rather than coercing to 0,
-     *                                      and a literal 0 removes the cap.
+     *   max_edges / max_coverage_entries — hard caps; a breach evicts the
+     *                                      least-recently-used tenth (an
+     *                                      evicted edge bucket takes its
+     *                                      coverage grant with it, so nothing
+     *                                      ever serves from a half-evicted
+     *                                      relation). Parsed and validated
+     *                                      like store_caps below: a malformed
+     *                                      value falls back to the default
+     *                                      rather than coercing to 0, and a
+     *                                      literal 0 removes the cap.
      */
     'relation_graph' => [
         'enabled' => (bool) env('IDENTITY_MAP_RELATION_GRAPH_ENABLED', true),
@@ -94,13 +98,14 @@ return [
      * Per-request store size caps. The identity-map store, unique-key index and
      * coverage registry accumulate state for the life of a request — or, worse,
      * a single queue job iterating millions of rows, where job-boundary flushes
-     * do not help. These caps bound that growth. When a store exceeds its cap it
-     * is flushed in full: flush-all is the only safe semantics here, because
-     * coverage and absence reasoning reference live entries and evicting
-     * individual ones would corrupt that reasoning (a half-pruned coverage
-     * region could answer a query the database would not). A flush only costs a
-     * cold cache — never correctness. Caps are generous by default; set any to 0
-     * to disable that cap.
+     * do not help. These caps bound that growth. When a store exceeds its cap
+     * it evicts its least-recently-used tenth and keeps the hot remainder.
+     * Partial eviction stays safe because every consumer re-validates its
+     * references at serve time: a coverage region re-resolves each recorded
+     * primary key against the live store and falls through to SQL when one is
+     * missing, and the coverage regions that referenced an evicted row are
+     * pruned with it. An eviction only costs a cold read — never correctness.
+     * Caps are generous by default; set any to 0 to disable that cap.
      *
      *   max_entries          — IdentityMapStore $entries + $absent combined.
      *   max_unique_keys      — UniqueKeyIndex live + absent fingerprints.

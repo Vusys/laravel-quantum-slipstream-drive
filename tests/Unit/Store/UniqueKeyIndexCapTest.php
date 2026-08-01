@@ -11,7 +11,7 @@ use Vusys\QuantumSlipstreamDrive\Store\UniqueKeyIndex;
 final class UniqueKeyIndexCapTest extends TestCase
 {
     #[Test]
-    public function absent_markers_accumulate_up_to_the_cap_then_flush(): void
+    public function absent_markers_accumulate_up_to_the_cap_then_evict_the_oldest(): void
     {
         $index = new UniqueKeyIndex(maxKeys: 2);
 
@@ -22,7 +22,27 @@ final class UniqueKeyIndexCapTest extends TestCase
         $this->assertSame(2, $index->debugStats()['unique_absent']);
 
         $index->recordAbsent('fp-c');
-        $this->assertSame(0, $index->debugStats()['unique_absent'], 'index flushes once the cap is reached');
+        $this->assertSame(2, $index->debugStats()['unique_absent'], 'the breach evicts the coldest marker, then records the new one');
+        $this->assertFalse($index->isAbsent('fp-a'), 'the least-recently-used marker is the one evicted');
+        $this->assertTrue($index->isAbsent('fp-b'));
+        $this->assertTrue($index->isAbsent('fp-c'));
+    }
+
+    #[Test]
+    public function a_recently_hit_absent_marker_survives_the_cap_breach(): void
+    {
+        $index = new UniqueKeyIndex(maxKeys: 2);
+
+        $index->recordAbsent('fp-a');
+        $index->recordAbsent('fp-b');
+
+        // Hitting fp-a makes fp-b the least recently used.
+        $index->isAbsent('fp-a');
+
+        $index->recordAbsent('fp-c');
+
+        $this->assertTrue($index->isAbsent('fp-a'), 'the hot marker survives');
+        $this->assertFalse($index->isAbsent('fp-b'), 'the cold marker is evicted');
     }
 
     #[Test]

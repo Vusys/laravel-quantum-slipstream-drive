@@ -6,6 +6,8 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ### Changed
 
+- Cap breaches now evict the least-recently-used tenth of the affected store instead of flushing it entirely ([#102](https://github.com/Vusys/laravel-quantum-slipstream-drive/issues/102)). Applies to the identity-map store (`store_caps.max_entries`), unique-key index (`store_caps.max_unique_keys`), coverage registry (`store_caps.max_coverage_entries`), and identity graph (`relation_graph.max_edges` / `max_coverage_entries`). Hot entries survive sustained churn; correctness is preserved because every consumer re-validates its references at serve time (a coverage region that lost an entry falls through to SQL), coverage regions referencing an evicted row are pruned with it, and an evicted edge bucket takes its same-key coverage grant with it. The key that tripped the cap is now stored rather than dropped.
+
 - Renamed the truth-mode config key from `attribute_truth` (env `IDENTITY_MAP_ATTRIBUTE_TRUTH`, values `database_only` / `process_truth`) to `mode` (env `IDENTITY_MAP_MODE`, values `default` / `process_truth`). The old key is no longer read; installs that still set it fall back to the new default (`mode = default`). Map `database_only` → `default` and keep `process_truth`. See the [upgrade note](docs/architecture.md#upgrade-note-attribute_truth--mode).
 
 ### Added

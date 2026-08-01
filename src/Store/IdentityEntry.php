@@ -38,6 +38,12 @@ final class IdentityEntry
          * any mutation bumps the version, so a stale snapshot is never returned.
          */
         public int $rawRowVersion = 0,
+        /**
+         * Recency stamp from the store's monotonic access clock, bumped on
+         * every read or write that proves the entry is hot. Cap-breach
+         * eviction drops the entries with the lowest stamps first.
+         */
+        public int $lastTouched = 0,
     ) {}
 
     public function __clone(): void
