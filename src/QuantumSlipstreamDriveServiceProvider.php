@@ -20,6 +20,7 @@ use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
 use Vusys\QuantumSlipstreamDrive\Driver\DriverSemanticsResolver;
 use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
 use Vusys\QuantumSlipstreamDrive\Knowledge\ColumnBackfiller;
+use Vusys\QuantumSlipstreamDrive\Query\RawReadServing;
 use Vusys\QuantumSlipstreamDrive\Query\RawWriteInterceptor;
 use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
@@ -63,6 +64,34 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
 
         $this->registerLifecycleHooks();
         $this->registerRawWriteInterceptor();
+        $this->registerRawReadServing();
+    }
+
+    /**
+     * When raw read-serving is enabled, install the per-driver connection
+     * resolvers so `DB::table()` reads can be answered from the identity map,
+     * then purge any already-resolved connection so it rebuilds on the swapped
+     * class. Purging is safe here: boot runs before the app issues its first
+     * query (and before the test suite migrates), so no live connection state
+     * is lost.
+     */
+    private function registerRawReadServing(): void
+    {
+        if (config('quantum-slipstream-drive.raw_reads.enabled') !== true) {
+            return;
+        }
+
+        RawReadServing::install();
+
+        $db = $this->app->make('db');
+
+        $connections = config('database.connections');
+
+        if (is_array($connections)) {
+            foreach (array_keys($connections) as $name) {
+                $db->purge(is_string($name) ? $name : null);
+            }
+        }
     }
 
     /**

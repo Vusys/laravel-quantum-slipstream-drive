@@ -115,16 +115,28 @@ final class RawWriteInterceptor
         }
     }
 
-    /** @return list<class-string<Model>> */
-    private function classesForTable(string $table): array
+    /**
+     * Model classes backing $table, if any. Shared with the raw read-serving
+     * builder so it can map a `DB::table('users')` read to the model whose
+     * cached rows may satisfy it.
+     *
+     * @return list<class-string<Model>>
+     */
+    public static function modelClassesForTable(string $table): array
     {
-        self::$tableMap ??= $this->buildTableMap();
+        self::$tableMap ??= self::buildTableMap();
 
         return self::$tableMap[$table] ?? [];
     }
 
+    /** @return list<class-string<Model>> */
+    private function classesForTable(string $table): array
+    {
+        return self::modelClassesForTable($table);
+    }
+
     /** @return array<string, list<class-string<Model>>> */
-    private function buildTableMap(): array
+    private static function buildTableMap(): array
     {
         $map = [];
 

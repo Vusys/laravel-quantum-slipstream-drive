@@ -23,6 +23,21 @@ final class IdentityEntry
         public RelationKnowledge $relations,
         public LifecycleState $state,
         public int $version,
+        /**
+         * Database-native full-row snapshot for raw `DB::table()` read serving,
+         * or null when none was captured. Taken verbatim from a genuine
+         * full-column SELECT hydration (pre-cast attribute values, every column
+         * present), so it replays byte-identically to a bypassed raw query.
+         *
+         * @var array<string, mixed>|null
+         */
+        public ?array $rawRow = null,
+        /**
+         * The entry {@see $version} at the moment {@see $rawRow} was captured.
+         * The snapshot is only served while this still equals the live version:
+         * any mutation bumps the version, so a stale snapshot is never returned.
+         */
+        public int $rawRowVersion = 0,
     ) {}
 
     public function __clone(): void

@@ -10,6 +10,7 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ### Added
 
+- Raw `DB::table()` read-serving (`raw_reads.enabled`, env `IDENTITY_MAP_RAW_READS`, default off): raw single-key and bounded key-set reads of the full row against a mapped table are served from a database-native row snapshot captured on an earlier full-column Eloquent read — issuing zero SQL and returning `stdClass` rows byte-identical to a bypassed query. The snapshot is taken only from a genuine full-column `SELECT` (never `create()`/mass-write) and invalidated the instant the cached row changes; anything not fully covered falls through to SQL unchanged. New `ReturnRawRowFromMemory` plan type. See [Raw read-serving](docs/raw-reads.md).
 - Documentation site: the README has been split into a [MkDocs Material](https://vusys.github.io/laravel-quantum-slipstream-drive/) site under `docs/`, deployed to GitHub Pages. The README is now a landing page with a topic table linking into the site.
 - `CHANGELOG.md` (this file) and `CONTRIBUTING.md`.
 - Scoped Eloquent identity map: opt in per model with the `HasIdentityMap` trait. Redundant reads within a request or job are served from memory; `withoutIdentityMap()` opts out per query and `IdentityMap::disabled()` opts out per scope.

@@ -34,4 +34,5 @@ enum PlanType: string
     case WherePivotInMemory = 'where_pivot_in_memory';
     case BackfillColumnsFromDatabase = 'backfill_columns_from_database';
     case RawWriteInvalidation = 'raw_write_invalidation';
+    case ReturnRawRowFromMemory = 'return_raw_row_from_memory';
 }

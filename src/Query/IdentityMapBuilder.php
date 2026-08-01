@@ -50,6 +50,35 @@ class IdentityMapBuilder extends Builder
     /** @var list<PendingHasRewrite> */
     private array $pendingHasRewrites = [];
 
+    public function __construct(QueryBuilder $query)
+    {
+        parent::__construct($query);
+
+        // Mark the underlying base builder as Eloquent-owned so the raw
+        // read-serving builder stands down for this query — the Eloquent read
+        // path handles caching itself.
+        if ($query instanceof RawServingQueryBuilder) {
+            $query->ownedByEloquent = true;
+        }
+    }
+
+    /**
+     * Whether a full-column read on this builder yields models whose raw
+     * attributes are a faithful native database row — i.e. no joins pulling in
+     * other tables' columns, and no computed SELECT expressions. Only then may
+     * the store snapshot the row for raw `DB::table()` read serving.
+     */
+    private function capturesRawRow(): bool
+    {
+        $query = $this->getQuery();
+
+        if ($query->joins !== null && $query->joins !== []) {
+            return false;
+        }
+
+        return ! (new QueryPatternExtractor($this))->hasNonStringSelectColumns();
+    }
+
     public function withoutIdentityMap(): static
     {
         $clone = clone $this;
@@ -333,6 +362,10 @@ class IdentityMapBuilder extends Builder
         if ($result instanceof Model) {
             if ($this->fetchedAllColumns($columns)) {
                 $store->markAllColumnsKnown($result, $fingerprint);
+
+                if ($this->capturesRawRow()) {
+                    $store->captureRawRow($result, $fingerprint);
+                }
             }
         } elseif ($result === null) {
             $store->recordAbsent(
@@ -540,11 +573,15 @@ class IdentityMapBuilder extends Builder
             }
 
             $isFullSelect = $this->fetchedAllColumns($columns);
+            $captureRawRow = $isFullSelect && $this->capturesRawRow();
 
             $fetchedByKey = [];
             foreach ($fetched as $fetchedModel) {
                 if ($isFullSelect) {
                     $store->markAllColumnsKnown($fetchedModel, $fingerprint);
+                }
+                if ($captureRawRow) {
+                    $store->captureRawRow($fetchedModel, $fingerprint);
                 }
                 $k = $fetchedModel->getKey();
                 if (is_int($k) || is_string($k)) {
@@ -677,10 +714,14 @@ class IdentityMapBuilder extends Builder
             }
 
             $isFullSelect = $this->fetchedAllColumns($columns);
+            $captureRawRow = $isFullSelect && $this->capturesRawRow();
 
             foreach ($models as $result) {
                 if ($isFullSelect) {
                     $store->markAllColumnsKnown($result, $fingerprint);
+                }
+                if ($captureRawRow) {
+                    $store->captureRawRow($result, $fingerprint);
                 }
             }
 
@@ -724,10 +765,14 @@ class IdentityMapBuilder extends Builder
         }
 
         $isFullSelect = $this->fetchedAllColumns($columns);
+        $captureRawRow = $isFullSelect && $this->capturesRawRow();
 
         foreach ($models as $result) {
             if ($isFullSelect) {
                 $store->markAllColumnsKnown($result, $fingerprint);
+            }
+            if ($captureRawRow) {
+                $store->captureRawRow($result, $fingerprint);
             }
         }
 
