@@ -2,16 +2,29 @@
 
 declare(strict_types=1);
 
-// Converts the Performance suite's `::bench-end::` stderr lines into
-// Bencher Metric Format (BMF) JSON. Reads stdin, writes stdout.
-// Consumed by .github/workflows/bencher.yml.
+// Converts the Performance suite's `::bench-end::` and `::bench-pair::`
+// stderr lines into Bencher Metric Format (BMF) JSON. Reads stdin, writes
+// stdout. Consumed by .github/workflows/bencher.yml.
 //
-// Input line shape (emitted by tests/Performance/PerformanceTestCase.php):
-//   ::bench-end::   <label>  <label-padded-60>     XXX.XXX ms     YY queries
+// Input line shapes (emitted by tests/Performance/PerformanceTestCase.php):
+//   ::bench-end::   <label>  <label-padded-60>  XXX.XXX ms  YY queries
+//   ::bench-pair::  <label>  <label-padded-60>  X.XXx speedup  AA -> BB queries
 
 $result = [];
 
 while (($line = fgets(STDIN)) !== false) {
+    if (str_contains($line, '::bench-pair::')) {
+        if (preg_match(
+            '/::bench-pair::\s+(\S.*?)\s\s+\S.*?\s+([0-9]+(?:\.[0-9]+)?)x speedup/',
+            $line,
+            $match,
+        )) {
+            $result[trim($match[1])]['speedup'] = ['value' => (float) $match[2]];
+        }
+
+        continue;
+    }
+
     if (! str_contains($line, '::bench-end::')) {
         continue;
     }
@@ -26,10 +39,8 @@ while (($line = fgets(STDIN)) !== false) {
 
     $label = trim($match[1]);
 
-    $result[$label] = [
-        'latency' => ['value' => (float) $match[2]],
-        'queries' => ['value' => (float) $match[3]],
-    ];
+    $result[$label]['latency'] = ['value' => (float) $match[2]];
+    $result[$label]['queries'] = ['value' => (float) $match[3]];
 }
 
 if ($result === []) {

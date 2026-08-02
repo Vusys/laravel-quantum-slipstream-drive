@@ -122,20 +122,19 @@ Together the three files cover two orthogonal properties — *correctness* (resu
 
 ## Performance tests
 
-**Location:** `tests/Performance/` (1 file)
+**Location:** `tests/Performance/`
 **Command:** `vendor/bin/phpunit --testsuite Performance` (separate suite, not run by `composer test`)
 
 The performance suite measures wall-clock time and SQL query count, not functional correctness. Results are emitted to STDERR in a Bencher-compatible format and tracked for regression via the Bencher CI badge in the header.
 
-Three benchmarks run 100 iterations each:
+Benchmarks come in two shapes:
 
-| Benchmark | Expected SQL queries |
-|---|---|
-| Repeated `find()` on a known ID with the identity map | 1 (first load only) |
-| Repeated `find()` on an absent ID with absence tracking | 1 (first miss recorded) |
-| Repeated `find()` with `withoutIdentityMap()` as baseline | 100 |
+- **Single-arm** (`bench()`) — times one workload with the engine active. These exist as regression signal for the engine's own hot paths (coverage lookup, graph invalidation, mass-write reconciliation, observability overhead, …).
+- **Paired A/B** (`benchPair()`) — times the *same* workload twice: once with the engine disabled via `IdentityMapStore::disabled()` (the vanilla-Eloquent control, reported as `<label>-baseline`) and once with it active (reported as `<label>`). An untimed engine-off warmup pass runs first so both arms see warm caches. Each pair also reports a `speedup` ratio and the query-count reduction (e.g. `101 -> 2 queries`) — the A/B evidence that the engine is faster than not using it, not merely no slower than yesterday.
 
-The performance suite catches query-count regressions: a code change that accidentally stops the cache from being consulted will produce 100 SQL queries instead of 1, which the suite will flag even if every correctness test still passes.
+The headline scenarios are paired: repeated `find()` on a known ID, repeated `find()` on an absent ID, coverage-served repeated `get()`, key-set partial hits, and unique-key `first()` lookups. A separate single-arm bench times repeated `find()` with the per-query `withoutIdentityMap()` opt-out, which measures the builder-level escape hatch rather than the store-level disable.
+
+The performance suite therefore catches query-count regressions — a code change that accidentally stops the cache from being consulted produces 100 SQL queries instead of 1, flagged even if every correctness test still passes — and continuously proves the with/without delta on the paths the README advertises.
 
 ## Mutation testing
 
