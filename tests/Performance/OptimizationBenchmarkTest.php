@@ -27,7 +27,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
     {
         User::factory()->count(20)->create();
 
-        $this->bench('coverage-served-get', function (): void {
+        $this->benchPair('coverage-served-get', function (): void {
             User::query()->where('active', true)->get();
             for ($i = 0; $i < 99; $i++) {
                 User::query()->where('active', true)->get();
@@ -63,7 +63,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
         $coldKeys = range($maxId + 1, $maxId + 10);
         $keys = array_merge($hotKeys, $coldKeys);
 
-        $this->bench('keyset-partial-hit', function () use ($keys, $hotKeys): void {
+        $this->benchPair('keyset-partial-hit', function () use ($keys, $hotKeys): void {
             User::find($hotKeys);
             for ($i = 0; $i < 100; $i++) {
                 User::find($keys);
@@ -76,7 +76,7 @@ final class OptimizationBenchmarkTest extends PerformanceTestCase
     {
         User::factory()->create(['email' => 'hot@example.com']);
 
-        $this->bench('unique-key-first', function (): void {
+        $this->benchPair('unique-key-first', function (): void {
             User::query()->where('email', 'hot@example.com')->first();
             for ($i = 0; $i < 99; $i++) {
                 User::query()->where('email', 'hot@example.com')->first();

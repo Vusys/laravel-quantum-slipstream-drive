@@ -16,17 +16,75 @@ abstract class PerformanceTestCase extends TestCase
     {
         $this->expectNotToPerformAssertions();
 
+        $this->flushEngineState();
+        [$elapsed, $queries] = $this->measure($fn, $label);
+
+        $this->emitBenchEnd($label, $elapsed, $queries);
+    }
+
+    /**
+     * A/B variant of bench(): times the same workload twice — once with the
+     * engine disabled via IdentityMapStore::disabled() (the vanilla-Eloquent
+     * control arm, emitted as "<label>-baseline") and once with it active
+     * (emitted as "<label>", so single-arm history in Bencher carries over).
+     * A "::bench-pair::" line reports the speedup ratio for perf-to-bmf.php.
+     */
+    protected function benchPair(string $label, \Closure $fn): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        $store = resolve(IdentityMapStore::class);
+
+        $offArm = static function () use ($store, $fn): void {
+            $store->disabled(static function () use ($fn): bool {
+                $fn();
+
+                return true;
+            });
+        };
+
+        // Untimed engine-off pass so both timed arms run against warm
+        // database and runtime caches regardless of arm order.
+        $this->flushEngineState();
+        $offArm();
+
+        $this->flushEngineState();
+        [$offElapsed, $offQueries] = $this->measure($offArm);
+
+        $this->flushEngineState();
+        [$onElapsed, $onQueries] = $this->measure($fn, $label);
+
+        $this->emitBenchEnd($label, $onElapsed, $onQueries);
+        $this->emitBenchEnd($label.'-baseline', $offElapsed, $offQueries);
+
+        $speedup = $onElapsed > 0.0 ? $offElapsed / $onElapsed : 0.0;
+
+        fwrite(STDERR, sprintf(
+            "::bench-pair::  %s  %-60s  %.2fx speedup  %d -> %d queries\n",
+            $label,
+            $label,
+            $speedup,
+            $offQueries,
+            $onQueries,
+        ));
+    }
+
+    private function flushEngineState(): void
+    {
         resolve(IdentityMapStore::class)->flush();
         resolve(CoverageRegistry::class)->flush();
         resolve(IdentityGraph::class)->flush();
+    }
 
+    /** @return array{float, int} */
+    private function measure(callable $fn, ?string $profileLabel = null): array
+    {
         DB::flushQueryLog();
         DB::enableQueryLog();
 
-        $profileEnabled = getenv('PROFILE') === '1' && extension_loaded('excimer');
         $profiler = null;
 
-        if ($profileEnabled) {
+        if ($profileLabel !== null && getenv('PROFILE') === '1' && extension_loaded('excimer')) {
             $periodEnv = getenv('EXCIMER_PERIOD');
             $period = is_string($periodEnv) && is_numeric($periodEnv) ? (float) $periodEnv : 0.0001;
 
@@ -46,10 +104,15 @@ abstract class PerformanceTestCase extends TestCase
 
             if ($profiler instanceof \ExcimerProfiler) {
                 $profiler->stop();
-                $this->writeProfileArtifacts($label, $profiler->getLog());
+                $this->writeProfileArtifacts($profileLabel, $profiler->getLog());
             }
         }
 
+        return [$elapsed, $queries];
+    }
+
+    private function emitBenchEnd(string $label, float $elapsed, int $queries): void
+    {
         $queryWord = $queries === 1 ? 'query' : 'queries';
 
         fwrite(STDERR, sprintf(

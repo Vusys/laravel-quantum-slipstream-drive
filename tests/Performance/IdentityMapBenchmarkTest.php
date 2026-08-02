@@ -26,7 +26,7 @@ final class IdentityMapBenchmarkTest extends PerformanceTestCase
     {
         $id = $this->userId;
 
-        $this->bench('identity-map-hit', function () use ($id): void {
+        $this->benchPair('identity-map-hit', function () use ($id): void {
             for ($i = 0; $i < 100; $i++) {
                 User::find($id);
             }
@@ -36,7 +36,7 @@ final class IdentityMapBenchmarkTest extends PerformanceTestCase
     #[Test]
     public function absent_key_tracking(): void
     {
-        $this->bench('absent-key-tracking', function (): void {
+        $this->benchPair('absent-key-tracking', function (): void {
             for ($i = 0; $i < 100; $i++) {
                 User::find(99999);
             }
