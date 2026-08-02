@@ -165,20 +165,20 @@ The graph powers the `where_has_from_graph`, `where_doesnt_have_from_graph`, `be
 | Config key | Default | Env override | Effect |
 |---|---|---|---|
 | `relation_graph.enabled` | `true` | `IDENTITY_MAP_RELATION_GRAPH_ENABLED` | Disable to bypass all graph-based plans; relation traversal falls back to per-relation memory paths or SQL. |
-| `relation_graph.max_edges` | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | When exceeded, the graph flushes entirely (safest behaviour). `0` removes the cap; a malformed value falls back to the default. |
-| `relation_graph.max_coverage_entries` | `5000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | When exceeded, the graph flushes entirely. `0` removes the cap; a malformed value falls back to the default. |
+| `relation_graph.max_edges` | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | A breach evicts the least-recently-used edge buckets (each takes its same-key coverage grant with it). `0` removes the cap; a malformed value falls back to the default. |
+| `relation_graph.max_coverage_entries` | `5000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | A breach evicts the least-recently-used coverage grants. `0` removes the cap; a malformed value falls back to the default. |
 
 ## Store size caps (`store_caps`)
 
 The identity-map store, unique-key index, and coverage registry accumulate state for the life of a scope. That is bounded for a normal HTTP request, but a single long-running queue job that iterates millions of rows would otherwise grow them without limit — job-boundary flushes only fire *between* jobs, not within one. These caps bound that growth.
 
-When a store exceeds its cap it is **flushed in full**, mirroring the identity graph. Flush-all is the only safe semantics: coverage regions and absence markers reference live entries, so evicting individual entries (LRU or otherwise) could leave a coverage region that answers a query the database would not. A flush only ever costs a cold cache on the next query — never a wrong answer.
+When a store exceeds its cap it **evicts its least-recently-used tenth**, mirroring the identity graph, and keeps the hot remainder. Partial eviction is safe because none of the reasoning trusts a reference blindly: a coverage region re-resolves every recorded primary key against the live store at serve time and falls through to SQL when one is missing (the regions referencing an evicted row are pruned eagerly as well), relation coverage re-fetches its child keys the same way, and unique-key / raw-row index pointers are validated on lookup. Absence markers are standalone facts, so dropping one merely sends the next lookup to SQL. An eviction therefore only ever costs a cold read on the next query — never a wrong answer.
 
 | Config key | Default | Env override | Effect |
 |---|---|---|---|
-| `store_caps.max_entries` | `100000` | `IDENTITY_MAP_MAX_ENTRIES` | Caps `IdentityMapStore` live entries + absence markers combined. Flush-all on overflow. |
-| `store_caps.max_unique_keys` | `100000` | `IDENTITY_MAP_MAX_UNIQUE_KEYS` | Caps the `UniqueKeyIndex` (live + absent fingerprints). Flushes only the index — point lookups miss to SQL until rebuilt. |
-| `store_caps.max_coverage_entries` | `50000` | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | Caps recorded `CoverageRegistry` regions. Flush-all on overflow. |
+| `store_caps.max_entries` | `100000` | `IDENTITY_MAP_MAX_ENTRIES` | Caps `IdentityMapStore` live entries + absence markers combined. A breach evicts the coldest keys and prunes coverage regions that referenced them. |
+| `store_caps.max_unique_keys` | `100000` | `IDENTITY_MAP_MAX_UNIQUE_KEYS` | Caps the `UniqueKeyIndex` (live + absent fingerprints). A breach evicts only the coldest fingerprints — point lookups miss to SQL until re-indexed. |
+| `store_caps.max_coverage_entries` | `50000` | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | Caps recorded `CoverageRegistry` regions. A breach evicts the coldest regions — each is a pure grant, so dropping one just sends that query back to SQL. |
 
 Set any cap to `0` to disable it (unbounded). The defaults are generous; most applications never approach them within a single scope.
 

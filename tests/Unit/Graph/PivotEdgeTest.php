@@ -413,7 +413,11 @@ final class PivotEdgeTest extends TestCase
         $this->assertSame(2, $graph->pivotEdgeCount());
 
         $graph->addPivotEdge($this->makePivotEdge($post, $tagC));
-        $this->assertSame(0, $graph->pivotEdgeCount(), 'graph flushes when total edge cap reached');
+        $this->assertSame(1, $graph->pivotEdgeCount(), 'the breach evicts the coldest bucket, then stores the new edge');
+
+        $survivors = $graph->pivotEdgesFrom($post, 'tags');
+        $this->assertCount(1, $survivors);
+        $this->assertSame(30, $survivors[0]->related->primaryKeyValue, 'only the newly-added edge survives its own bucket eviction');
     }
 
     #[Test]
@@ -429,7 +433,32 @@ final class PivotEdgeTest extends TestCase
         $this->assertSame(2, $graph->pivotCoverageCount());
 
         $graph->addPivotCoverage($this->makePivotCoverage($postC));
-        $this->assertSame(0, $graph->pivotCoverageCount(), 'graph flushes when total coverage cap reached');
+        $this->assertSame(2, $graph->pivotCoverageCount(), 'the breach evicts the coldest grant, then stores the new one');
+        $this->assertNull($graph->pivotCoverageFor($postA, 'tags'), 'the least-recently-used grant is the one evicted');
+        $this->assertNotNull($graph->pivotCoverageFor($postB, 'tags'));
+        $this->assertNotNull($graph->pivotCoverageFor($postC, 'tags'));
+    }
+
+    #[Test]
+    public function evicting_a_pivot_bucket_drops_its_coverage_grant_with_it(): void
+    {
+        $graph = new IdentityGraph(maxEdges: 2);
+        $postA = $this->postIdentity(1);
+        $postB = $this->postIdentity(2);
+
+        $graph->addPivotEdge($this->makePivotEdge($postA, $this->tagIdentity(10)));
+        $graph->addPivotCoverage($this->makePivotCoverage($postA));
+        $graph->addPivotEdge($this->makePivotEdge($postA, $this->tagIdentity(20)));
+
+        // Complete coverage over an evicted bucket would serve an empty
+        // collection the database would not; the grant must go with the bucket.
+        $graph->addPivotEdge($this->makePivotEdge($postB, $this->tagIdentity(30)));
+
+        $this->assertSame([], $graph->pivotEdgesFrom($postA, 'tags'));
+        $this->assertNull(
+            $graph->pivotCoverageFor($postA, 'tags'),
+            'a pivot coverage grant must never outlive the bucket it serves from',
+        );
     }
 
     #[Test]
@@ -456,7 +485,9 @@ final class PivotEdgeTest extends TestCase
             version: 1,
         ));
 
-        $this->assertSame(0, $graph->totalEdgeCount(), 'mixing regular and pivot must share the cap');
+        $this->assertSame(1, $graph->totalEdgeCount(), 'the pivot bucket is evicted; the new regular edge is stored');
+        $this->assertSame([], $graph->pivotEdgesFrom($post, 'tags'));
+        $this->assertCount(1, $graph->edgesFrom($post, 'whatever'));
     }
 
     #[Test]

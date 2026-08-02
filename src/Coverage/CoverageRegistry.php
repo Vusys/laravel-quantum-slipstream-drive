@@ -6,6 +6,7 @@ namespace Vusys\QuantumSlipstreamDrive\Coverage;
 
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateColumns;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
+use Vusys\QuantumSlipstreamDrive\Support\EvictionBatch;
 
 final class CoverageRegistry
 {
@@ -21,6 +22,9 @@ final class CoverageRegistry
     /** Running total across all buckets, kept in sync by every mutator so the cap check stays O(1). */
     private int $count = 0;
 
+    /** Monotonic access clock behind {@see CoverageEntry::$lastTouched}. */
+    private int $clock = 0;
+
     public function __construct(
         /** @var int|null null disables the cap */
         private readonly ?int $maxEntries = null,
@@ -29,11 +33,10 @@ final class CoverageRegistry
     public function record(CoverageEntry $entry): void
     {
         if ($this->maxEntries !== null && $this->count >= $this->maxEntries) {
-            $this->flush();
-
-            return;
+            $this->evictColdest();
         }
 
+        $entry->lastTouched = ++$this->clock;
         $this->entries[$entry->modelClass][] = $entry;
         $this->count++;
     }
@@ -71,6 +74,8 @@ final class CoverageRegistry
             }
 
             if ($checker->isSubset($queryRegion, $entry->region)) {
+                $entry->lastTouched = ++$this->clock;
+
                 return $entry;
             }
         }
@@ -134,10 +139,100 @@ final class CoverageRegistry
         }
     }
 
+    /**
+     * Drop every coverage entry that references one of the given evicted
+     * primary keys. Called by the store when it sheds entries at its own cap:
+     * serving already re-validates each recorded key against the live store
+     * (a missing one falls through to SQL), so these entries could never
+     * answer anything again — pruning them just stops dead grants from
+     * squatting on this registry's cap.
+     *
+     * @param  array<string, array<int|string, true>>  $pksByClass  modelClass → set of evicted primary keys
+     */
+    public function evictReferencing(array $pksByClass): void
+    {
+        foreach ($pksByClass as $modelClass => $pks) {
+            $bucket = $this->entries[$modelClass] ?? null;
+
+            if ($bucket === null) {
+                continue;
+            }
+
+            $kept = [];
+
+            foreach ($bucket as $entry) {
+                foreach ($entry->primaryKeys as $pk) {
+                    if (isset($pks[$pk])) {
+                        continue 2;
+                    }
+                }
+
+                $kept[] = $entry;
+            }
+
+            $this->count -= count($bucket) - count($kept);
+
+            if ($kept === []) {
+                unset($this->entries[$modelClass]);
+            } else {
+                $this->entries[$modelClass] = $kept;
+            }
+        }
+    }
+
+    /**
+     * Shed the least-recently-used tenth of the cap instead of flushing every
+     * region. A coverage entry is a pure grant — permission to answer a query
+     * from the store — so dropping one can only send a query back to SQL,
+     * never answer it wrongly.
+     */
+    private function evictColdest(): void
+    {
+        if ($this->maxEntries === null) {
+            return;
+        }
+
+        $all = [];
+
+        foreach ($this->entries as $modelClass => $bucket) {
+            foreach ($bucket as $i => $entry) {
+                $all[] = [$entry->lastTouched, $modelClass, $i];
+            }
+        }
+
+        usort($all, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+
+        $evictByClass = [];
+
+        foreach (array_slice($all, 0, EvictionBatch::size($this->maxEntries)) as [, $modelClass, $i]) {
+            $evictByClass[$modelClass][$i] = true;
+        }
+
+        foreach ($evictByClass as $modelClass => $indexes) {
+            $bucket = $this->entries[$modelClass] ?? [];
+            $kept = [];
+
+            foreach ($bucket as $i => $entry) {
+                if (! isset($indexes[$i])) {
+                    $kept[] = $entry;
+                }
+            }
+
+            $this->count -= count($bucket) - count($kept);
+
+            if ($kept === []) {
+                unset($this->entries[$modelClass]);
+            } else {
+                $this->entries[$modelClass] = $kept;
+            }
+        }
+    }
+
     public function flush(): void
     {
         $this->entries = [];
         $this->count = 0;
+        $this->clock = 0;
     }
 
     public function entryCount(): int

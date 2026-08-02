@@ -6,6 +6,10 @@ namespace Vusys\QuantumSlipstreamDrive\Tests\Feature\Store;
 
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionMethod;
+use Vusys\QuantumSlipstreamDrive\Coverage\ColumnSet;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageEntry;
+use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
+use Vusys\QuantumSlipstreamDrive\Predicate\ComparisonNode;
 use Vusys\QuantumSlipstreamDrive\QuantumSlipstreamDriveServiceProvider;
 use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
 use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
@@ -14,15 +18,16 @@ use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 /**
- * IdentityMapStore is unbounded by default; under a configured cap it must flush
- * itself in full once $entries + $absent reach the limit, never partially evict.
- * flush() reaches into the container (SchemaDiscovery / ScopeFingerprinter), so
- * these run booted rather than as pure unit tests.
+ * IdentityMapStore is unbounded by default; under a configured cap a breach
+ * sheds the least-recently-touched slice of $entries + $absent (never the whole
+ * store) and then stores the new key. Eviction resolves the CoverageRegistry
+ * from the container to prune regions referencing evicted rows, so these run
+ * booted rather than as pure unit tests.
  */
 final class StoreCapsTest extends TestCase
 {
     #[Test]
-    public function remembered_entries_accumulate_up_to_the_cap_then_flush(): void
+    public function remembered_entries_accumulate_up_to_the_cap_then_evict_the_oldest(): void
     {
         $store = new IdentityMapStore(null, maxEntries: 2);
 
@@ -37,7 +42,31 @@ final class StoreCapsTest extends TestCase
         $this->assertSame(2, $store->debugStats()['entries']);
 
         $store->remember($c);
-        $this->assertSame(0, $store->debugStats()['entries'], 'store flushes when the cap is reached');
+        $this->assertSame(2, $store->debugStats()['entries'], 'the breach evicts the coldest entry, then stores the new one');
+        $this->assertNull($store->findEntry($a), 'the least-recently-touched entry is the one evicted');
+        $this->assertNotNull($store->findEntry($b));
+        $this->assertNotNull($store->findEntry($c));
+    }
+
+    #[Test]
+    public function a_recently_touched_entry_survives_the_cap_breach(): void
+    {
+        $store = new IdentityMapStore(null, maxEntries: 2);
+
+        $a = User::create(['name' => 'A', 'email' => 'a@example.com']);
+        $b = User::create(['name' => 'B', 'email' => 'b@example.com']);
+        $c = User::create(['name' => 'C', 'email' => 'c@example.com']);
+
+        $store->remember($a);
+        $store->remember($b);
+
+        // Touching A makes B the least recently used.
+        $store->findEntry($a);
+
+        $store->remember($c);
+
+        $this->assertNotNull($store->findEntry($a), 'the hot entry survives');
+        $this->assertNull($store->findEntry($b), 'the cold entry is evicted');
     }
 
     #[Test]
@@ -50,7 +79,10 @@ final class StoreCapsTest extends TestCase
         $this->assertSame(2, $store->debugStats()['absent']);
 
         $store->recordAbsent('default', User::class, 'users', 'id', 3, 'fp');
-        $this->assertSame(0, $store->debugStats()['absent'], 'absent markers trip the same cap');
+        $this->assertSame(2, $store->debugStats()['absent'], 'absent markers trip the same cap; the coldest is evicted');
+        $this->assertFalse($store->isAbsent('default', User::class, 'users', 'id', 1, 'fp'));
+        $this->assertTrue($store->isAbsent('default', User::class, 'users', 'id', 2, 'fp'));
+        $this->assertTrue($store->isAbsent('default', User::class, 'users', 'id', 3, 'fp'));
     }
 
     #[Test]
@@ -77,10 +109,13 @@ final class StoreCapsTest extends TestCase
         $this->assertSame(1, $store->debugStats()['entries']);
         $this->assertSame(1, $store->debugStats()['absent']);
 
-        // The combined budget is now full; the next new key trips the cap.
+        // The combined budget is now full; the next new key trips the cap and
+        // evicts the coldest key regardless of which map holds it — here A's
+        // live entry, remembered before the absence was recorded.
         $store->recordAbsent('default', User::class, 'users', 'id', 1000, 'fp');
         $this->assertSame(0, $store->debugStats()['entries']);
-        $this->assertSame(0, $store->debugStats()['absent']);
+        $this->assertSame(2, $store->debugStats()['absent']);
+        $this->assertNull($store->findEntry($a));
     }
 
     #[Test]
@@ -107,7 +142,7 @@ final class StoreCapsTest extends TestCase
         $store->recordAbsent('default', User::class, 'users', 'id', 2, 'fp');
         $store->recordAbsent('default', User::class, 'users', 'id', 3, 'fp');
 
-        $this->assertSame(0, $store->debugStats()['absent'], 'config value flows through capValue() into the constructor');
+        $this->assertSame(2, $store->debugStats()['absent'], 'config value flows through capValue() into the constructor');
     }
 
     #[Test]
@@ -175,23 +210,23 @@ final class StoreCapsTest extends TestCase
     }
 
     #[Test]
-    public function a_cap_flush_clears_stale_absence_so_a_real_row_is_never_masked(): void
+    public function an_evicted_absence_marker_clears_cleanly_and_never_masks_a_real_row(): void
     {
         $store = new IdentityMapStore(null, maxEntries: 2);
 
-        // Overflow the cap so the whole store flushes.
+        // Overflow the cap so the coldest marker is evicted.
         $store->recordAbsent('default', User::class, 'users', 'id', 1, 'fp');
         $store->recordAbsent('default', User::class, 'users', 'id', 2, 'fp');
         $store->recordAbsent('default', User::class, 'users', 'id', 3, 'fp');
 
         $this->assertFalse(
             $store->isAbsent('default', User::class, 'users', 'id', 1, 'fp'),
-            'the flushed absence must not linger — a row inserted for id=1 must not be hidden by a stale marker',
+            'the evicted absence must not linger — a row inserted for id=1 must not be hidden by a stale marker',
         );
     }
 
     #[Test]
-    public function a_cap_flush_drops_live_entries_so_nothing_stale_is_served(): void
+    public function sustained_churn_evicts_untouched_entries_rather_than_serving_them_stale(): void
     {
         $store = new IdentityMapStore(null, maxEntries: 3);
 
@@ -199,16 +234,66 @@ final class StoreCapsTest extends TestCase
         $store->remember($target, true);
         $this->assertNotNull($store->findEntry($target), 'entry is live before the cap trips');
 
-        // Overflow the cap so the whole store flushes.
+        // Overflow the cap repeatedly without ever touching $target again.
         foreach (range(1, 5) as $i) {
             $store->remember(User::create(['name' => "Filler{$i}", 'email' => "filler{$i}@example.com"]), true);
         }
 
         $this->assertNull(
             $store->findEntry($target),
-            'a cap flush drops the earliest entry rather than serving it stale',
+            'the untouched entry becomes the coldest and is evicted under churn',
         );
         $this->assertLessThanOrEqual(3, $store->debugStats()['entries']);
+    }
+
+    #[Test]
+    public function evicting_an_entry_prunes_coverage_regions_that_reference_it(): void
+    {
+        $store = new IdentityMapStore(null, maxEntries: 2);
+
+        // Created up front: a create fires model events that flush class
+        // coverage through the lifecycle hooks, which would mask the pruning
+        // under test.
+        $a = User::create(['name' => 'A', 'email' => 'a@example.com']);
+        $b = User::create(['name' => 'B', 'email' => 'b@example.com']);
+        $c = User::create(['name' => 'C', 'email' => 'c@example.com']);
+
+        $store->remember($a);
+        $store->remember($b);
+
+        $registry = resolve(CoverageRegistry::class);
+        $registry->flush();
+        $registry->record($this->coverageOver($a));
+        $registry->record($this->coverageOver($b));
+
+        // Breaching the cap evicts A's entry; the region built on it could
+        // never serve again and must be pruned with it, while B's survives.
+        $store->remember($c);
+
+        $this->assertNull($store->findEntry($a));
+        $this->assertSame(1, $registry->entryCount(), 'only the region referencing the evicted row is dropped');
+        $this->assertNotNull($registry->findCovering(
+            User::class,
+            ModelMetadata::connection($b),
+            ModelMetadata::table($b),
+            ScopeFingerprinter::fromModel($b),
+            new ComparisonNode('id', '=', $b->id),
+        ));
+    }
+
+    private function coverageOver(User $user): CoverageEntry
+    {
+        return new CoverageEntry(
+            modelClass: User::class,
+            connection: ModelMetadata::connection($user),
+            table: ModelMetadata::table($user),
+            scopeFingerprint: ScopeFingerprinter::fromModel($user),
+            region: new ComparisonNode('id', '=', $user->id),
+            columns: new ColumnSet(['*']),
+            primaryKeys: [$user->id],
+            complete: true,
+            version: 1,
+        );
     }
 
     #[Test]

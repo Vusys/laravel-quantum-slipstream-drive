@@ -5,13 +5,28 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Store;
 
 use Vusys\QuantumSlipstreamDrive\Knowledge\AttributeFact;
+use Vusys\QuantumSlipstreamDrive\Support\EvictionBatch;
 
 final class UniqueKeyIndex
 {
-    /** @var array<string, string> unique-key fingerprint → primary map key */
+    /**
+     * Unique-key fingerprint → primary map key, kept in least-recently-used
+     * order: every insert and hit moves the fingerprint to the end, so
+     * cap-breach eviction shears keys off the front. Pointers are validated
+     * against the live entry on lookup, so evicting one only forgoes a cache
+     * hit.
+     *
+     * @var array<string, string>
+     */
     private array $index = [];
 
-    /** @var array<string, true> */
+    /**
+     * "No row carries this unique value" markers, in the same LRU order as
+     * {@see $index}. Standalone facts with no dependents: evicting one only
+     * sends the next lookup to SQL.
+     *
+     * @var array<string, true>
+     */
     private array $absent = [];
 
     /** @var array<string, list<list<string>>> indexes registered at runtime (e.g. by schema discovery) */
@@ -44,13 +59,13 @@ final class UniqueKeyIndex
             $fp = $this->makeFingerprint($entry->connection, $entry->modelClass, $entry->table, $entry->scopeFingerprint, $values);
 
             if (! isset($this->index[$fp]) && $this->atCap()) {
-                $this->flush();
-
-                return;
+                $this->evictColdest();
             }
 
+            // Re-inserting moves the fingerprint to the hot end of the LRU
+            // order; a plain overwrite would leave it in place.
+            unset($this->index[$fp], $this->absent[$fp]);
             $this->index[$fp] = $mapKey;
-            unset($this->absent[$fp]);
 
             // A recorded absence is keyed by scope fingerprint, so a lookup under a
             // different scope (e.g. withTrashed) may have marked this same value
@@ -63,7 +78,14 @@ final class UniqueKeyIndex
 
     public function findMapKey(string $uniqueFingerprint): ?string
     {
-        return $this->index[$uniqueFingerprint] ?? null;
+        $mapKey = $this->index[$uniqueFingerprint] ?? null;
+
+        if ($mapKey !== null) {
+            unset($this->index[$uniqueFingerprint]);
+            $this->index[$uniqueFingerprint] = $mapKey;
+        }
+
+        return $mapKey;
     }
 
     public function evict(string $uniqueFingerprint): void
@@ -73,7 +95,14 @@ final class UniqueKeyIndex
 
     public function isAbsent(string $uniqueFingerprint): bool
     {
-        return isset($this->absent[$uniqueFingerprint]);
+        if (! isset($this->absent[$uniqueFingerprint])) {
+            return false;
+        }
+
+        unset($this->absent[$uniqueFingerprint]);
+        $this->absent[$uniqueFingerprint] = true;
+
+        return true;
     }
 
     /**
@@ -115,11 +144,10 @@ final class UniqueKeyIndex
     public function recordAbsent(string $uniqueFingerprint): void
     {
         if (! isset($this->absent[$uniqueFingerprint]) && $this->atCap()) {
-            $this->flush();
-
-            return;
+            $this->evictColdest();
         }
 
+        unset($this->absent[$uniqueFingerprint]);
         $this->absent[$uniqueFingerprint] = true;
     }
 
@@ -127,6 +155,38 @@ final class UniqueKeyIndex
     {
         return $this->maxKeys !== null
             && (count($this->index) + count($this->absent)) >= $this->maxKeys;
+    }
+
+    /**
+     * Shed the least-recently-used tenth of the combined budget instead of
+     * flushing the whole index. Both maps are already in LRU order, so
+     * eviction just shears keys off the front of each, split proportionally
+     * to their sizes. Registered/discovered unique-index metadata is schema
+     * fact, not cache growth, and survives.
+     */
+    private function evictColdest(): void
+    {
+        if ($this->maxKeys === null) {
+            return;
+        }
+
+        $total = count($this->index) + count($this->absent);
+
+        if ($total === 0) {
+            return;
+        }
+
+        $target = min(EvictionBatch::size($this->maxKeys), $total);
+        $fromAbsent = min($target - intdiv($target * count($this->index), $total), count($this->absent));
+        $fromIndex = min($target - $fromAbsent, count($this->index));
+
+        foreach (array_slice(array_keys($this->index), 0, $fromIndex) as $fp) {
+            unset($this->index[$fp]);
+        }
+
+        foreach (array_slice(array_keys($this->absent), 0, $fromAbsent) as $fp) {
+            unset($this->absent[$fp]);
+        }
     }
 
     public function flush(?string $modelClass = null): void

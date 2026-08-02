@@ -321,11 +321,11 @@ final class CoverageRegistryTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // Size cap (flush-on-overflow)
+    // Size cap (LRU eviction on overflow)
     // -------------------------------------------------------------------------
 
     #[Test]
-    public function entries_accumulate_up_to_the_cap_then_flush(): void
+    public function entries_accumulate_up_to_the_cap_then_evict_the_oldest(): void
     {
         $registry = new CoverageRegistry(maxEntries: 2);
 
@@ -336,7 +336,39 @@ final class CoverageRegistryTest extends TestCase
         $this->assertSame(2, $registry->entryCount());
 
         $registry->record($this->makeEntry(region: new ComparisonNode('id', '=', 3)));
-        $this->assertSame(0, $registry->entryCount(), 'registry flushes when the cap is reached');
+        $this->assertSame(2, $registry->entryCount(), 'the breach evicts the coldest entry, then records the new one');
+
+        $this->assertNull(
+            $registry->findCovering('App\\User', 'default', 'users', 'fp', new ComparisonNode('id', '=', 1)),
+            'the least-recently-used region is the one evicted',
+        );
+        $this->assertNotNull($registry->findCovering('App\\User', 'default', 'users', 'fp', new ComparisonNode('id', '=', 2)));
+        $this->assertNotNull($registry->findCovering('App\\User', 'default', 'users', 'fp', new ComparisonNode('id', '=', 3)));
+    }
+
+    #[Test]
+    public function a_recently_served_region_survives_the_cap_breach(): void
+    {
+        $registry = new CoverageRegistry(maxEntries: 2);
+
+        $regionA = new ComparisonNode('id', '=', 1);
+        $regionB = new ComparisonNode('id', '=', 2);
+        $registry->record($this->makeEntry(region: $regionA));
+        $registry->record($this->makeEntry(region: $regionB));
+
+        // Serving region A makes region B the least recently used.
+        $registry->findCovering('App\\User', 'default', 'users', 'fp', $regionA);
+
+        $registry->record($this->makeEntry(region: new ComparisonNode('id', '=', 3)));
+
+        $this->assertNotNull(
+            $registry->findCovering('App\\User', 'default', 'users', 'fp', $regionA),
+            'the hot region survives',
+        );
+        $this->assertNull(
+            $registry->findCovering('App\\User', 'default', 'users', 'fp', $regionB),
+            'the cold region is evicted',
+        );
     }
 
     #[Test]
@@ -349,7 +381,52 @@ final class CoverageRegistryTest extends TestCase
         $this->assertSame(2, $registry->entryCount());
 
         $registry->record($this->makeEntry(modelClass: 'App\\Tag'));
-        $this->assertSame(0, $registry->entryCount());
+        $this->assertSame(2, $registry->entryCount(), 'the breach evicts the coldest entry across all classes');
+        $this->assertNull(
+            $registry->findCovering('App\\User', 'default', 'users', 'fp', new AndNode([])),
+            'the oldest entry, in another class bucket, is the one evicted',
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // evictReferencing (store-eviction dependency pruning)
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function evict_referencing_drops_only_regions_that_reference_an_evicted_key(): void
+    {
+        $this->registry->record($this->makeEntry(region: new ComparisonNode('id', '=', 1)));
+
+        $survivor = new CoverageEntry(
+            modelClass: 'App\\User',
+            connection: 'default',
+            table: 'users',
+            scopeFingerprint: 'fp',
+            region: new ComparisonNode('id', '=', 2),
+            columns: new ColumnSet(['*']),
+            primaryKeys: [2],
+            complete: true,
+            version: 1,
+        );
+        $this->registry->record($survivor);
+
+        $this->registry->evictReferencing(['App\\User' => [1 => true]]);
+
+        $this->assertSame(1, $this->registry->entryCount(), 'only the region referencing the evicted key is dropped');
+        $this->assertSame(
+            $survivor,
+            $this->registry->findCovering('App\\User', 'default', 'users', 'fp', new ComparisonNode('id', '=', 2)),
+        );
+    }
+
+    #[Test]
+    public function evict_referencing_ignores_classes_with_no_bucket(): void
+    {
+        $this->registry->record($this->makeEntry());
+
+        $this->registry->evictReferencing(['App\\Post' => [1 => true]]);
+
+        $this->assertSame(1, $this->registry->entryCount());
     }
 
     #[Test]
