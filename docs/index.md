@@ -97,7 +97,7 @@ User::where('active', true)->get();  // loads all active users; coverage recorde
 User::where('active', true)->where('role', 'admin')->get();  // no SQL — subset answered from memory
 ```
 
-**process_truth** (`mode = 'process_truth'` in config) — unsaved in-memory attribute changes are treated as authoritative:
+**process\_truth** (`mode = 'process_truth'` in config) — unsaved in-memory attribute changes are treated as authoritative:
 
 ```php
 $user->active = false;  // dirty, not yet saved
@@ -127,12 +127,12 @@ Absent-key tracking means the package remembers which primary keys and unique-ke
 
 ## Documentation map
 
-| Topic | Page |
-|---|---|
-| Installing and requirements | [Installation](installation.md) |
-| Opting in, opting out, flushing | [Getting started](getting-started.md) |
-| Lookups, `explain()`, predicates, relations | [Usage](usage.md) |
-| Every config key and env override | [Configuration](configuration.md) |
-| How the engine works internally | [Architecture & internals](architecture.md) |
-| `explain()`, the `QueryDecided` event, the decision log | [Observability](observability.md) |
-| The six test layers and the CI matrix | [Testing](testing.md) |
+| Topic                                                   | Page                                        |
+| ------------------------------------------------------- | ------------------------------------------- |
+| Installing and requirements                             | [Installation](installation.md)             |
+| Opting in, opting out, flushing                         | [Getting started](getting-started.md)       |
+| Lookups, `explain()`, predicates, relations             | [Usage](usage.md)                           |
+| Every config key and env override                       | [Configuration](configuration.md)           |
+| How the engine works internally                         | [Architecture & internals](architecture.md) |
+| `explain()`, the `QueryDecided` event, the decision log | [Observability](observability.md)           |
+| The six test layers and the CI matrix                   | [Testing](testing.md)                       |

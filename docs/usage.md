@@ -61,18 +61,18 @@ For the full list of fields each `Explanation` carries, every `PlanType` value, 
 
 The following are evaluated against cached attributes without touching the database. They apply both as extra conditions on top of a key-set or unique-key query, and as the basis for determining whether a unique-key candidate matches:
 
-| Eloquent method | Operators |
-|---|---|
-| `where($col, $val)` / `where($col, '=', $val)` | `=` |
-| `where($col, '!=', $val)` / `where($col, '<>', $val)` | `!=`, `<>` |
-| `where($col, '>', $val)`, `>=`, `<`, `<=` | `>`, `>=`, `<`, `<=` |
-| `whereIn($col, [...])` | `IN` |
-| `whereNotIn($col, [...])` | `NOT IN` |
-| `whereNull($col)` | `IS NULL` |
-| `whereNotNull($col)` | `IS NOT NULL` |
-| `whereBetween($col, [$min, $max])` | `BETWEEN` |
-| `whereNotBetween($col, [$min, $max])` | `NOT BETWEEN` |
-| Multiple `where` chained with `AND` | AND-tree |
+| Eloquent method                                       | Operators            |
+| ----------------------------------------------------- | -------------------- |
+| `where($col, $val)` / `where($col, '=', $val)`        | `=`                  |
+| `where($col, '!=', $val)` / `where($col, '<>', $val)` | `!=`, `<>`           |
+| `where($col, '>', $val)`, `>=`, `<`, `<=`             | `>`, `>=`, `<`, `<=` |
+| `whereIn($col, [...])`                                | `IN`                 |
+| `whereNotIn($col, [...])`                             | `NOT IN`             |
+| `whereNull($col)`                                     | `IS NULL`            |
+| `whereNotNull($col)`                                  | `IS NOT NULL`        |
+| `whereBetween($col, [$min, $max])`                    | `BETWEEN`            |
+| `whereNotBetween($col, [$min, $max])`                 | `NOT BETWEEN`        |
+| Multiple `where` chained with `AND`                   | AND-tree             |
 
 Anything the package cannot evaluate in memory falls through to SQL unchanged — unsupported operators (`LIKE`, `ILIKE`), raw `whereRaw` clauses, `orWhere` conditions, and attributes not present on a partially loaded model. String comparisons may also resolve to `Unknown` (and fall through) depending on the configured [driver semantics](configuration.md#database_semantics). See [Predicate evaluation](architecture.md#predicate-evaluation) for how the engine decides.
 

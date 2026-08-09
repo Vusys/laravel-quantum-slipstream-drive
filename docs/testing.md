@@ -4,12 +4,12 @@ The package has six test layers, each targeting a distinct risk surface. Togethe
 
 ## Overview
 
-| Suite | Command | Included in CI |
-|---|---|---|
-| Unit + Feature + DataProviders | `composer test` | Yes |
-| Performance | `vendor/bin/phpunit --testsuite Performance` | Yes (Bencher) |
-| Fuzz | `composer fuzz` | Yes (`comprehensive` job, 4-DB matrix) |
-| Mutation | `composer mutate` | Yes (Stryker dashboard) |
+| Suite                          | Command                                      | Included in CI                         |
+| ------------------------------ | -------------------------------------------- | -------------------------------------- |
+| Unit + Feature + DataProviders | `composer test`                              | Yes                                    |
+| Performance                    | `vendor/bin/phpunit --testsuite Performance` | Yes (Bencher)                          |
+| Fuzz                           | `composer fuzz`                              | Yes (`comprehensive` job, 4-DB matrix) |
+| Mutation                       | `composer mutate`                            | Yes (Stryker dashboard)                |
 
 CI runs the full matrix: PHP 8.3, 8.4, 8.5 × Laravel 11, 12, 13 × SQLite, MySQL, MariaDB, PostgreSQL — 36 cells total. Set `DB_CONNECTION` to `sqlite` (default), `mysql`, `mariadb`, or `pgsql` to run a suite against a specific backend locally.
 
@@ -24,8 +24,7 @@ composer rector:check  # Rector dry-run
 
 ## Unit tests
 
-**Location:** `tests/Unit/` (see directory for the current set)
-**Extends:** `PHPUnit\Framework\TestCase` — no database, no service container, no Laravel boot.
+**Location:** `tests/Unit/` (see directory for the current set) **Extends:** `PHPUnit\Framework\TestCase` — no database, no service container, no Laravel boot.
 
 The unit suite tests the pure algorithms in isolation:
 
@@ -49,8 +48,7 @@ vendor/bin/phpunit tests/Unit/PredicateEvaluatorTest.php
 
 ## Feature tests
 
-**Location:** `tests/Feature/` (see directory for the current set, organised into subdirectories per subsystem)
-**Extends:** `Vusys\QuantumSlipstreamDrive\Tests\TestCase` (Orchestra Testbench + SQLite)
+**Location:** `tests/Feature/` (see directory for the current set, organised into subdirectories per subsystem) **Extends:** `Vusys\QuantumSlipstreamDrive\Tests\TestCase` (Orchestra Testbench + SQLite)
 
 The feature suite tests end-to-end behaviour with a real database and real Eloquent model lifecycle. It uses a fixed set of test models: `User` (with `HasIdentityMap` and `SoftDeletes`), `Post`, `Tag`, `Comment` (polymorphic morph), and `UuidUser` (UUID primary key).
 
@@ -69,26 +67,23 @@ The feature suite verifies that the package integrates correctly with Eloquent h
 
 ## Cartesian / data-provider tests
 
-**Location:** `tests/Feature/DataProviders/` (5 files)
-**Extends:** Same TestCase as feature tests; uses `ProvidesCartesian` concern.
+**Location:** `tests/Feature/DataProviders/` (5 files) **Extends:** Same TestCase as feature tests; uses `ProvidesCartesian` concern.
 
 These tests use PHPUnit data providers to generate the Cartesian product of multiple dimension arrays, running each combination as a separate test case. This brute-forces coverage of the configuration space without hand-writing exponentially many test methods.
 
-| File | Dimensions covered |
-|---|---|
+| File                    | Dimensions covered                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `ConfigPermutationTest` | Unique-key config shapes (none / single-column / compound / multi-index) crossed with lookup methods and absence-tracking paths |
-| `PkTypeTest` | Integer and UUID primary key types |
-| `LifecycleStateTest` | All three `LifecycleState` values (Exists, SoftDeleted, Deleted) |
-| `WhereShapeTest` | Supported and unsupported WHERE operators; qualified vs unqualified column names; safe scoped queries |
-| `KeySetShapeTest` | Full hit, partial hit, no hit, empty key-set |
+| `PkTypeTest`            | Integer and UUID primary key types                                                                                              |
+| `LifecycleStateTest`    | All three `LifecycleState` values (Exists, SoftDeleted, Deleted)                                                                |
+| `WhereShapeTest`        | Supported and unsupported WHERE operators; qualified vs unqualified column names; safe scoped queries                           |
+| `KeySetShapeTest`       | Full hit, partial hit, no hit, empty key-set                                                                                    |
 
 The Cartesian suite catches bugs that only surface in specific combinations — for example, a predicate evaluation error that only appears when using UUID keys under `process_truth` mode with a `whereNotIn` condition. Those interactions are invisible to hand-written tests but explicit in a Cartesian product.
 
 ## Fuzz tests
 
-**Location:** `tests/Fuzz/` (3 test files)
-**Command:** `composer fuzz` (PHPUnit group `fuzzer`)
-**CI:** runs in the `comprehensive` job against all four database backends
+**Location:** `tests/Fuzz/` (3 test files) **Command:** `composer fuzz` (PHPUnit group `fuzzer`) **CI:** runs in the `comprehensive` job against all four database backends
 
 The fuzz suite uses seeded randomness so failures are reproducible. Each test method runs across multiple seeds × steps (default 3 × 20 = 60 iterations per method). When a test fails, the output includes `[seed=N step=M]`. Exact replay:
 
@@ -122,8 +117,7 @@ Together the three files cover two orthogonal properties — *correctness* (resu
 
 ## Performance tests
 
-**Location:** `tests/Performance/`
-**Command:** `vendor/bin/phpunit --testsuite Performance` (separate suite, not run by `composer test`)
+**Location:** `tests/Performance/` **Command:** `vendor/bin/phpunit --testsuite Performance` (separate suite, not run by `composer test`)
 
 The performance suite measures wall-clock time and SQL query count, not functional correctness. Results are emitted to STDERR in a Bencher-compatible format and tracked for regression via the Bencher CI badge in the header.
 
@@ -138,9 +132,7 @@ The performance suite therefore catches query-count regressions — a code chang
 
 ## Mutation testing
 
-**Command:** `composer mutate` (runs Infection with 4 threads)
-**Results:** `build/infection/summary.log`, `build/infection/infection.log`
-**Dashboard:** Stryker badge in the header
+**Command:** `composer mutate` (runs Infection with 4 threads) **Results:** `build/infection/summary.log`, `build/infection/infection.log` **Dashboard:** Stryker badge in the header
 
 Infection mutates the source code one change at a time and checks whether the test suite kills each mutant (i.e., at least one test fails). A surviving mutant means a line of code can be changed without any test noticing — which usually indicates either dead code or an under-specified test.
 
@@ -153,13 +145,13 @@ The mutation suite validates that the correctness tests are actually discriminat
 
 ## How the suites complement each other
 
-| Suite | Catches | Does not catch |
-|---|---|---|
-| Unit | Logic bugs in pure algorithms; wrong return values from the predicate evaluator | Integration failures; database-specific behaviour |
-| Feature | Eloquent integration bugs; soft-delete scope separation; event wiring | Configuration-space combinations; random edge cases |
-| Cartesian | Mode/type/operator combination bugs invisible to hand-written tests | Random-state edge cases; performance regression |
-| Fuzz | Behavioral divergence from SQL baseline under random model state | Deterministic bugs; performance regression |
-| Performance | Query-count regression; wall-time degradation | Functional correctness of any kind |
-| Mutation | Under-specified tests; lines that can be changed without a failure | Everything above (it validates test quality, not code quality) |
+| Suite       | Catches                                                                         | Does not catch                                                 |
+| ----------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Unit        | Logic bugs in pure algorithms; wrong return values from the predicate evaluator | Integration failures; database-specific behaviour              |
+| Feature     | Eloquent integration bugs; soft-delete scope separation; event wiring           | Configuration-space combinations; random edge cases            |
+| Cartesian   | Mode/type/operator combination bugs invisible to hand-written tests             | Random-state edge cases; performance regression                |
+| Fuzz        | Behavioral divergence from SQL baseline under random model state                | Deterministic bugs; performance regression                     |
+| Performance | Query-count regression; wall-time degradation                                   | Functional correctness of any kind                             |
+| Mutation    | Under-specified tests; lines that can be changed without a failure              | Everything above (it validates test quality, not code quality) |
 
 A correctness test suite that fully passes can still mask a query-count regression — only the performance suite catches that. A deterministic test suite that fully passes can still miss a rare state combination — only the fuzz suite catches that. The layers are designed to be non-overlapping in what they can miss.

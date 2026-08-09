@@ -6,17 +6,17 @@ The package can tell you exactly what it decided for every query it saw — whic
 
 `IdentityMap::explain(Closure $fn)` wraps a block of code and returns a list of `Explanation` objects — one per query that the package considered. Each object contains:
 
-| Field | Type | Description |
-|---|---|---|
-| `type` | `PlanType` | The decision the package made (see table below). |
-| `modelClass` | `string` | Fully-qualified model class name. |
-| `reason` | `string` | Human-readable explanation of why this plan was chosen. |
-| `sqlExecuted` | `bool` | Whether a SQL query was issued. |
-| `knownKeys` | `list` | Primary keys that were found in the store. |
-| `missingKeys` | `list` | Primary keys confirmed absent. |
-| `memoryKeys` | `list` | Keys answered from memory (subset of knownKeys after predicate evaluation). |
-| `rejectedKeys` | `list` | Keys whose predicate evaluated to Reject. |
-| `coverageRegion` | `?string` | String representation of the coverage region, when applicable. |
+| Field            | Type       | Description                                                                 |
+| ---------------- | ---------- | --------------------------------------------------------------------------- |
+| `type`           | `PlanType` | The decision the package made (see table below).                            |
+| `modelClass`     | `string`   | Fully-qualified model class name.                                           |
+| `reason`         | `string`   | Human-readable explanation of why this plan was chosen.                     |
+| `sqlExecuted`    | `bool`     | Whether a SQL query was issued.                                             |
+| `knownKeys`      | `list`     | Primary keys that were found in the store.                                  |
+| `missingKeys`    | `list`     | Primary keys confirmed absent.                                              |
+| `memoryKeys`     | `list`     | Keys answered from memory (subset of knownKeys after predicate evaluation). |
+| `rejectedKeys`   | `list`     | Keys whose predicate evaluated to Reject.                                   |
+| `coverageRegion` | `?string`  | String representation of the coverage region, when applicable.              |
 
 ```php
 $explanations = IdentityMap::explain(fn () => User::whereKey([1, 2, 3])->where('active', true)->get());
@@ -24,34 +24,34 @@ $explanations = IdentityMap::explain(fn () => User::whereKey([1, 2, 3])->where('
 
 ## `PlanType` values
 
-| Value | Meaning |
-|---|---|
-| `execute_normally` | Query fell through to SQL unchanged (structural hazard or no memory data available). |
-| `return_model_from_memory` | Single model returned from the store without SQL. |
-| `return_null` | Known-absent key; returned `null` without SQL. |
-| `return_collection_from_memory` | Entire collection returned from the store without SQL. |
-| `return_empty_collection` | All keys were absent; returned empty collection without SQL. |
-| `rewrite_primary_keys_and_merge` | Query rewritten to exclude known keys; SQL result merged with memory result. |
-| `rewrite_predicate_and_merge` | As above, with predicate evaluation applied to known keys before merge. |
-| `return_scalar_from_memory` | `value()` call answered from a cached attribute. |
-| `return_exists_from_memory` | `exists()` call answered from a cached entry or absent record. |
-| `return_count_from_coverage` | `count()` answered from coverage registry. |
-| `return_belongs_to_from_memory` | `belongsTo` / `morphTo` relation resolved from the store. |
-| `filter_has_many_in_memory` | `hasMany` / `morphMany` relation filtered from the store. |
-| `return_collection_from_coverage` | `get()` answered from coverage registry. |
-| `return_exists_from_coverage` | `exists()` answered from coverage registry. |
-| `return_pluck_from_coverage` | `pluck()` answered from coverage registry. |
-| `return_first_from_coverage` | `first()` answered from coverage registry. |
-| `return_sole_from_coverage` | `sole()` answered from coverage registry. |
-| `return_sum_from_coverage` | `sum()` aggregate answered from coverage registry. |
-| `return_min_from_coverage` | `min()` aggregate answered from coverage registry. |
-| `return_max_from_coverage` | `max()` aggregate answered from coverage registry. |
-| `return_avg_from_coverage` | `avg()` / `average()` aggregate answered from coverage registry. |
-| `where_has_from_graph` | `whereHas()` rewritten to a parent-key IN clause using the identity graph. |
-| `where_doesnt_have_from_graph` | `whereDoesntHave()` rewritten using the identity graph. |
-| `belongs_to_many_from_graph` | `belongsToMany` relation served from the identity graph (no SQL). |
-| `where_pivot_in_memory` | `belongsToMany` query filtered in memory via captured pivot columns. |
-| `backfill_columns_from_database` | Narrow `SELECT` issued to backfill missing columns on a cached entry (see [Partial models & column backfill](architecture.md#partial-models-column-backfill-partial_models)). |
+| Value                             | Meaning                                                                                                                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `execute_normally`                | Query fell through to SQL unchanged (structural hazard or no memory data available).                                                                                          |
+| `return_model_from_memory`        | Single model returned from the store without SQL.                                                                                                                             |
+| `return_null`                     | Known-absent key; returned `null` without SQL.                                                                                                                                |
+| `return_collection_from_memory`   | Entire collection returned from the store without SQL.                                                                                                                        |
+| `return_empty_collection`         | All keys were absent; returned empty collection without SQL.                                                                                                                  |
+| `rewrite_primary_keys_and_merge`  | Query rewritten to exclude known keys; SQL result merged with memory result.                                                                                                  |
+| `rewrite_predicate_and_merge`     | As above, with predicate evaluation applied to known keys before merge.                                                                                                       |
+| `return_scalar_from_memory`       | `value()` call answered from a cached attribute.                                                                                                                              |
+| `return_exists_from_memory`       | `exists()` call answered from a cached entry or absent record.                                                                                                                |
+| `return_count_from_coverage`      | `count()` answered from coverage registry.                                                                                                                                    |
+| `return_belongs_to_from_memory`   | `belongsTo` / `morphTo` relation resolved from the store.                                                                                                                     |
+| `filter_has_many_in_memory`       | `hasMany` / `morphMany` relation filtered from the store.                                                                                                                     |
+| `return_collection_from_coverage` | `get()` answered from coverage registry.                                                                                                                                      |
+| `return_exists_from_coverage`     | `exists()` answered from coverage registry.                                                                                                                                   |
+| `return_pluck_from_coverage`      | `pluck()` answered from coverage registry.                                                                                                                                    |
+| `return_first_from_coverage`      | `first()` answered from coverage registry.                                                                                                                                    |
+| `return_sole_from_coverage`       | `sole()` answered from coverage registry.                                                                                                                                     |
+| `return_sum_from_coverage`        | `sum()` aggregate answered from coverage registry.                                                                                                                            |
+| `return_min_from_coverage`        | `min()` aggregate answered from coverage registry.                                                                                                                            |
+| `return_max_from_coverage`        | `max()` aggregate answered from coverage registry.                                                                                                                            |
+| `return_avg_from_coverage`        | `avg()` / `average()` aggregate answered from coverage registry.                                                                                                              |
+| `where_has_from_graph`            | `whereHas()` rewritten to a parent-key IN clause using the identity graph.                                                                                                    |
+| `where_doesnt_have_from_graph`    | `whereDoesntHave()` rewritten using the identity graph.                                                                                                                       |
+| `belongs_to_many_from_graph`      | `belongsToMany` relation served from the identity graph (no SQL).                                                                                                             |
+| `where_pivot_in_memory`           | `belongsToMany` query filtered in memory via captured pivot columns.                                                                                                          |
+| `backfill_columns_from_database`  | Narrow `SELECT` issued to backfill missing columns on a cached entry (see [Partial models & column backfill](architecture.md#partial-models-column-backfill-partial_models)). |
 
 `Explanation::__toString()` renders a short summary suitable for logging:
 
