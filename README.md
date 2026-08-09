@@ -53,16 +53,16 @@ The [Getting started guide](docs/getting-started.md) covers opting out per query
 
 Full docs live at **[vusys.github.io/laravel-quantum-slipstream-drive](https://vusys.github.io/laravel-quantum-slipstream-drive/)**. By topic:
 
-| Topic | Page |
-|---|---|
-| The problem, what it is / is not, when it helps | [Home](docs/index.md) |
-| Installing and requirements | [Installation](docs/installation.md) |
-| Opt-in trait, opt-out, flush, disable | [Getting started](docs/getting-started.md) |
-| Unique-key lookups, `explain()`, predicates, relations | [Usage](docs/usage.md) |
-| Every config key and env override | [Configuration](docs/configuration.md) |
-| How the engine works internally | [Architecture & internals](docs/architecture.md) |
-| `explain()`, the `QueryDecided` event, the decision log | [Observability](docs/observability.md) |
-| The six test layers and the CI matrix | [Testing](docs/testing.md) |
+| Topic                                                   | Page                                             |
+| ------------------------------------------------------- | ------------------------------------------------ |
+| The problem, what it is / is not, when it helps         | [Home](docs/index.md)                            |
+| Installing and requirements                             | [Installation](docs/installation.md)             |
+| Opt-in trait, opt-out, flush, disable                   | [Getting started](docs/getting-started.md)       |
+| Unique-key lookups, `explain()`, predicates, relations  | [Usage](docs/usage.md)                           |
+| Every config key and env override                       | [Configuration](docs/configuration.md)           |
+| How the engine works internally                         | [Architecture & internals](docs/architecture.md) |
+| `explain()`, the `QueryDecided` event, the decision log | [Observability](docs/observability.md)           |
+| The six test layers and the CI matrix                   | [Testing](docs/testing.md)                       |
 
 ## Contributing
 

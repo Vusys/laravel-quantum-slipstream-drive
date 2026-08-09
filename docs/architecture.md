@@ -125,10 +125,10 @@ Coverage entries are invalidated conservatively. When a model is saved, the regi
 
 The `mode` config key controls a single behavioural switch: whether dirty in-memory attributes affect predicate evaluation.
 
-| Mode | What it does | Default? |
-|---|---|---|
-| `default` | Predicates evaluate against the last-committed (original) attribute value. Dirty mutations are ignored until `save()`. In-memory results always match a fresh `SELECT`. | **yes** |
-| `process_truth` | Predicates evaluate against the current in-memory value, which may be dirty. The unique-key index path is bypassed under this mode, since the index is keyed on original values. | |
+| Mode            | What it does                                                                                                                                                                     | Default? |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `default`       | Predicates evaluate against the last-committed (original) attribute value. Dirty mutations are ignored until `save()`. In-memory results always match a fresh `SELECT`.          | **yes**  |
+| `process_truth` | Predicates evaluate against the current in-memory value, which may be dirty. The unique-key index path is bypassed under this mode, since the index is keyed on original values. |          |
 
 `mode = process_truth` is the only setting that can make memory-served results differ from what `SELECT` would return on a fresh connection. Use it when your workload expects assigned-but-unsaved attribute writes to be visible to downstream queries within the same request.
 
@@ -142,11 +142,11 @@ Earlier pre-1.0 builds read the toggle from a config key named `attribute_truth`
 
 The old key is **not** read anymore: installs that still have `attribute_truth` set will silently fall back to the new default (`mode = default`). To retain previous behaviour:
 
-| Old | New |
-|---|---|
-| `'attribute_truth' => 'database_only'` (or unset) | `'mode' => 'default'` (or unset) |
-| `'attribute_truth' => 'process_truth'` | `'mode' => 'process_truth'` |
-| `IDENTITY_MAP_ATTRIBUTE_TRUTH=process_truth` | `IDENTITY_MAP_MODE=process_truth` |
+| Old                                               | New                               |
+| ------------------------------------------------- | --------------------------------- |
+| `'attribute_truth' => 'database_only'` (or unset) | `'mode' => 'default'` (or unset)  |
+| `'attribute_truth' => 'process_truth'`            | `'mode' => 'process_truth'`       |
+| `IDENTITY_MAP_ATTRIBUTE_TRUTH=process_truth`      | `IDENTITY_MAP_MODE=process_truth` |
 
 If you published the config, re-publish (or delete `attribute_truth` and add `mode`) and update any `.env` references. If you never published the config, only the environment variable rename matters.
 
@@ -162,11 +162,11 @@ If you published the config, re-publish (or delete `attribute_truth` and add `mo
 
 The graph powers the `where_has_from_graph`, `where_doesnt_have_from_graph`, `belongs_to_many_from_graph`, and `where_pivot_in_memory` plans. It is invalidated per-model on `saved` (for the changed model's identity) and per-class on creation, deletion, and rolled-back transactions touching that class.
 
-| Config key | Default | Env override | Effect |
-|---|---|---|---|
-| `relation_graph.enabled` | `true` | `IDENTITY_MAP_RELATION_GRAPH_ENABLED` | Disable to bypass all graph-based plans; relation traversal falls back to per-relation memory paths or SQL. |
-| `relation_graph.max_edges` | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | A breach evicts the least-recently-used edge buckets (each takes its same-key coverage grant with it). `0` removes the cap; a malformed value falls back to the default. |
-| `relation_graph.max_coverage_entries` | `5000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | A breach evicts the least-recently-used coverage grants. `0` removes the cap; a malformed value falls back to the default. |
+| Config key                            | Default | Env override                               | Effect                                                                                                                                                                   |
+| ------------------------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `relation_graph.enabled`              | `true`  | `IDENTITY_MAP_RELATION_GRAPH_ENABLED`      | Disable to bypass all graph-based plans; relation traversal falls back to per-relation memory paths or SQL.                                                              |
+| `relation_graph.max_edges`            | `50000` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES`    | A breach evicts the least-recently-used edge buckets (each takes its same-key coverage grant with it). `0` removes the cap; a malformed value falls back to the default. |
+| `relation_graph.max_coverage_entries` | `5000`  | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | A breach evicts the least-recently-used coverage grants. `0` removes the cap; a malformed value falls back to the default.                                               |
 
 ## Store size caps (`store_caps`)
 
@@ -174,11 +174,11 @@ The identity-map store, unique-key index, and coverage registry accumulate state
 
 When a store exceeds its cap it **evicts its least-recently-used tenth**, mirroring the identity graph, and keeps the hot remainder. Partial eviction is safe because none of the reasoning trusts a reference blindly: a coverage region re-resolves every recorded primary key against the live store at serve time and falls through to SQL when one is missing (the regions referencing an evicted row are pruned eagerly as well), relation coverage re-fetches its child keys the same way, and unique-key / raw-row index pointers are validated on lookup. Absence markers are standalone facts, so dropping one merely sends the next lookup to SQL. An eviction therefore only ever costs a cold read on the next query — never a wrong answer.
 
-| Config key | Default | Env override | Effect |
-|---|---|---|---|
-| `store_caps.max_entries` | `100000` | `IDENTITY_MAP_MAX_ENTRIES` | Caps `IdentityMapStore` live entries + absence markers combined. A breach evicts the coldest keys and prunes coverage regions that referenced them. |
-| `store_caps.max_unique_keys` | `100000` | `IDENTITY_MAP_MAX_UNIQUE_KEYS` | Caps the `UniqueKeyIndex` (live + absent fingerprints). A breach evicts only the coldest fingerprints — point lookups miss to SQL until re-indexed. |
-| `store_caps.max_coverage_entries` | `50000` | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | Caps recorded `CoverageRegistry` regions. A breach evicts the coldest regions — each is a pure grant, so dropping one just sends that query back to SQL. |
+| Config key                        | Default  | Env override                        | Effect                                                                                                                                                   |
+| --------------------------------- | -------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `store_caps.max_entries`          | `100000` | `IDENTITY_MAP_MAX_ENTRIES`          | Caps `IdentityMapStore` live entries + absence markers combined. A breach evicts the coldest keys and prunes coverage regions that referenced them.      |
+| `store_caps.max_unique_keys`      | `100000` | `IDENTITY_MAP_MAX_UNIQUE_KEYS`      | Caps the `UniqueKeyIndex` (live + absent fingerprints). A breach evicts only the coldest fingerprints — point lookups miss to SQL until re-indexed.      |
+| `store_caps.max_coverage_entries` | `50000`  | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | Caps recorded `CoverageRegistry` regions. A breach evicts the coldest regions — each is a pure grant, so dropping one just sends that query back to SQL. |
 
 Set any cap to `0` to disable it (unbounded). The defaults are generous; most applications never approach them within a single scope.
 
@@ -186,10 +186,10 @@ Set any cap to `0` to disable it (unbounded). The defaults are generous; most ap
 
 When a cached entry was loaded with a narrow `select(['id', 'name'])` and a later query asks for additional columns, the package can either re-run the original query (default) or issue a small `SELECT only_missing_columns FROM table WHERE id = ?` and merge the result into the cached instance.
 
-| Value | Behaviour |
-|---|---|
-| `query_normally` *(default)* | Cache miss → execute the full original query. Safe, equivalent to having no backfill. |
-| `backfill_missing_columns` | Cache hit on the primary key but missing some requested columns → issue a narrow backfill SELECT, merge into the cached model, return from memory. Dirty in-memory attributes are preserved (only `originalValue` is updated for those columns). |
+| Value                        | Behaviour                                                                                                                                                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `query_normally` *(default)* | Cache miss → execute the full original query. Safe, equivalent to having no backfill.                                                                                                                                                            |
+| `backfill_missing_columns`   | Cache hit on the primary key but missing some requested columns → issue a narrow backfill SELECT, merge into the cached model, return from memory. Dirty in-memory attributes are preserved (only `originalValue` is updated for those columns). |
 
 Backfill fires only for point lookups: `find()`, unique-key lookups, and `MemoryBelongsTo`. Coverage paths and `whereHas` rewrites still fall through to a full `SELECT` when columns are missing. Each backfill emits a `backfill_columns_from_database` explanation with `sqlExecuted: true`.
 
@@ -199,9 +199,9 @@ Override via the `IDENTITY_MAP_PARTIAL_MODELS` environment variable.
 
 `SchemaDiscovery` inspects each model's table on first use via `Schema::getIndexes()` / `Schema::getColumns()` and feeds the result into both the unique-key index and the per-column driver semantics. Config-declared unique indexes (under `models.{ClassName}.unique`) take precedence; discovered indexes supplement them.
 
-| Config key | Default | Env override |
-|---|---|---|
-| `schema_discovery.enabled` | `true` | `IDENTITY_MAP_SCHEMA_DISCOVERY` |
+| Config key                 | Default | Env override                    |
+| -------------------------- | ------- | ------------------------------- |
+| `schema_discovery.enabled` | `true`  | `IDENTITY_MAP_SCHEMA_DISCOVERY` |
 
 Discovery results are cached on the singleton resolver and flushed on the same scope boundaries as the store (request termination, job processed/failed, scope flush). Disable it (`IDENTITY_MAP_SCHEMA_DISCOVERY=false`) if your DB driver does not expose index metadata in a way Laravel can read, or if you want to lock the package to only the unique sets declared in config.
 
@@ -209,11 +209,11 @@ Discovery results are cached on the singleton resolver and flushed on the same s
 
 The predicate evaluator resolves comparisons through a per-connection `DriverSemantics` (one of `SqliteSemantics`, `MySqlSemantics`, `MariaDbSemantics`, `PostgresSemantics`, or `ConservativeSemantics`). Integer, boolean, UUID, and null comparisons are always resolved confidently. The `database_semantics.{driver}.string_comparisons` config key controls how string equality is handled:
 
-| Value | Behaviour |
-|---|---|
+| Value                            | Behaviour                                                                                                                                                                                                                        |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `database_collation` *(default)* | Read the column collation reported by `Schema::getColumns()` and compare under that collation. Falls back to the driver default — case-sensitive for SQLite/Postgres, Unknown for MySQL/MariaDB — when the collation is missing. |
-| `php_strict` | Treat every string column as case-sensitive byte-equality. Fast, but **wrong** on MySQL with case-insensitive collations: in-memory results will diverge from SQL. |
-| `conservative_unknown` | Return `Unknown` for every string comparison and let SQL handle it. Maximally safe but eliminates most string-predicate elision. |
+| `php_strict`                     | Treat every string column as case-sensitive byte-equality. Fast, but **wrong** on MySQL with case-insensitive collations: in-memory results will diverge from SQL.                                                               |
+| `conservative_unknown`           | Return `Unknown` for every string comparison and let SQL handle it. Maximally safe but eliminates most string-predicate elision.                                                                                                 |
 
 Each driver has its own env var (`IDENTITY_MAP_SQLITE_STRING_COMPARISONS`, `IDENTITY_MAP_MYSQL_STRING_COMPARISONS`, `IDENTITY_MAP_MARIADB_STRING_COMPARISONS`, `IDENTITY_MAP_PGSQL_STRING_COMPARISONS`). Set them when your MySQL deployment uses a case-insensitive collation (`utf8mb4_unicode_ci`, `utf8mb4_general_ci`, etc.) and you observe predicate-evaluation mismatches.
 
@@ -229,13 +229,13 @@ The store and coverage registry are flushed automatically at scope boundaries to
 
 **Model events** — within a scope, three to five model events drive incremental updates rather than full flushes (three by default; five when the model uses `SoftDeletes`):
 
-| Event | Action |
-|---|---|
-| `retrieved` | Model added to store with all currently-known attributes. |
-| `saved` | Cached attributes updated to match committed values; coverage flushed for changed columns (or for the whole class on creation). |
-| `deleted` | Entry marked `Deleted`; coverage for the model class flushed. |
-| `restored` *(SoftDeletes only)* | Treated as a save; coverage for the model class flushed. |
-| `forceDeleted` *(SoftDeletes only)* | Entry removed from store entirely. |
+| Event                               | Action                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `retrieved`                         | Model added to store with all currently-known attributes.                                                                       |
+| `saved`                             | Cached attributes updated to match committed values; coverage flushed for changed columns (or for the whole class on creation). |
+| `deleted`                           | Entry marked `Deleted`; coverage for the model class flushed.                                                                   |
+| `restored` *(SoftDeletes only)*     | Treated as a save; coverage for the model class flushed.                                                                        |
+| `forceDeleted` *(SoftDeletes only)* | Entry removed from store entirely.                                                                                              |
 
 ## Mass writes
 

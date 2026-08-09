@@ -10,11 +10,11 @@ This writes `config/quantum-slipstream-drive.php`. The sections below document e
 
 ## `mode`
 
-| | |
-|---|---|
-| **Env** | `IDENTITY_MAP_MODE` |
-| **Default** | `default` |
-| **Values** | `default`, `process_truth` |
+|             |                            |
+| ----------- | -------------------------- |
+| **Env**     | `IDENTITY_MAP_MODE`        |
+| **Default** | `default`                  |
+| **Values**  | `default`, `process_truth` |
 
 Controls whether dirty in-memory attribute changes affect predicate evaluation.
 
@@ -28,10 +28,10 @@ Controls whether dirty in-memory attribute changes affect predicate evaluation.
 
 ## `models`
 
-| | |
-|---|---|
-| **Env** | — (array only) |
-| **Default** | `[]` |
+|             |                |
+| ----------- | -------------- |
+| **Env**     | — (array only) |
+| **Default** | `[]`           |
 
 Per-model configuration. Declare unique column sets here to enable unique-key lookups and absence tracking by columns other than the primary key. Each entry is a model class mapped to an array with a `unique` key — a list of column sets, where each set is itself a list (a single-column set is a one-element list; multi-column sets are compound unique keys):
 
@@ -50,9 +50,9 @@ Config-declared indexes take precedence over anything found by [`schema_discover
 
 ## `schema_discovery`
 
-| Key | Env | Default |
-|---|---|---|
-| `schema_discovery.enabled` | `IDENTITY_MAP_SCHEMA_DISCOVERY` | `true` |
+| Key                        | Env                             | Default |
+| -------------------------- | ------------------------------- | ------- |
+| `schema_discovery.enabled` | `IDENTITY_MAP_SCHEMA_DISCOVERY` | `true`  |
 
 When enabled, the package inspects each model's table on first use via `Schema::getIndexes()` / `Schema::getColumns()` and registers any unique indexes it finds — including compound indexes — so unique-key elision fires without requiring entries in [`models`](#models). The discovered metadata also feeds the per-column [driver semantics](#database_semantics).
 
@@ -60,11 +60,11 @@ Disable it (`IDENTITY_MAP_SCHEMA_DISCOVERY=false`) if your DB driver does not ex
 
 ## `partial_models`
 
-| | |
-|---|---|
-| **Env** | `IDENTITY_MAP_PARTIAL_MODELS` |
-| **Default** | `query_normally` |
-| **Values** | `query_normally`, `backfill_missing_columns` |
+|             |                                              |
+| ----------- | -------------------------------------------- |
+| **Env**     | `IDENTITY_MAP_PARTIAL_MODELS`                |
+| **Default** | `query_normally`                             |
+| **Values**  | `query_normally`, `backfill_missing_columns` |
 
 Controls what happens when a cached entry (loaded with a narrow `select([...])`) is missing a column a later query asks for.
 
@@ -75,11 +75,11 @@ Backfill fires only for point lookups (`find()`, unique-key lookups, and `Memory
 
 ## `relation_graph`
 
-| Key | Env | Default |
-|---|---|---|
-| `relation_graph.enabled` | `IDENTITY_MAP_RELATION_GRAPH_ENABLED` | `true` |
-| `relation_graph.max_edges` | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES` | `50000` |
-| `relation_graph.max_coverage_entries` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | `5000` |
+| Key                                   | Env                                        | Default |
+| ------------------------------------- | ------------------------------------------ | ------- |
+| `relation_graph.enabled`              | `IDENTITY_MAP_RELATION_GRAPH_ENABLED`      | `true`  |
+| `relation_graph.max_edges`            | `IDENTITY_MAP_RELATION_GRAPH_MAX_EDGES`    | `50000` |
+| `relation_graph.max_coverage_entries` | `IDENTITY_MAP_RELATION_GRAPH_MAX_COVERAGE` | `5000`  |
 
 The [identity graph](architecture.md#identity-graph-relation_graph) records model-to-model relation edges so that relation queries — `whereHas`, `whereDoesntHave`, and `belongsToMany` traversal — can be answered from memory.
 
@@ -88,11 +88,11 @@ The [identity graph](architecture.md#identity-graph-relation_graph) records mode
 
 ## `store_caps`
 
-| Key | Env | Default |
-|---|---|---|
-| `store_caps.max_entries` | `IDENTITY_MAP_MAX_ENTRIES` | `100000` |
-| `store_caps.max_unique_keys` | `IDENTITY_MAP_MAX_UNIQUE_KEYS` | `100000` |
-| `store_caps.max_coverage_entries` | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | `50000` |
+| Key                               | Env                                 | Default  |
+| --------------------------------- | ----------------------------------- | -------- |
+| `store_caps.max_entries`          | `IDENTITY_MAP_MAX_ENTRIES`          | `100000` |
+| `store_caps.max_unique_keys`      | `IDENTITY_MAP_MAX_UNIQUE_KEYS`      | `100000` |
+| `store_caps.max_coverage_entries` | `IDENTITY_MAP_MAX_COVERAGE_ENTRIES` | `50000`  |
 
 Per-scope size caps. The store, unique-key index, and coverage registry accumulate state for the life of a scope — bounded for a normal request, but a single long-running queue job iterating millions of rows would otherwise grow them without limit. When a store exceeds its cap it **evicts its least-recently-used tenth** and keeps the hot remainder. Partial eviction is safe because every consumer re-validates its references at serve time — a coverage region that lost an entry falls through to SQL instead of answering short — so an eviction only ever costs a cold read, never a wrong answer.
 
@@ -104,12 +104,12 @@ Values are parsed and validated in the service provider, so a malformed env valu
 
 ## `database_semantics`
 
-| Key | Env | Default |
-|---|---|---|
-| `database_semantics.sqlite.string_comparisons` | `IDENTITY_MAP_SQLITE_STRING_COMPARISONS` | `database_collation` |
-| `database_semantics.mysql.string_comparisons` | `IDENTITY_MAP_MYSQL_STRING_COMPARISONS` | `database_collation` |
+| Key                                             | Env                                       | Default              |
+| ----------------------------------------------- | ----------------------------------------- | -------------------- |
+| `database_semantics.sqlite.string_comparisons`  | `IDENTITY_MAP_SQLITE_STRING_COMPARISONS`  | `database_collation` |
+| `database_semantics.mysql.string_comparisons`   | `IDENTITY_MAP_MYSQL_STRING_COMPARISONS`   | `database_collation` |
 | `database_semantics.mariadb.string_comparisons` | `IDENTITY_MAP_MARIADB_STRING_COMPARISONS` | `database_collation` |
-| `database_semantics.pgsql.string_comparisons` | `IDENTITY_MAP_PGSQL_STRING_COMPARISONS` | `database_collation` |
+| `database_semantics.pgsql.string_comparisons`   | `IDENTITY_MAP_PGSQL_STRING_COMPARISONS`   | `database_collation` |
 
 Controls how the predicate evaluator resolves **string** equality per connection driver. Integer, boolean, UUID, and null comparisons are always resolved confidently — this setting only affects string semantics.
 
@@ -121,8 +121,8 @@ Set the relevant driver's env var when your MySQL/MariaDB deployment uses a case
 
 ## `raw_reads`
 
-| Key | Env | Default |
-|---|---|---|
+| Key                 | Env                      | Default |
+| ------------------- | ------------------------ | ------- |
 | `raw_reads.enabled` | `IDENTITY_MAP_RAW_READS` | `false` |
 
 Serve raw `DB::table()` reads from the identity map. When `enabled` is `true`, raw single-key and bounded key-set reads of the full row against a mapped table are answered from a database-native row snapshot — zero SQL, returning `stdClass` rows byte-identical to a bypassed query. Anything not fully covered by a fresh snapshot falls through to SQL unchanged.
@@ -133,11 +133,11 @@ See [Raw read-serving](raw-reads.md).
 
 ## `observability`
 
-| Key | Env | Default |
-|---|---|---|
-| `observability.enabled` | `IDENTITY_MAP_OBSERVABILITY` | `false` |
+| Key                     | Env                                  | Default                      |
+| ----------------------- | ------------------------------------ | ---------------------------- |
+| `observability.enabled` | `IDENTITY_MAP_OBSERVABILITY`         | `false`                      |
 | `observability.channel` | `IDENTITY_MAP_OBSERVABILITY_CHANNEL` | `null` (default log channel) |
-| `observability.level` | `IDENTITY_MAP_OBSERVABILITY_LEVEL` | `info` |
+| `observability.level`   | `IDENTITY_MAP_OBSERVABILITY_LEVEL`   | `info`                       |
 
 The streaming decision log. When `enabled` is `true`, every finalised plan dispatches a `QueryDecided` event and writes a log line to `channel` at `level`, in addition to anything captured by `IdentityMap::explain()`. When `false`, no event is dispatched and no log line is written; `explain()` keeps working unchanged.
 
