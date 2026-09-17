@@ -1,6 +1,6 @@
 {
     "name": "vusys/laravel-quantum-slipstream-drive",
-    "description": "A Laravel package.",
+    "description": "A scoped Eloquent identity map, process-truth engine, and query-elision planner for Laravel.",
     "type": "library",
     "license": "MIT",
     "require": {
