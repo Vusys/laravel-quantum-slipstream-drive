@@ -94,8 +94,11 @@ jobs:
             "laravel/framework:^${{ matrix.laravel }}" \
             "orchestra/testbench:^${{ matrix.testbench }}"
 
+      # Every Laravel 11 release now carries a security advisory (it is past
+      # end of life) and Composer refuses to install those by default. Support
+      # for 11 is kept, so its cells opt out of the block; the rest keep it.
       - name: Install dependencies
-        run: composer update --prefer-dist --no-interaction --no-progress
+        run: composer update --prefer-dist --no-interaction --no-progress ${{ matrix.laravel == '11.0' && '--no-security-blocking' || '' }}
 
       - name: Wait for database
         if: matrix.db != 'sqlite'

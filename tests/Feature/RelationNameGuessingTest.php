@@ -132,6 +132,7 @@ final class RelationNameGuessingTest extends TestCase
     {
         $user = ResolverUser::query()->whereKey($userId)->first();
         $this->assertInstanceOf(ResolverUser::class, $user);
+        // @phpstan-ignore larastan.relationExistence (registered at runtime by resolveRelationUsing, which is what this test is about)
         $user->load('dynamicPosts');
 
         $relation = $user->getRelation('dynamicPosts');
