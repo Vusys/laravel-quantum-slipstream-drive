@@ -7,6 +7,7 @@ namespace Vusys\QuantumSlipstreamDrive\Relations;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Vusys\QuantumSlipstreamDrive\Coverage\SubsetChecker;
 use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemantics;
 use Vusys\QuantumSlipstreamDrive\Driver\ColumnSemanticsResolver;
@@ -55,7 +56,7 @@ final class MemoryBelongsToMany extends BelongsToMany
 
     /**
      * @param  array<int, string>  $columns
-     * @return Collection<int, TRelatedModel>
+     * @return Collection<int, TRelatedModel&object{pivot: Pivot}>
      */
     #[\Override]
     public function get($columns = ['*']): Collection
@@ -88,7 +89,7 @@ final class MemoryBelongsToMany extends BelongsToMany
         $fromGraph = $this->getFromGraph($store, $relatedNodes, $pivotNodes, $pivotColumnsRequested, $subsetNodes);
 
         if ($fromGraph instanceof Collection) {
-            /** @var Collection<int, TRelatedModel> $fromGraph */
+            /** @var Collection<int, TRelatedModel&object{pivot: Pivot}> $fromGraph */
             return $fromGraph;
         }
 
@@ -1024,9 +1025,9 @@ final class MemoryBelongsToMany extends BelongsToMany
     }
 
     /**
-     * @param  Collection<int, TRelatedModel>  $children
+     * @param  iterable<TRelatedModel>  $children
      */
-    private function recordGraphCoverageForParent(Model $parent, Collection $children): void
+    private function recordGraphCoverageForParent(Model $parent, iterable $children): void
     {
         if (! $this->isGraphEnabled()) {
             return;
@@ -1087,9 +1088,9 @@ final class MemoryBelongsToMany extends BelongsToMany
      * shared pivot-edge bucket) so distinct filtered loads never intermix. An
      * existing unfiltered (complete) coverage is never downgraded.
      *
-     * @param  Collection<int, TRelatedModel>  $children
+     * @param  iterable<TRelatedModel>  $children
      */
-    private function recordFilteredGraphCoverageForParent(Model $parent, Collection $children, PredicateNode $loadPredicate): void
+    private function recordFilteredGraphCoverageForParent(Model $parent, iterable $children, PredicateNode $loadPredicate): void
     {
         if (! $this->isGraphEnabled()) {
             return;
