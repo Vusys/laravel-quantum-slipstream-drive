@@ -8,6 +8,7 @@ use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\Attributes\Test;
 use Vusys\QuantumSlipstreamDrive\IdentityMap;
 use Vusys\QuantumSlipstreamDrive\Testing\AssertsIdentityMapAgrees;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\AmbientAwareUser;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\AmbientUser;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\Concerns\AmbientFilterBuilder;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
@@ -52,5 +53,16 @@ final class AssertsIdentityMapAgreesTest extends TestCase
         $this->expectExceptionMessage('The identity map answered differently from the database.');
 
         $this->assertIdentityMapAgrees(fn () => AmbientUser::query()->find($id));
+    }
+
+    #[Test]
+    public function a_builder_that_stands_the_map_aside_during_its_filter_agrees(): void
+    {
+        $id = AmbientAwareUser::query()->create(['name' => 'Bram', 'email' => 'bram@example.test', 'active' => false])->id;
+        IdentityMap::flush();
+        AmbientAwareUser::query()->find($id);
+        AmbientFilterBuilder::$onlyActive = true;
+
+        $this->assertNull($this->assertIdentityMapAgrees(fn () => AmbientAwareUser::query()->find($id)));
     }
 }

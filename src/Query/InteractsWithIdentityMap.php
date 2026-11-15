@@ -93,6 +93,26 @@ trait InteractsWithIdentityMap
         return ! (new QueryPatternExtractor($this))->hasNonStringSelectColumns();
     }
 
+    /**
+     * Whether this read goes straight to the database. A composed builder
+     * whose answer depends on more than its clauses at times — an "as of"
+     * lens, a tenant chosen at execution — overrides this to stand the map
+     * aside while it does:
+     *
+     * ```php
+     * use InteractsWithIdentityMap { bypassesIdentityMap as private bypassesByDefault; }
+     *
+     * protected function bypassesIdentityMap(): bool
+     * {
+     *     return TemporalLens::current() !== null || $this->bypassesByDefault();
+     * }
+     * ```
+     */
+    protected function bypassesIdentityMap(): bool
+    {
+        return $this->identityMapDisabled;
+    }
+
     public function withoutIdentityMap(): static
     {
         $clone = clone $this;
@@ -285,7 +305,7 @@ trait InteractsWithIdentityMap
             return $this->whereKey($id)->get($columns);
         }
 
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return $this->whereKey($id)->first($columns);
         }
 
@@ -409,7 +429,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function getModels($columns = ['*']): array
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::getModels($columns);
         }
 
@@ -816,7 +836,7 @@ trait InteractsWithIdentityMap
 
     public function exists(): bool
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::exists();
         }
 
@@ -934,7 +954,7 @@ trait InteractsWithIdentityMap
 
     public function count(string $columns = '*'): int
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::count($columns);
         }
 
@@ -974,7 +994,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function sum($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::sum($column);
         }
 
@@ -1021,7 +1041,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function min($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::min($column);
         }
 
@@ -1079,7 +1099,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function max($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::max($column);
         }
 
@@ -1137,7 +1157,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function avg($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::avg($column);
         }
 
@@ -1204,7 +1224,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function pluck($column, $key = null): SupportCollection
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::pluck($column, $key);
         }
 
@@ -1255,7 +1275,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function first($columns = ['*']): ?Model
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::first($columns);
         }
 
@@ -1315,7 +1335,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function sole($columns = ['*']): Model
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::sole($columns);
         }
 
