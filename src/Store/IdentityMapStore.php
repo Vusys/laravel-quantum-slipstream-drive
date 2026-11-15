@@ -594,6 +594,41 @@ final class IdentityMapStore
         unset($this->entries[$mapKey], $this->absent[$mapKey]);
     }
 
+    /**
+     * Drop the "known absent" markers for one key of a model — under every
+     * scope fingerprint — because a row with that key has just been inserted.
+     */
+    public function forgetAbsentKey(Model $model, int|string $primaryKeyValue): void
+    {
+        $prefix = $this->makeKeyFromParts(
+            ModelMetadata::connection($model),
+            $model::class,
+            ModelMetadata::table($model),
+            $model->getKeyName(),
+            $primaryKeyValue,
+            '',
+        );
+
+        foreach (array_keys($this->absentKeysByClass[$model::class] ?? []) as $key) {
+            if (str_starts_with($key, $prefix)) {
+                unset($this->absent[$key], $this->absentKeysByClass[$model::class][$key]);
+            }
+        }
+    }
+
+    /**
+     * Drop every "known absent" marker for a model class — a row has been
+     * inserted whose key isn't known, so any of them might now name it.
+     */
+    public function forgetAbsent(string $modelClass): void
+    {
+        foreach (array_keys($this->absentKeysByClass[$modelClass] ?? []) as $key) {
+            unset($this->absent[$key]);
+        }
+
+        unset($this->absentKeysByClass[$modelClass]);
+    }
+
     public function flush(?string $modelClass = null): void
     {
         if ($modelClass === null) {

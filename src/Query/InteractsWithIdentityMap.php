@@ -1466,6 +1466,25 @@ trait InteractsWithIdentityMap
      * indexed). The conservative choice is to flush the cache for the affected
      * model class after the SQL ran.
      */
+    /**
+     * A new row can join any covered result set, and its key may have been
+     * recorded as absent, so those go; cached entries for other rows stay
+     * valid. Every absent marker goes when the new key isn't known.
+     */
+    private function invalidateAfterRowInsert(int|string|null $key): void
+    {
+        $model = $this->getModel();
+        $store = resolve(IdentityMapStore::class);
+        resolve(CoverageRegistry::class)->flushModelClass($model::class);
+        resolve(IdentityGraph::class)->invalidateModelClass($model::class);
+
+        if ($key === null) {
+            $store->forgetAbsent($model::class);
+        } else {
+            $store->forgetAbsentKey($model, $key);
+        }
+    }
+
     private function flushAfterBulkWrite(): void
     {
         $modelClass = $this->getModel()::class;
@@ -1561,9 +1580,11 @@ trait InteractsWithIdentityMap
      * underlying query directly.
      *
      * insert() and insertGetId() are also called by Model::performInsert for a
-     * single new row — that path fires the saved event which adds the row to
-     * the store, so we must not flush. We distinguish by shape: a list of
-     * arrays is a true bulk insert; a flat assoc array is Model::create.
+     * single new row. Its cached entries stay (the saved event adds the row),
+     * but what a new row makes stale is invalidated here, not left to that
+     * event: a save with events muted (saveQuietly, withoutEvents) never fires
+     * it. We distinguish by shape: a list of arrays is a true bulk insert; a
+     * flat assoc array is Model::create.
      *
      * @param  array<int|string, mixed>  $values
      */
@@ -1573,6 +1594,9 @@ trait InteractsWithIdentityMap
 
         if ($this->isBulkInsertShape($values)) {
             $this->flushAfterBulkWrite();
+        } else {
+            $key = $values[$this->getModel()->getKeyName()] ?? null;
+            $this->invalidateAfterRowInsert(is_int($key) || is_string($key) ? $key : null);
         }
 
         return $result;
@@ -1599,6 +1623,8 @@ trait InteractsWithIdentityMap
 
         if ($this->isBulkInsertShape($values)) {
             $this->flushAfterBulkWrite();
+        } else {
+            $this->invalidateAfterRowInsert($result);
         }
 
         return $result;
