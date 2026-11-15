@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vusys\QuantumSlipstreamDrive\Tests;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -178,5 +179,23 @@ abstract class TestCase extends OrchestraTestCase
         Schema::dropIfExists('countries');
         DB::disconnect();
         parent::tearDown();
+    }
+
+    /**
+     * A created model as the database holds it, read back once — what an
+     * app's first full read does after create(), since a created model is
+     * only what the insert set.
+     *
+     * @template T of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  T  $model
+     * @return T
+     */
+    protected function readBack(Model $model): Model
+    {
+        $fresh = $model::query()->find($model->getKey());
+        $this->assertInstanceOf($model::class, $fresh);
+
+        return $fresh;
     }
 }

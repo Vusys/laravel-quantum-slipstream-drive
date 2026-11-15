@@ -29,8 +29,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_returns_related_from_memory(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -47,8 +47,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_to_sql_when_related_not_in_store(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $this->store->flush();
 
@@ -67,8 +67,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_returns_same_instance_as_cached(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $result = $post->user;
 
@@ -78,8 +78,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_store_is_disabled(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -111,8 +111,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_related_has_no_identity_map(): void
     {
-        $label = Label::create(['name' => 'php']);
-        $post = Post::create(['user_id' => User::create(['name' => 'Alice', 'email' => 'a@example.com'])->id, 'label_id' => $label->id, 'title' => 'Hello', 'published' => false]);
+        $label = $this->readBack(Label::create(['name' => 'php']));
+        $post = $this->readBack(Post::create(['user_id' => User::create(['name' => 'Alice', 'email' => 'a@example.com'])->id, 'label_id' => $label->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -131,9 +131,9 @@ final class BelongsToMemoryTest extends TestCase
     {
         // Label lacks HasIdentityMap. Manually putting it in the store must not cause the
         // belongsTo to serve it from memory — the !in_array(HasIdentityMap) guard must fire.
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $label = Label::create(['name' => 'php']);
-        $post = Post::create(['user_id' => $user->id, 'label_id' => $label->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $label = $this->readBack(Label::create(['name' => 'php']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'label_id' => $label->id, 'title' => 'Hello', 'published' => false]));
 
         $this->store->remember($label);
 
@@ -151,8 +151,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_query_has_join(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $relation = $post->user();
         $relation->getQuery()->join('tags', 'tags.id', '=', 'users.id');
@@ -170,8 +170,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_query_has_group_by(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $relation = $post->user();
         $relation->getQuery()->groupBy('users.id');
@@ -195,8 +195,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_query_has_having(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $relation = $post->user();
         // Add HAVING directly to the base Query\Builder so queryHasHazards() can see it
@@ -224,8 +224,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_query_has_lock(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -242,8 +242,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_extra_where_constraint_present(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -262,8 +262,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_serves_from_memory_when_soft_delete_null_where_added(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -280,8 +280,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_soft_delete_null_followed_by_unrelated_where(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -302,8 +302,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_non_null_where_targets_deleted_at_column(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -322,8 +322,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_with_specific_select_columns_served_from_memory(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -341,8 +341,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_select_contains_raw_expression(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -359,8 +359,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_cache_hit_records_belongs_to_memory_hit_reason(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         $explanations = $this->store->explain(fn () => $post->user()->getResults());
 
@@ -381,8 +381,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_cached_entry_is_soft_deleted(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $post = Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $post = $this->readBack(Post::create(['user_id' => $user->id, 'title' => 'Hello', 'published' => false]));
 
         // Soft-delete the parent: the entry's LifecycleState flips to SoftDeleted
         // under the same default-scope fingerprint the relation lookup uses.

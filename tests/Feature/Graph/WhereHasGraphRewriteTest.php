@@ -40,8 +40,8 @@ final class WhereHasGraphRewriteTest extends TestCase
     {
         // All User creates first, then Post creates — creating a model invalidates
         // graph entries for that class, so we batch creates by class.
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com']));
 
         $alicePosts = [
             Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]),
@@ -108,12 +108,12 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function bare_where_has_existence_is_resolved_from_graph(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
-        $charlie = User::create(['name' => 'Charlie', 'email' => 'charlie@example.com']);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com']));
+        $charlie = $this->readBack(User::create(['name' => 'Charlie', 'email' => 'charlie@example.com']));
 
-        Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]);
-        Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]);
+        $this->readBack(Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]));
+        $this->readBack(Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]));
 
         $alice->load('posts');
         $bob->load('posts');
@@ -166,12 +166,12 @@ final class WhereHasGraphRewriteTest extends TestCase
     {
         // Attributes must be set explicitly — DB defaults aren't reflected in the
         // model after create, so the in-memory evaluator wouldn't know `active`.
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => false]);
-        $tag = Tag::create(['name' => 'php']);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => false]));
+        $tag = $this->readBack(Tag::create(['name' => 'php']));
 
-        $alicePost = Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'A1', 'published' => true]);
-        $bobPost = Post::create(['user_id' => $bob->id, 'tag_id' => $tag->id, 'title' => 'B1', 'published' => true]);
+        $alicePost = $this->readBack(Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'A1', 'published' => true]));
+        $bobPost = $this->readBack(Post::create(['user_id' => $bob->id, 'tag_id' => $tag->id, 'title' => 'B1', 'published' => true]));
 
         $this->startSqlListener();
         $result = Post::whereKey([$alicePost->id, $bobPost->id])
@@ -188,8 +188,8 @@ final class WhereHasGraphRewriteTest extends TestCase
     {
         [$alice, $bob] = $this->seedUsersWithPosts();
 
-        $dave = User::create(['name' => 'Dave', 'email' => 'dave@example.com']);
-        Post::create(['user_id' => $dave->id, 'title' => 'D1', 'published' => true]);
+        $dave = $this->readBack(User::create(['name' => 'Dave', 'email' => 'dave@example.com']));
+        $this->readBack(Post::create(['user_id' => $dave->id, 'title' => 'D1', 'published' => true]));
         // Dave's posts are never loaded → no graph coverage for him → Unknown forces SQL.
 
         $this->startSqlListener();
@@ -275,11 +275,11 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function morph_many_where_has_serves_from_graph(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com']));
 
-        Comment::create(['commentable_type' => User::class, 'commentable_id' => $alice->id, 'body' => 'hi', 'likes' => 5]);
-        Comment::create(['commentable_type' => User::class, 'commentable_id' => $bob->id, 'body' => 'meh', 'likes' => 0]);
+        $this->readBack(Comment::create(['commentable_type' => User::class, 'commentable_id' => $alice->id, 'body' => 'hi', 'likes' => 5]));
+        $this->readBack(Comment::create(['commentable_type' => User::class, 'commentable_id' => $bob->id, 'body' => 'meh', 'likes' => 0]));
 
         $alice->load('comments');
         $bob->load('comments');
@@ -297,10 +297,10 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function complex_outer_query_still_uses_graph_for_existence(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
-        Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]);
-        Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]));
+        $this->readBack(Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]));
+        $this->readBack(Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]));
         $alice->load('posts');
         $bob->load('posts');
 
@@ -318,9 +318,9 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function belongs_to_with_missing_parent_in_store_falls_through(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
-        $tag = Tag::create(['name' => 'php']);
-        $post = Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'A1', 'published' => true]);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]));
+        $tag = $this->readBack(Tag::create(['name' => 'php']));
+        $post = $this->readBack(Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'A1', 'published' => true]));
 
         // Evict the parent so the BelongsTo lookup misses → Unknown → SQL fallback.
         $this->store->forget($alice);
@@ -337,10 +337,10 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function belongs_to_with_null_fk_rejects_without_sql(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
-        $tag = Tag::create(['name' => 'php']);
-        $taggedPost = Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'tagged', 'published' => true]);
-        $untaggedPost = Post::create(['user_id' => $alice->id, 'tag_id' => null, 'title' => 'untagged', 'published' => true]);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]));
+        $tag = $this->readBack(Tag::create(['name' => 'php']));
+        $taggedPost = $this->readBack(Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'tagged', 'published' => true]));
+        $untaggedPost = $this->readBack(Post::create(['user_id' => $alice->id, 'tag_id' => null, 'title' => 'untagged', 'published' => true]));
 
         $this->startSqlListener();
         $result = Post::whereKey([$taggedPost->id, $untaggedPost->id])
@@ -390,11 +390,11 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function coverage_served_path_applies_where_has(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]));
 
-        Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]);
-        Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]);
+        $this->readBack(Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]));
+        $this->readBack(Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]));
 
         $alice->load('posts');
         $bob->load('posts');
@@ -429,10 +429,10 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function coverage_served_path_with_where_doesnt_have(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]);
-        Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]);
-        Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com', 'active' => true]));
+        $this->readBack(Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]));
+        $this->readBack(Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]));
         $alice->load('posts');
         $bob->load('posts');
 
@@ -452,9 +452,9 @@ final class WhereHasGraphRewriteTest extends TestCase
     #[Test]
     public function belongs_to_with_soft_deleted_parent_rejects(): void
     {
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]);
-        $tag = Tag::create(['name' => 'php']);
-        $post = Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'A1', 'published' => true]);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com', 'active' => true]));
+        $tag = $this->readBack(Tag::create(['name' => 'php']));
+        $post = $this->readBack(Post::create(['user_id' => $alice->id, 'tag_id' => $tag->id, 'title' => 'A1', 'published' => true]));
 
         // Soft-delete alice → entry transitions to SoftDeleted in the store.
         $alice->delete();
@@ -516,13 +516,13 @@ final class WhereHasGraphRewriteTest extends TestCase
     {
         // All Users + all Posts first, then loads — otherwise creating dave
         // invalidates alice/bob's coverage (M13 conservatism).
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
-        $dave = User::create(['name' => 'Dave', 'email' => 'dave@example.com']);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com']));
+        $dave = $this->readBack(User::create(['name' => 'Dave', 'email' => 'dave@example.com']));
 
-        Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]);
-        Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]);
-        Post::create(['user_id' => $dave->id, 'title' => 'D1', 'published' => true]);
+        $this->readBack(Post::create(['user_id' => $alice->id, 'title' => 'A1', 'published' => true]));
+        $this->readBack(Post::create(['user_id' => $bob->id, 'title' => 'B1', 'published' => false]));
+        $this->readBack(Post::create(['user_id' => $dave->id, 'title' => 'D1', 'published' => true]));
 
         $alice->load('posts');
         $bob->load('posts');

@@ -42,7 +42,7 @@ Anything that can't be answered from a snapshot, exactly:
 
 ## Warming
 
-A snapshot is captured when a genuine `SELECT` runs. Immediately after `create()` the row is already in the map, so the next Eloquent read is served from memory without a `SELECT` — and therefore without a native-row snapshot. In practice the map is flushed at request / job boundaries, so a later request's first Eloquent read of a row issues the `SELECT` that warms the snapshot; raw reads in that request are then served.
+A snapshot is captured when a genuine `SELECT` runs. A row fresh from `create()` is in the map only as far as the insert set it, so the first full-column Eloquent read of it issues that `SELECT`, which warms the snapshot. Raw reads are served from then on.
 
 ## Observability
 

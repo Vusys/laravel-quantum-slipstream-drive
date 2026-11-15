@@ -40,7 +40,8 @@ final class DecisionStreamTest extends TestCase
         config(['quantum-slipstream-drive.observability.enabled' => false]);
         Event::fake([QueryDecided::class]);
 
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        Event::fake([QueryDecided::class]); // only the reads below count
         User::find($user->id);
         User::find($user->id);
         User::find($user->id);
@@ -54,10 +55,11 @@ final class DecisionStreamTest extends TestCase
         $this->enableObservability();
         Event::fake([QueryDecided::class]);
 
-        $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
-        $bob = User::create(['name' => 'Bob', 'email' => 'bob@example.com']);
+        $alice = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        $bob = $this->readBack(User::create(['name' => 'Bob', 'email' => 'bob@example.com']));
+        Event::fake([QueryDecided::class]); // only the reads below count
 
-        // Memory hit — alice already cached by create.
+        // Memory hit — alice already cached by the read-back.
         User::find($alice->id);
         // Memory hit — bob already cached.
         User::find($bob->id);
@@ -86,7 +88,8 @@ final class DecisionStreamTest extends TestCase
         $this->enableObservability();
         Event::fake([QueryDecided::class]);
 
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        Event::fake([QueryDecided::class]); // only the reads below count
 
         $explanations = $this->store->explain(function () use ($user): void {
             User::find($user->id);
@@ -104,6 +107,8 @@ final class DecisionStreamTest extends TestCase
     {
         $this->enableObservability(channel: 'identity-map', level: 'warning');
 
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+
         $logger = $this->createMock(LoggerInterface::class);
         $logger
             ->expects($this->once())
@@ -119,8 +124,6 @@ final class DecisionStreamTest extends TestCase
         Log::shouldReceive('channel')
             ->with('identity-map')
             ->andReturn($logger);
-
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
         User::find($user->id);
     }
 
@@ -129,6 +132,8 @@ final class DecisionStreamTest extends TestCase
     {
         $this->enableObservability(level: 'debug');
 
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+
         $logger = $this->createMock(LoggerInterface::class);
         $logger
             ->expects($this->once())
@@ -136,8 +141,6 @@ final class DecisionStreamTest extends TestCase
             ->with('debug', $this->anything(), $this->anything());
 
         Log::shouldReceive('driver')->withNoArgs()->andReturn($logger);
-
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
         User::find($user->id);
     }
 
@@ -147,7 +150,8 @@ final class DecisionStreamTest extends TestCase
         $this->enableObservability();
         Event::fake([QueryDecided::class]);
 
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
+        Event::fake([QueryDecided::class]); // only the reads below count
         User::find($user->id);
 
         Event::assertDispatched(QueryDecided::class, fn (QueryDecided $event): bool => $event->explanation->modelClass === User::class

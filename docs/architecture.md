@@ -217,6 +217,10 @@ The predicate evaluator resolves comparisons through a per-connection `DriverSem
 
 Each driver has its own env var (`IDENTITY_MAP_SQLITE_STRING_COMPARISONS`, `IDENTITY_MAP_MYSQL_STRING_COMPARISONS`, `IDENTITY_MAP_MARIADB_STRING_COMPARISONS`, `IDENTITY_MAP_PGSQL_STRING_COMPARISONS`). Set them when your MySQL deployment uses a case-insensitive collation (`utf8mb4_unicode_ci`, `utf8mb4_general_ci`, etc.) and you observe predicate-evaluation mismatches.
 
+## What a created model knows
+
+A model fresh from `create()` is remembered as partial: the map knows the columns the insert set, and no others. What the database filled in (column defaults, nulls for columns left out) isn't on the model until the row is read back. So a read asking only for known columns is served from memory, and the first full-column read issues one `SELECT`. After that it is memory, as for any row. The map remembers what it knows rather than guessing at defaults.
+
 ## Lifecycle hooks and automatic flushing
 
 The store and coverage registry are flushed automatically at scope boundaries to prevent stale data from leaking between independent units of work.

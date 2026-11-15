@@ -413,7 +413,10 @@ final class IdentityMapStore
             $this->ensureDiscoveredFor($model::class);
             $this->uniqueKeyIndex->index($entry, $mapKey);
         } else {
-            $this->remember($model, true);
+            // Remember what we know. A row just inserted carries only the
+            // columns it was given; what the database filled in (defaults,
+            // nulls) is unknown until it is read back, so it is not the row.
+            $this->remember($model, ! $model->wasRecentlyCreated);
         }
 
         unset($this->absent[$mapKey]);
