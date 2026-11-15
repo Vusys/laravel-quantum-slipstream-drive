@@ -35,7 +35,9 @@ final class ComposedUser extends Model
     #[\Override]
     public function newEloquentBuilder($query): ComposedUserBuilder
     {
-        /** @var ComposedUserBuilder<self> */
-        return new ComposedUserBuilder($query);
+        /** @var ComposedUserBuilder<self> $builder */
+        $builder = new ComposedUserBuilder($query);
+
+        return $builder;
     }
 }
