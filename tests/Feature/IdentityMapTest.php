@@ -51,7 +51,7 @@ final class IdentityMapTest extends TestCase
     }
 
     #[Test]
-    public function find_returns_same_instance_as_created(): void
+    public function find_after_create_reads_the_row_back_once(): void
     {
         $created = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
 
@@ -60,23 +60,28 @@ final class IdentityMapTest extends TestCase
             $queryCount++;
         });
 
+        // A created model is only what the insert set; the first full read
+        // fetches the row (defaults included), and after that it is memory.
         $found = User::find($created->id);
+        $again = User::find($created->id);
 
-        $this->assertSame(0, $queryCount, 'find() after create must be served from identity map without SQL');
-        $this->assertSame($created, $found);
+        $this->assertSame(1, $queryCount, 'find() after create reads the row back once, then serves it from memory');
+        $this->assertInstanceOf(User::class, $found);
+        $this->assertTrue($found->active, 'The database default is on the read-back row.');
+        $this->assertSame($found, $again);
     }
 
     #[Test]
     public function second_find_issues_no_query(): void
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        User::find($user->id);
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
             $queryCount++;
         });
 
-        User::find($user->id);
         User::find($user->id);
 
         $this->assertSame(0, $queryCount, 'Second find should issue no SQL');
@@ -86,6 +91,7 @@ final class IdentityMapTest extends TestCase
     public function where_key_first_returns_same_instance(): void
     {
         $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $readBack = User::find($user->id);
 
         $queryCount = 0;
         DB::listen(function () use (&$queryCount): void {
@@ -95,7 +101,7 @@ final class IdentityMapTest extends TestCase
         $fromWhereKey = User::query()->whereKey($user->id)->first();
 
         $this->assertSame(0, $queryCount, 'whereKey()->first() must be served from identity map without SQL');
-        $this->assertSame($user, $fromWhereKey);
+        $this->assertSame($readBack, $fromWhereKey);
     }
 
     #[Test]
@@ -781,6 +787,7 @@ final class IdentityMapTest extends TestCase
     public function explain_single_pk_via_where_returns_collection_from_memory(): void
     {
         $alice = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        User::find($alice->id);
 
         $explanations = $this->store->explain(function () use ($alice): void {
             User::query()->whereKey($alice->id)->get();

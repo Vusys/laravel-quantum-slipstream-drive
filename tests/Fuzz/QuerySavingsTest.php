@@ -100,11 +100,13 @@ final class QuerySavingsTest extends FuzzerTestCase
                 }
             }
 
+            $ids = array_map(fn (User $u) => $u->id, $users);
+            // Read back: a warm entry is a row the map has seen from the database.
+            $users = User::query()->whereKey($ids)->orderBy('id')->get()->all();
+
             foreach ($users as $u) {
                 $u->load('posts');
             }
-
-            $ids = array_map(fn (User $u) => $u->id, $users);
 
             $with = $this->countQueries(
                 fn () => User::whereKey($ids)
@@ -138,9 +140,16 @@ final class QuerySavingsTest extends FuzzerTestCase
         return $count;
     }
 
-    /** @return array<int, User> */
+    /**
+     * Created, then read back in one query: a warm entry is a row the map
+     * has seen from the database, not just what an insert set.
+     *
+     * @return array<int, User>
+     */
     private function buildPopulation(int $count): array
     {
-        return User::factory()->count($count)->create()->all();
+        $ids = User::factory()->count($count)->create()->modelKeys();
+
+        return User::query()->whereKey($ids)->orderBy('id')->get()->all();
     }
 }
