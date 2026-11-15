@@ -45,6 +45,8 @@ final class Department extends Model
 }
 ```
 
+With Larastan, give the builder a `@template TModel of Model` and `@extends TreeQueryBuilder<TModel>`, and tell PHPStan which model it builds, since a constructor can't infer it: `/** @var DepartmentBuilder<self> $builder */ $builder = new DepartmentBuilder($query); return $builder;`.
+
 The other builder's scopes keep working, and a query whose clauses the identity map can't evaluate in memory simply runs as SQL.
 
 One limit: when the identity map answers a read from memory, the other builder's own `get()`/`first()` never runs. Compose only builders whose constraints are query clauses added by scopes. A builder that adds constraints inside `get()` itself, or applies an ambient filter at execution time, could have it skipped.
