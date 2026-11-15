@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vusys\QuantumSlipstreamDrive\Tests\Feature;
+namespace Vusys\QuantumSlipstreamDrive\Tests\Boot;
 
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;

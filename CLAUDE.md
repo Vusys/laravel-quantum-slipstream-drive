@@ -44,6 +44,7 @@ PHPUnit 11–13 with Orchestra Testbench.
 
 - `tests/Unit/` — pure-PHP unit tests (no DB). Extend `PHPUnit\Framework\TestCase` directly — do **not** boot Laravel.
 - `tests/Feature/` — DB-backed integration tests. Extend `Vusys\QuantumSlipstreamDrive\Tests\TestCase`.
+- `tests/Boot/` — service-provider boot tests that must run with **no** database (e.g. proving boot opens no connection, as `artisan package:discover` needs). Extend `Orchestra\Testbench\TestCase` directly, since the package base migrates a database in setup.
 - `tests/Performance/` — separate suite (`vendor/bin/phpunit --testsuite Performance`). Not run on PR CI.
 
 ## Before every push
