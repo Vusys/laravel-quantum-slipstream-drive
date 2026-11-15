@@ -86,7 +86,13 @@ jobs:
         env:
           BENCHER_API_KEY: ${{ secrets.BENCHER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Dependabot and fork PRs get no repository secrets, so there is no key
+        # to compare with; say so rather than fail on an empty --key.
         run: |
+          if [ -z "$BENCHER_API_KEY" ]; then
+            echo "::notice::No BENCHER_API_KEY for this PR (Dependabot or fork); skipping the baseline comparison."
+            exit 0
+          fi
           bencher run \
             --project vusys-laravel-quantum-slipstream-drive \
             --branch "$GITHUB_HEAD_REF" \
