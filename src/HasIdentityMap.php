@@ -65,9 +65,7 @@ trait HasIdentityMap
      */
     public function initializeHasIdentityMap(): void
     {
-        if ($this->table === null) {
-            $this->table = self::$tableNameCache[static::class] ??= $this->getTable();
-        }
+        $this->table ??= self::$tableNameCache[static::class] ??= $this->getTable();
     }
 
     /**

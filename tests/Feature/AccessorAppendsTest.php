@@ -78,6 +78,6 @@ final class AccessorAppendsTest extends TestCase
 
         $array = $served->toArray();
         $this->assertArrayHasKey('label', $array, 'appended attribute must survive a memory-served read');
-        $this->assertSame('G-ABC', $array['label']);
+        $this->assertSame('G-ABC', $array['label'] ?? null);
     }
 }
