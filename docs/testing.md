@@ -2,6 +2,27 @@
 
 The package has six test layers, each targeting a distinct risk surface. Together they provide defence in depth: logic bugs, integration failures, configuration-space gaps, random edge cases, and performance regressions are all caught by different layers — often before any other layer would notice them.
 
+## Checking the identity map in your own app
+
+The fuzz suite below checks the identity map against the database with the map on and off. `AssertsIdentityMapAgrees` brings the same oracle to your tests, for reads the package hasn't been proven on: a model whose builder another package owns, unusual scopes, writes that go round Eloquent.
+
+```php
+use Vusys\QuantumSlipstreamDrive\Testing\AssertsIdentityMapAgrees;
+
+final class DepartmentReadsTest extends TestCase
+{
+    use AssertsIdentityMapAgrees;
+
+    public function test_tree_reads_agree_with_the_database(): void
+    {
+        $this->assertIdentityMapAgrees(fn () => Department::query()->whereIsRoot()->get());
+        $this->assertIdentityMapAgrees(fn () => [$engineering->refresh(), $engineering->children]);
+    }
+}
+```
+
+The read runs twice with the map on (the first fills it, the second may be answered from it) and once with it off. The answers must match: the same models, by class and key, in the same order, with the same attribute values, through collections and arrays. Relations a model carries aren't compared, since a cached model can hold ones an earlier read loaded. Return them explicitly to check them. The helper returns the identity map's answer, so it can stand in for the read itself.
+
 ## Overview
 
 | Suite                          | Command                                      | Included in CI                         |

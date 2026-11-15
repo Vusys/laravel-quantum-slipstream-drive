@@ -9,6 +9,8 @@ use PHPUnit\Framework\Attributes\Test;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\ComposedUser;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\ComposedUserBuilder;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\Concerns\ThirdPartyBuilder;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\NarrowedUserBuilder;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\User;
 use Vusys\QuantumSlipstreamDrive\Tests\TestCase;
 
 /**
@@ -25,6 +27,16 @@ final class ComposedBuilderTest extends TestCase
 
         $this->assertInstanceOf(ComposedUserBuilder::class, $builder);
         $this->assertInstanceOf(ThirdPartyBuilder::class, $builder);
+    }
+
+    #[Test]
+    public function it_composes_onto_a_builder_that_narrows_return_types(): void
+    {
+        // A widened return type would be a fatal error as the class loads.
+        $id = User::query()->create(['name' => 'Ada', 'email' => 'ada@example.test'])->id;
+        $builder = (new NarrowedUserBuilder(User::query()->getQuery()))->setModel(new User);
+
+        $this->assertSame('Ada', $builder->whereKey($id)->sole()->getAttribute('name'));
     }
 
     #[Test]

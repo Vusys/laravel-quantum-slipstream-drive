@@ -49,7 +49,21 @@ With Larastan, give the builder a `@template TModel of Model` and `@extends Tree
 
 The other builder's scopes keep working, and a query whose clauses the identity map can't evaluate in memory simply runs as SQL.
 
-One limit: when the identity map answers a read from memory, the other builder's own `get()`/`first()` never runs. Compose only builders whose constraints are query clauses added by scopes. A builder that adds constraints inside `get()` itself, or applies an ambient filter at execution time, could have it skipped.
+One limit: when the identity map answers a read from memory, the other builder's own `get()`/`first()` never runs. Compose only builders whose constraints are query clauses added by scopes. A builder that adds constraints inside `get()` itself, or applies an ambient filter at execution time, could have it skipped. [`assertIdentityMapAgrees()`](testing.md#checking-the-identity-map-in-your-own-app) tells you which kind you have.
+
+If it filters at execution time only some of the time, for example while an "as of" lens is open, override `bypassesIdentityMap()` on your composed builder so the map stands aside exactly then:
+
+```php
+final class AssignmentBuilder extends BitemporalBuilder
+{
+    use InteractsWithIdentityMap { bypassesIdentityMap as private bypassesByDefault; }
+
+    protected function bypassesIdentityMap(): bool
+    {
+        return TemporalLens::current() !== null || $this->bypassesByDefault();
+    }
+}
+```
 
 ## Per-query opt-out
 

@@ -93,6 +93,26 @@ trait InteractsWithIdentityMap
         return ! (new QueryPatternExtractor($this))->hasNonStringSelectColumns();
     }
 
+    /**
+     * Whether this read goes straight to the database. A composed builder
+     * whose answer depends on more than its clauses at times — an "as of"
+     * lens, a tenant chosen at execution — overrides this to stand the map
+     * aside while it does:
+     *
+     * ```php
+     * use InteractsWithIdentityMap { bypassesIdentityMap as private bypassesByDefault; }
+     *
+     * protected function bypassesIdentityMap(): bool
+     * {
+     *     return TemporalLens::current() !== null || $this->bypassesByDefault();
+     * }
+     * ```
+     */
+    protected function bypassesIdentityMap(): bool
+    {
+        return $this->identityMapDisabled;
+    }
+
     public function withoutIdentityMap(): static
     {
         $clone = clone $this;
@@ -278,14 +298,14 @@ trait InteractsWithIdentityMap
      * @return TModel|Collection<int, TModel>|null
      */
     #[\Override]
-    public function find($id, $columns = ['*']): mixed
+    public function find($id, $columns = ['*']): Model|Collection|null
     {
         if (is_array($id) || $id instanceof Arrayable) {
             /** @var Collection<int, TModel> */
             return $this->whereKey($id)->get($columns);
         }
 
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return $this->whereKey($id)->first($columns);
         }
 
@@ -409,7 +429,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function getModels($columns = ['*']): array
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::getModels($columns);
         }
 
@@ -816,7 +836,7 @@ trait InteractsWithIdentityMap
 
     public function exists(): bool
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::exists();
         }
 
@@ -934,7 +954,7 @@ trait InteractsWithIdentityMap
 
     public function count(string $columns = '*'): int
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::count($columns);
         }
 
@@ -974,7 +994,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function sum($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::sum($column);
         }
 
@@ -1021,7 +1041,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function min($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::min($column);
         }
 
@@ -1079,7 +1099,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function max($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::max($column);
         }
 
@@ -1137,7 +1157,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function avg($column): mixed
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::avg($column);
         }
 
@@ -1204,7 +1224,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function pluck($column, $key = null): SupportCollection
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::pluck($column, $key);
         }
 
@@ -1253,9 +1273,9 @@ trait InteractsWithIdentityMap
      * @return TModel|null
      */
     #[\Override]
-    public function first($columns = ['*']): mixed
+    public function first($columns = ['*']): ?Model
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::first($columns);
         }
 
@@ -1313,9 +1333,9 @@ trait InteractsWithIdentityMap
      * @return TModel
      */
     #[\Override]
-    public function sole($columns = ['*']): mixed
+    public function sole($columns = ['*']): Model
     {
-        if ($this->identityMapDisabled) {
+        if ($this->bypassesIdentityMap()) {
             return parent::sole($columns);
         }
 
@@ -1364,7 +1384,7 @@ trait InteractsWithIdentityMap
     }
 
     #[\Override]
-    public function update(array $values): mixed
+    public function update(array $values): int
     {
         $store = resolve(IdentityMapStore::class);
         $registry = resolve(CoverageRegistry::class);
@@ -1466,6 +1486,27 @@ trait InteractsWithIdentityMap
      * indexed). The conservative choice is to flush the cache for the affected
      * model class after the SQL ran.
      */
+    /**
+     * A new row can join any covered result set, and its key or a unique
+     * value of it may have been recorded as absent, so those go; cached
+     * entries for other rows stay valid. Every key marker goes when the new
+     * key isn't known.
+     */
+    private function invalidateAfterRowInsert(int|string|null $key): void
+    {
+        $model = $this->getModel();
+        $store = resolve(IdentityMapStore::class);
+        resolve(CoverageRegistry::class)->flushModelClass($model::class);
+        resolve(IdentityGraph::class)->invalidateModelClass($model::class);
+        $store->forgetUniqueAbsence($model::class);
+
+        if ($key === null) {
+            $store->forgetAbsent($model::class);
+        } else {
+            $store->forgetAbsentKey($model, $key);
+        }
+    }
+
     private function flushAfterBulkWrite(): void
     {
         $modelClass = $this->getModel()::class;
@@ -1561,9 +1602,11 @@ trait InteractsWithIdentityMap
      * underlying query directly.
      *
      * insert() and insertGetId() are also called by Model::performInsert for a
-     * single new row — that path fires the saved event which adds the row to
-     * the store, so we must not flush. We distinguish by shape: a list of
-     * arrays is a true bulk insert; a flat assoc array is Model::create.
+     * single new row. Its cached entries stay (the saved event adds the row),
+     * but what a new row makes stale is invalidated here, not left to that
+     * event: a save with events muted (saveQuietly, withoutEvents) never fires
+     * it. We distinguish by shape: a list of arrays is a true bulk insert; a
+     * flat assoc array is Model::create.
      *
      * @param  array<int|string, mixed>  $values
      */
@@ -1573,6 +1616,9 @@ trait InteractsWithIdentityMap
 
         if ($this->isBulkInsertShape($values)) {
             $this->flushAfterBulkWrite();
+        } else {
+            $key = $values[$this->getModel()->getKeyName()] ?? null;
+            $this->invalidateAfterRowInsert(is_int($key) || is_string($key) ? $key : null);
         }
 
         return $result;
@@ -1599,6 +1645,8 @@ trait InteractsWithIdentityMap
 
         if ($this->isBulkInsertShape($values)) {
             $this->flushAfterBulkWrite();
+        } else {
+            $this->invalidateAfterRowInsert($result);
         }
 
         return $result;
