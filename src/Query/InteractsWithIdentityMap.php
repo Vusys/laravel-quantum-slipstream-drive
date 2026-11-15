@@ -278,7 +278,7 @@ trait InteractsWithIdentityMap
      * @return TModel|Collection<int, TModel>|null
      */
     #[\Override]
-    public function find($id, $columns = ['*']): mixed
+    public function find($id, $columns = ['*']): Model|Collection|null
     {
         if (is_array($id) || $id instanceof Arrayable) {
             /** @var Collection<int, TModel> */
@@ -1253,7 +1253,7 @@ trait InteractsWithIdentityMap
      * @return TModel|null
      */
     #[\Override]
-    public function first($columns = ['*']): mixed
+    public function first($columns = ['*']): ?Model
     {
         if ($this->identityMapDisabled) {
             return parent::first($columns);
@@ -1313,7 +1313,7 @@ trait InteractsWithIdentityMap
      * @return TModel
      */
     #[\Override]
-    public function sole($columns = ['*']): mixed
+    public function sole($columns = ['*']): Model
     {
         if ($this->identityMapDisabled) {
             return parent::sole($columns);
@@ -1364,7 +1364,7 @@ trait InteractsWithIdentityMap
     }
 
     #[\Override]
-    public function update(array $values): mixed
+    public function update(array $values): int
     {
         $store = resolve(IdentityMapStore::class);
         $registry = resolve(CoverageRegistry::class);
