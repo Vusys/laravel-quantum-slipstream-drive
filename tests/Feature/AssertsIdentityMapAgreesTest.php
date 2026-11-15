@@ -65,4 +65,30 @@ final class AssertsIdentityMapAgreesTest extends TestCase
 
         $this->assertNull($this->assertIdentityMapAgrees(fn () => AmbientAwareUser::query()->find($id)));
     }
+
+    #[Test]
+    public function it_fails_when_keyed_results_come_back_in_another_order(): void
+    {
+        $calls = 0;
+        $read = function () use (&$calls): array {
+            return ++$calls < 3 ? [2 => 'b', 1 => 'a'] : [1 => 'a', 2 => 'b'];
+        };
+
+        $this->expectException(AssertionFailedError::class);
+        $this->assertIdentityMapAgrees($read);
+    }
+
+    #[Test]
+    public function it_fails_when_only_a_hidden_attribute_differs(): void
+    {
+        $calls = 0;
+        $read = function () use (&$calls): User {
+            $user = (new User)->forceFill(['id' => 1, 'name' => 'Ada', 'bio' => ++$calls < 3 ? 'cached' : 'stored']);
+
+            return $user->setHidden(['bio']);
+        };
+
+        $this->expectException(AssertionFailedError::class);
+        $this->assertIdentityMapAgrees($read);
+    }
 }

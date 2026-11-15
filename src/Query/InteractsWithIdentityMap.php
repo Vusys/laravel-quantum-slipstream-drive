@@ -1487,9 +1487,10 @@ trait InteractsWithIdentityMap
      * model class after the SQL ran.
      */
     /**
-     * A new row can join any covered result set, and its key may have been
-     * recorded as absent, so those go; cached entries for other rows stay
-     * valid. Every absent marker goes when the new key isn't known.
+     * A new row can join any covered result set, and its key or a unique
+     * value of it may have been recorded as absent, so those go; cached
+     * entries for other rows stay valid. Every key marker goes when the new
+     * key isn't known.
      */
     private function invalidateAfterRowInsert(int|string|null $key): void
     {
@@ -1497,6 +1498,7 @@ trait InteractsWithIdentityMap
         $store = resolve(IdentityMapStore::class);
         resolve(CoverageRegistry::class)->flushModelClass($model::class);
         resolve(IdentityGraph::class)->invalidateModelClass($model::class);
+        $store->forgetUniqueAbsence($model::class);
 
         if ($key === null) {
             $store->forgetAbsent($model::class);

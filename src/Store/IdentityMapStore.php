@@ -596,24 +596,28 @@ final class IdentityMapStore
 
     /**
      * Drop the "known absent" markers for one key of a model — under every
-     * scope fingerprint — because a row with that key has just been inserted.
+     * scope fingerprint, and however the key was written ('0999' and 999 name
+     * the same row) — because a row with that key has just been inserted.
      */
     public function forgetAbsentKey(Model $model, int|string $primaryKeyValue): void
     {
-        $prefix = $this->makeKeyFromParts(
-            ModelMetadata::connection($model),
-            $model::class,
-            ModelMetadata::table($model),
-            $model->getKeyName(),
-            $primaryKeyValue,
-            '',
-        );
+        $prefix = implode('|', [ModelMetadata::connection($model), $model::class, ModelMetadata::table($model), $model->getKeyName()]).'|';
 
         foreach (array_keys($this->absentKeysByClass[$model::class] ?? []) as $key) {
-            if (str_starts_with($key, $prefix)) {
+            if (! str_starts_with($key, $prefix)) {
+                continue;
+            }
+
+            $marked = explode('|', substr($key, strlen($prefix)), 2)[0];
+            if ($this->sameKey($marked, (string) $primaryKeyValue)) {
                 unset($this->absent[$key], $this->absentKeysByClass[$model::class][$key]);
             }
         }
+    }
+
+    private function sameKey(string $a, string $b): bool
+    {
+        return is_numeric($a) && is_numeric($b) ? $a + 0 == $b + 0 : $a === $b;
     }
 
     /**

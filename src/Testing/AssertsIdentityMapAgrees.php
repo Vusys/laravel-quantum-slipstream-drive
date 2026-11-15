@@ -54,7 +54,9 @@ trait AssertsIdentityMapAgrees
 
     /**
      * A read's answer reduced to what a caller can observe: models by class,
-     * key and cast attributes, recursively through collections and arrays.
+     * key and every stored attribute's cast value (hidden ones included),
+     * recursively through collections and arrays — which become ordered
+     * [key, value] pairs, since a comparison of keyed arrays ignores order.
      */
     private static function comparable(mixed $value): mixed
     {
@@ -62,21 +64,37 @@ trait AssertsIdentityMapAgrees
             $value instanceof Model => [
                 'model' => $value::class,
                 'key' => $value->getKey(),
-                'attributes' => self::sorted($value->attributesToArray()),
+                'attributes' => self::attributes($value),
             ],
-            $value instanceof Collection => array_map(self::comparable(...), $value->all()),
-            is_array($value) => array_map(self::comparable(...), $value),
+            $value instanceof Collection => self::pairs($value->all()),
+            is_array($value) => self::pairs($value),
             $value instanceof DateTimeInterface => $value->format(DateTimeInterface::RFC3339_EXTENDED),
             default => $value,
         };
     }
 
     /**
-     * @param  array<array-key, mixed>  $attributes
-     * @return array<array-key, mixed>
+     * @param  array<array-key, mixed>  $items
+     * @return list<array{0: array-key, 1: mixed}>
      */
-    private static function sorted(array $attributes): array
+    private static function pairs(array $items): array
     {
+        $pairs = [];
+        foreach ($items as $key => $item) {
+            $pairs[] = [$key, self::comparable($item)];
+        }
+
+        return $pairs;
+    }
+
+    /** @return array<string, mixed> */
+    private static function attributes(Model $model): array
+    {
+        $attributes = [];
+        foreach (array_keys($model->getAttributes()) as $name) {
+            $attributes[$name] = self::comparable($model->getAttributeValue($name));
+        }
+
         ksort($attributes);
 
         return $attributes;

@@ -29,7 +29,12 @@ final class QuietInsertTest extends TestCase
 
         (new User(['name' => 'Bram', 'email' => 'bram@example.test', 'active' => true]))->saveQuietly();
 
-        $this->assertSame(['Ada', 'Bram'], User::query()->where('active', true)->orderBy('id')->pluck('name')->all());
+        // No orderBy: an ordered pluck skips coverage, and coverage is what
+        // this test needs to read through.
+        $names = User::query()->where('active', true)->pluck('name')->all();
+        sort($names);
+
+        $this->assertSame(['Ada', 'Bram'], $names);
     }
 
     #[Test]
@@ -56,5 +61,27 @@ final class QuietInsertTest extends TestCase
 
         $this->assertInstanceOf(User::class, $found);
         $this->assertSame('Cai', $found->name);
+    }
+
+    #[Test]
+    public function a_key_written_another_way_is_found_after_a_quiet_insert(): void
+    {
+        $this->assertNull(User::query()->find('0999'));
+
+        User::withoutEvents(fn () => User::query()->forceCreate(['id' => 999, 'name' => 'Cai', 'email' => 'cai@example.test']));
+
+        $found = User::query()->whereKey('0999')->first();
+        $this->assertInstanceOf(User::class, $found);
+    }
+
+    #[Test]
+    public function a_unique_value_once_absent_exists_after_a_quiet_insert(): void
+    {
+        $this->assertFalse(User::query()->where('email', 'dan@example.test')->exists());
+        $this->assertFalse(User::query()->where('email', 'dan@example.test')->exists());
+
+        User::withoutEvents(fn () => User::query()->create(['name' => 'Dan', 'email' => 'dan@example.test']));
+
+        $this->assertTrue(User::query()->where('email', 'dan@example.test')->exists());
     }
 }
