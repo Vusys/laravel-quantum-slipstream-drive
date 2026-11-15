@@ -293,6 +293,13 @@ trait InteractsWithIdentityMap
             return $this->whereKey($id)->first($columns);
         }
 
+        // The key shortcut below checks only global scopes. Clauses already on
+        // this builder (a where, a local scope) go through first(), which
+        // evaluates them against the cached model or falls back to SQL.
+        if ($this->getQuery()->wheres !== []) {
+            return $this->whereKey($id)->first($columns);
+        }
+
         /** @var TModel $model */
         $model = $this->getModel();
         $store = resolve(IdentityMapStore::class);
