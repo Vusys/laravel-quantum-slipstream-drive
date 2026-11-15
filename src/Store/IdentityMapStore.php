@@ -1005,7 +1005,14 @@ final class IdentityMapStore
         return $keysToEvict !== [];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Impure: the counts change as the store does, so two calls around a
+     * write must not be assumed equal.
+     *
+     * @return array<string, mixed>
+     *
+     * @phpstan-impure
+     */
     public function debugStats(): array
     {
         return array_merge([

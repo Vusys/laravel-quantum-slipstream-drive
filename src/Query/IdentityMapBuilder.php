@@ -1515,7 +1515,7 @@ class IdentityMapBuilder extends Builder
     }
 
     /**
-     * @param  array<int|string, mixed>  $values
+     * @param  array<int|string, array<string, mixed>|bool|float|int|object|string|null>  $values
      * @param  array<int, string>|string  $uniqueBy
      * @param  array<int, string>|null  $update
      */
