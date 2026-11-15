@@ -12,7 +12,6 @@ use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
@@ -98,10 +97,15 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
      * Watch executed write statements so raw query-builder writes
      * (`DB::table('users')->update(...)`) that bypass Eloquent conservatively
      * invalidate the cached state of any identity-mapped model on that table.
+     *
+     * Event::listen, not DB::listen: the latter resolves the default
+     * connection at boot, so `artisan package:discover` (run by every
+     * `composer install`) fails wherever no database exists yet — CI, image
+     * builds. Connection::listen() registers this very listener anyway.
      */
     private function registerRawWriteInterceptor(): void
     {
-        DB::listen(function (QueryExecuted $event): void {
+        Event::listen(QueryExecuted::class, function (QueryExecuted $event): void {
             $this->app->make(RawWriteInterceptor::class)->handle($event);
         });
     }
