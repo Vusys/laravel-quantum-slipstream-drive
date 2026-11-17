@@ -405,11 +405,27 @@ final class IdentityMapStore
         if (isset($this->entries[$mapKey])) {
             $entry = $this->entries[$mapKey];
             $entry->lastTouched = ++$this->clock;
-            $entry->model = $model;
+
+            // Saving a narrower instance (a created one, or one read with select())
+            // must not replace a richer cached one, or a full read would be served
+            // a row missing columns. Carry the saved values onto the cached instance,
+            // as remember() does.
+            $saved = $model->getAttributes();
+            if ($entry->model !== $model && array_diff_key($entry->model->getAttributes(), $saved) !== []) {
+                $entry->model->setRawAttributes(array_merge($entry->model->getAttributes(), $saved));
+                foreach (array_keys($saved) as $column) {
+                    $entry->model->syncOriginalAttribute((string) $column);
+                }
+            } else {
+                $entry->model = $model;
+            }
+
             $entry->state = LifecycleState::Exists;
             $entry->version++;
+            // A save writes only what the instance holds, so it leaves what's known
+            // about the rest of the row alone: a created or partially selected
+            // model still lacks the columns the database filled in.
             $entry->attributes->mergeFromSaved($model);
-            $entry->attributes->allColumnsKnown = true;
             $this->ensureDiscoveredFor($model::class);
             $this->uniqueKeyIndex->index($entry, $mapKey);
         } else {

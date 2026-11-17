@@ -276,10 +276,12 @@ final class LifecycleStateTest extends TestCase
                 $user->delete();
                 User::find($key);
             })(),
-            'restored' => (function () use ($user, $key): void {
-                User::find($key);
-                $user->delete();
-                $user->restore();
+            // The read-back instance, not $user: a created model lacks the
+            // database's defaults, so restoring it can't make a full row.
+            'restored' => (static function () use ($key): void {
+                $read = User::findOrFail($key);
+                $read->delete();
+                $read->restore();
             })(),
             'saved' => (function () use ($user, $key): void {
                 User::find($key);

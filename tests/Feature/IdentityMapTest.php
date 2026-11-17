@@ -330,7 +330,7 @@ final class IdentityMapTest extends TestCase
     #[Test]
     public function restored_model_is_served_from_map_without_sql(): void
     {
-        $user = User::create(['name' => 'Alice', 'email' => 'alice@example.com']);
+        $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
         $user->delete();
         $user->restore();
 
@@ -988,6 +988,8 @@ final class IdentityMapTest extends TestCase
         $u = User::withoutIdentityMap()->find(9999);
         $this->assertInstanceOf(User::class, $u);
         $this->store->afterSaved($u);
+        // A bypassed read isn't recorded as a full row; this one is.
+        $this->store->markAllColumnsKnown($u);
 
         $sql = $this->countSql(function (): void {
             $found = User::find(9999);
