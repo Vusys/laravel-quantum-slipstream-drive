@@ -953,7 +953,18 @@ final class IdentityMapStore
 
             if ($evalResult === EvaluationResult::Match) {
                 $this->snapshotForJournal($mapKey);
-                $rawAttrs = $entry->model->getAttributes();
+                $cachedModel = $entry->model;
+                $rawAttrs = $cachedModel->getAttributes();
+
+                // Columns the instance already holds as a pending edit of this exact
+                // value: the instance's own save() is running this update, and
+                // Eloquent still needs them dirty for touchOwners() and getChanges().
+                $pendingOnInstance = [];
+                foreach ($values as $col => $val) {
+                    if (array_key_exists($col, $rawAttrs) && $rawAttrs[$col] === $val && $cachedModel->isDirty($col)) {
+                        $pendingOnInstance[$col] = true;
+                    }
+                }
 
                 foreach ($values as $col => $val) {
                     $rawAttrs[$col] = $val;
@@ -978,7 +989,14 @@ final class IdentityMapStore
                     }
                 }
 
-                $entry->model->setRawAttributes($rawAttrs, true);
+                // Sync only the written columns: any other pending edit on the
+                // instance must survive, or its next save() would skip it.
+                $cachedModel->setRawAttributes($rawAttrs);
+                foreach (array_keys($values) as $col) {
+                    if (! isset($pendingOnInstance[$col])) {
+                        $cachedModel->syncOriginalAttribute((string) $col);
+                    }
+                }
                 $entry->version++;
                 $this->uniqueKeyIndex->index($entry, $mapKey);
             } elseif ($evalResult === EvaluationResult::Unknown) {

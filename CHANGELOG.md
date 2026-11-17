@@ -6,6 +6,7 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ### Fixed
 
+- Saving a cached model keeps Eloquent's dirty state until `save()` finishes. The model's own `UPDATE` runs through the identity-map builder, which mirrored the write onto the cached instance, the same one being saved, and synced all of its original attributes. So `$touches` never touched the owners, `getChanges()` and `wasChanged()` came back empty, and the package's own column-based coverage flush flushed nothing. The mirror now syncs only the columns it wrote, and skips those the instance is saving itself, so another unsaved edit on a cached instance also survives a mass update. Found by running an app's suite with the map on every model.
 - `find()` keeps Laravel's conditional return type: the model or `null` for a single id, a `Collection` for an array or `Arrayable` of ids. The identity-map override declared `Model|Collection|null` for every call, so callers had to narrow the result of `find($id)` before using it. Found in a Chain of Command controller.
 
 ### Changed
