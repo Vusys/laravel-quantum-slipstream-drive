@@ -122,11 +122,22 @@ final class QueryMemoTest extends TestCase
     #[Test]
     public function a_select_that_reads_the_clock_or_a_random_number_always_runs(): void
     {
-        foreach (["select datetime('now') as t", 'select random() as r', 'select * from users where score > abs(random()) % 0'] as $sql) {
-            [$count] = $this->counted(fn (): array => [DB::select($sql), DB::select($sql)]);
-
-            $this->assertSame(2, $count, $sql);
+        // Every driver's spelling, classified without running it.
+        foreach ([
+            "select datetime('now') as t", 'select random() as r', 'select rand()', 'select now()', 'select uuid()',
+            'select * from users where score > abs(random()) % 2', "select nextval('users_id_seq')", 'select last_insert_id()',
+            'select * from users for update', 'select * from users for share', 'select * from users lock in share mode',
+            'select get_lock(?, 1)', 'select pg_try_advisory_lock(1)', 'select sleep(1)', 'select @n := 1',
+        ] as $sql) {
+            $this->assertNull(SelectMemo::keyFor(DB::connection(), $sql, [], true, []), $sql);
         }
+
+        $this->assertNotNull(SelectMemo::keyFor(DB::connection(), 'select * from "users" where "score" > ?', [1], true, []));
+
+        // And one that every driver runs.
+        [$count] = $this->counted(fn (): array => [DB::select('select current_timestamp as t'), DB::select('select current_timestamp as t')]);
+
+        $this->assertSame(2, $count);
     }
 
     #[Test]
