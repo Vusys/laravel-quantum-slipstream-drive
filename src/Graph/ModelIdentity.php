@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vusys\QuantumSlipstreamDrive\Graph;
 
 use Illuminate\Database\Eloquent\Model;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
 use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
 
 final readonly class ModelIdentity
@@ -20,7 +21,7 @@ final readonly class ModelIdentity
 
     public static function fromModel(Model $model, ?string $fingerprint = null): ?self
     {
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return null;

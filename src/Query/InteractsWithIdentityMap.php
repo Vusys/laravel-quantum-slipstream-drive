@@ -113,6 +113,53 @@ trait InteractsWithIdentityMap
         return $this->identityMapDisabled;
     }
 
+    /**
+     * useWritePdo() is how fresh() and refresh() ask for the database itself, so
+     * the read always runs SQL. Unlike a bypass, its rows still refresh the map.
+     */
+    private function readsThrough(): bool
+    {
+        return $this->getQuery()->useWritePdo;
+    }
+
+    /**
+     * Run the read as SQL and record its rows as a miss would.
+     *
+     * @param  list<string>|array<int, string>  $columns
+     * @return array<int, TModel>
+     */
+    private function readThrough(array $columns): array
+    {
+        $store = resolve(IdentityMapStore::class);
+
+        if ($store->isDisabled()) {
+            return parent::getModels($columns);
+        }
+
+        $fingerprint = ScopeFingerprinter::fromBuilder($this);
+
+        $store->setPendingFingerprint($fingerprint);
+        try {
+            /** @var array<int, TModel> $fetched */
+            $fetched = parent::getModels($columns);
+        } finally {
+            $store->setPendingFingerprint(null);
+        }
+
+        if ($this->fetchedAllColumns($columns)) {
+            $captureRawRow = $this->capturesRawRow();
+
+            foreach ($fetched as $fetchedModel) {
+                $store->markAllColumnsKnown($fetchedModel, $fingerprint);
+                if ($captureRawRow) {
+                    $store->captureRawRow($fetchedModel, $fingerprint);
+                }
+            }
+        }
+
+        return $fetched;
+    }
+
     public function withoutIdentityMap(): static
     {
         $clone = clone $this;
@@ -308,7 +355,7 @@ trait InteractsWithIdentityMap
             return $this->whereKey($id)->get($columns);
         }
 
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return $this->whereKey($id)->first($columns);
         }
 
@@ -436,6 +483,10 @@ trait InteractsWithIdentityMap
             return parent::getModels($columns);
         }
 
+        if ($this->readsThrough()) {
+            return $this->readThrough($columns);
+        }
+
         /** @var TModel $model */
         $model = $this->getModel();
         $store = resolve(IdentityMapStore::class);
@@ -524,7 +575,8 @@ trait InteractsWithIdentityMap
         // --- bounded primary key-set lookup (with optional predicate pruning) ---
         $extraction = $extractor->extractBoundedKeySet();
 
-        if ($extraction !== null) {
+        // Rows fetched without their key can't be merged or marked absent by key.
+        if ($extraction !== null && $this->selectsPrimaryKey($columns)) {
             [$keySet, $extraPredicateNodes] = $extraction;
 
             [$hits, , $unknownKeys] = $store->partitionKeySet(
@@ -627,7 +679,7 @@ trait InteractsWithIdentityMap
                 if ($captureRawRow) {
                     $store->captureRawRow($fetchedModel, $fingerprint);
                 }
-                $k = $fetchedModel->getKey();
+                $k = ModelMetadata::key($fetchedModel);
                 if (is_int($k) || is_string($k)) {
                     $fetchedByKey[$k] = true;
                 }
@@ -839,7 +891,7 @@ trait InteractsWithIdentityMap
 
     public function exists(): bool
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::exists();
         }
 
@@ -957,7 +1009,7 @@ trait InteractsWithIdentityMap
 
     public function count(string $columns = '*'): int
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::count($columns);
         }
 
@@ -997,7 +1049,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function sum($column): mixed
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::sum($column);
         }
 
@@ -1044,7 +1096,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function min($column): mixed
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::min($column);
         }
 
@@ -1102,7 +1154,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function max($column): mixed
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::max($column);
         }
 
@@ -1160,7 +1212,7 @@ trait InteractsWithIdentityMap
     /** @param Expression|string $column */
     public function avg($column): mixed
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::avg($column);
         }
 
@@ -1227,7 +1279,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function pluck($column, $key = null): SupportCollection
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::pluck($column, $key);
         }
 
@@ -1278,7 +1330,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function first($columns = ['*']): ?Model
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::first($columns);
         }
 
@@ -1338,7 +1390,7 @@ trait InteractsWithIdentityMap
     #[\Override]
     public function sole($columns = ['*']): Model
     {
-        if ($this->bypassesIdentityMap()) {
+        if ($this->bypassesIdentityMap() || $this->readsThrough()) {
             return parent::sole($columns);
         }
 
@@ -1969,7 +2021,7 @@ trait InteractsWithIdentityMap
         $primaryKeys = [];
 
         foreach ($models as $m) {
-            $pk = $m->getKey();
+            $pk = ModelMetadata::key($m);
 
             if (! is_int($pk) && ! is_string($pk)) {
                 return;
@@ -2099,6 +2151,30 @@ trait InteractsWithIdentityMap
     private function isProcessTruth(): bool
     {
         return PredicateEvaluator::isProcessTruthMode();
+    }
+
+    /**
+     * Whether the rows this query returns carry the primary key: a `*`, a
+     * `table.*`, or the key column itself, bare or qualified.
+     *
+     * @param  list<string>|array<int, string>  $columns
+     */
+    private function selectsPrimaryKey(array $columns): bool
+    {
+        $queryColumns = $this->getQuery()->columns;
+        $selected = $queryColumns === null || $queryColumns === [] ? $columns : $queryColumns;
+
+        $model = $this->getModel();
+        $table = ModelMetadata::table($model);
+        $accepted = ['*', $table.'.*', $model->getKeyName(), $table.'.'.$model->getKeyName()];
+
+        foreach ($selected as $column) {
+            if (is_string($column) && in_array($column, $accepted, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

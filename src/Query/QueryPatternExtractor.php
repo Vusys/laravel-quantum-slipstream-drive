@@ -372,14 +372,14 @@ final readonly class QueryPatternExtractor
         $byKey = [];
 
         foreach ($memoryModels as $m) {
-            $k = $m->getKey();
+            $k = ModelMetadata::key($m);
             if (is_int($k) || is_string($k)) {
                 $byKey[$k] = $m;
             }
         }
 
         foreach ($fetchedModels as $m) {
-            $k = $m->getKey();
+            $k = ModelMetadata::key($m);
             if (is_int($k) || is_string($k)) {
                 $byKey[$k] = $m;
             }

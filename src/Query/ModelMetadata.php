@@ -37,6 +37,16 @@ final class ModelMetadata
         return self::$tableCache[$model::class] ??= $model->getTable();
     }
 
+    /**
+     * The model's key, or null when its row was read without the key column
+     * (`value()`, `pluck()`, `select('name')`). `getKey()` itself throws there
+     * under `Model::shouldBeStrict()`.
+     */
+    public static function key(Model $model): mixed
+    {
+        return array_key_exists($model->getKeyName(), $model->getAttributes()) ? $model->getKey() : null;
+    }
+
     public static function connection(Model $model): string
     {
         return $model->getConnection()->getName() ?? 'default';
