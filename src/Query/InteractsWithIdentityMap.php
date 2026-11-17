@@ -293,9 +293,12 @@ trait InteractsWithIdentityMap
     }
 
     /**
+     * Laravel's conditional return type, so a single id is typed as the
+     * model or null, not as a possible Collection the caller must narrow.
+     *
      * @param  mixed  $id
      * @param  list<string>  $columns
-     * @return TModel|Collection<int, TModel>|null
+     * @return ($id is (Arrayable<array-key, mixed>|array<mixed>) ? Collection<int, TModel> : TModel|null)
      */
     #[\Override]
     public function find($id, $columns = ['*']): Model|Collection|null
