@@ -10,6 +10,7 @@ use Vusys\QuantumSlipstreamDrive\Enums\FactSource;
 use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
 use Vusys\QuantumSlipstreamDrive\Explanation;
 use Vusys\QuantumSlipstreamDrive\Query\IdentityMapBuilder;
+use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityEntry;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
@@ -181,7 +182,7 @@ final readonly class ColumnBackfiller
         $freshByKey = [];
 
         foreach ($fresh as $row) {
-            $key = $row->getKey();
+            $key = ModelMetadata::key($row);
 
             if (is_int($key) || is_string($key)) {
                 $freshByKey[$key] = $row;

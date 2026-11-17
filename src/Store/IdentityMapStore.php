@@ -207,7 +207,7 @@ final class IdentityMapStore
             return;
         }
 
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return;
@@ -279,7 +279,7 @@ final class IdentityMapStore
 
     public function markAllColumnsKnown(Model $model, ?string $fingerprint = null): void
     {
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return;
@@ -308,7 +308,7 @@ final class IdentityMapStore
             return;
         }
 
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return;
@@ -391,7 +391,7 @@ final class IdentityMapStore
 
     public function afterSaved(Model $model): void
     {
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return;
@@ -440,7 +440,7 @@ final class IdentityMapStore
 
     public function afterDeleted(Model $model): void
     {
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return;
@@ -486,7 +486,7 @@ final class IdentityMapStore
 
     public function afterForceDeleted(Model $model): void
     {
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return;
@@ -514,7 +514,7 @@ final class IdentityMapStore
 
     public function findEntry(Model $model): ?IdentityEntry
     {
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return null;
@@ -601,7 +601,7 @@ final class IdentityMapStore
 
     public function forget(Model $model): void
     {
-        $key = $model->getKey();
+        $key = ModelMetadata::key($model);
 
         if (! is_int($key) && ! is_string($key)) {
             return;
