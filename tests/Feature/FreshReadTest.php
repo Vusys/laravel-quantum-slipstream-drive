@@ -40,6 +40,14 @@ final class FreshReadTest extends TestCase
     }
 
     #[Test]
+    public function a_write_pdo_read_with_a_bare_column_string_works(): void
+    {
+        $alice = User::query()->create(['name' => 'Alice', 'email' => 'alice@example.com']);
+
+        $this->assertSame(['Alice'], User::query()->useWritePdo()->whereKey($alice->id)->get('name')->pluck('name')->all());
+    }
+
+    #[Test]
     public function a_fresh_read_updates_the_cached_model(): void
     {
         $alice = User::query()->create(['name' => 'Alice', 'email' => 'alice@example.com']);

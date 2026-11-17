@@ -473,7 +473,7 @@ trait InteractsWithIdentityMap
     }
 
     /**
-     * @param  list<string>  $columns
+     * @param  list<string>|string  $columns
      * @return array<int, TModel>
      */
     #[\Override]
@@ -482,6 +482,9 @@ trait InteractsWithIdentityMap
         if ($this->bypassesIdentityMap()) {
             return parent::getModels($columns);
         }
+
+        // get('name') passes a bare string through; the base query wraps it the same way.
+        $columns = is_string($columns) ? [$columns] : $columns;
 
         if ($this->readsThrough()) {
             return $this->readThrough($columns);

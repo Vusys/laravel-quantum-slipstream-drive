@@ -53,6 +53,12 @@ final class KeySetProjectionTest extends TestCase
     }
 
     #[Test]
+    public function a_key_set_get_with_a_bare_column_string_works(): void
+    {
+        $this->assertEqualsCanonicalizing(['Alice', 'Bob'], User::query()->whereKey($this->ids)->get('name')->pluck('name')->all());
+    }
+
+    #[Test]
     public function a_qualified_key_in_the_select_still_uses_the_map(): void
     {
         User::query()->findMany($this->ids);
