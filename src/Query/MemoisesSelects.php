@@ -12,6 +12,9 @@ namespace Vusys\QuantumSlipstreamDrive\Query;
  */
 trait MemoisesSelects
 {
+    /** Never reused, unlike an object id: a rebuilt connection must share nothing with this one. */
+    private ?string $memoIdentity = null;
+
     /**
      * @param  string  $query
      * @param  array<array-key, mixed>  $bindings
@@ -26,7 +29,9 @@ trait MemoisesSelects
             return parent::select($query, $bindings, $useReadPdo, $fetchUsing);
         }
 
-        $key = SelectMemo::keyFor($this, $query, $bindings, $useReadPdo, $fetchUsing);
+        // `useWriteConnectionWhenReading()` sends this read to the writer without saying so here.
+        $this->memoIdentity ??= bin2hex(random_bytes(8));
+        $key = SelectMemo::keyFor($this, $this->memoIdentity, $query, $bindings, $useReadPdo && ! $this->readOnWriteConnection, $fetchUsing);
 
         if ($key === null) {
             // `insert ... returning`, a locking read or a procedure call can all arrive here.
@@ -41,8 +46,9 @@ trait MemoisesSelects
             return $remembered;
         }
 
+        $generation = SelectMemo::generation();
         $rows = parent::select($query, $bindings, $useReadPdo, $fetchUsing);
-        SelectMemo::remember($key, $rows);
+        SelectMemo::remember($key, $rows, $generation);
 
         return $rows;
     }
@@ -73,8 +79,42 @@ trait MemoisesSelects
     public function cursor($query, $bindings = [], $useReadPdo = true, array $fetchUsing = [])
     {
         self::forget();
+        $cursor = parent::cursor($query, $bindings, $useReadPdo, $fetchUsing);
 
-        return parent::cursor($query, $bindings, $useReadPdo, $fetchUsing);
+        // The statement runs at the first advance, not here, and it may be a write.
+        return (static function () use ($cursor): \Generator {
+            self::forget();
+
+            yield from $cursor;
+        })();
+    }
+
+    /**
+     * A new PDO may reach another server: nothing remembered through the old one applies.
+     *
+     * @param  \PDO|\Closure|null  $pdo
+     * @return $this
+     */
+    #[\Override]
+    public function setPdo($pdo)
+    {
+        $this->memoIdentity = null;
+        self::forget();
+
+        return parent::setPdo($pdo);
+    }
+
+    /**
+     * @param  \PDO|\Closure|null  $pdo
+     * @return $this
+     */
+    #[\Override]
+    public function setReadPdo($pdo)
+    {
+        $this->memoIdentity = null;
+        self::forget();
+
+        return parent::setReadPdo($pdo);
     }
 
     /**

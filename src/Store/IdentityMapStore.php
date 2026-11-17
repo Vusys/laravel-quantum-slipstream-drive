@@ -608,7 +608,21 @@ final class IdentityMapStore
         $this->absentKeysByClass[$modelClass][$mapKey] = true;
     }
 
+    /**
+     * Drops one model's entry, and everything the SELECT memo holds, because whoever calls
+     * this wants the next read to be the database's.
+     */
     public function forget(Model $model): void
+    {
+        $this->evict($model);
+        SelectMemo::flush();
+    }
+
+    /**
+     * Drops one model's entry without touching the SELECT memo: for the package's own use in
+     * the middle of a read, where nothing has changed in the database.
+     */
+    public function evict(Model $model): void
     {
         $key = ModelMetadata::key($model);
 
@@ -620,7 +634,6 @@ final class IdentityMapStore
         $mapKey = $this->makeKey($model, $key, $fingerprint);
 
         unset($this->entries[$mapKey], $this->absent[$mapKey]);
-        SelectMemo::flush();
     }
 
     /**

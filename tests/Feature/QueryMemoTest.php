@@ -129,10 +129,10 @@ final class QueryMemoTest extends TestCase
             'select * from users for update', 'select * from users for share', 'select * from users lock in share mode',
             'select get_lock(?, 1)', 'select pg_try_advisory_lock(1)', 'select sleep(1)', 'select @n := 1',
         ] as $sql) {
-            $this->assertNull(SelectMemo::keyFor(DB::connection(), $sql, [], true, []), $sql);
+            $this->assertNull(SelectMemo::keyFor(DB::connection(), 'id', $sql, [], true, []), $sql);
         }
 
-        $this->assertNotNull(SelectMemo::keyFor(DB::connection(), 'select * from "users" where "score" > ?', [1], true, []));
+        $this->assertNotNull(SelectMemo::keyFor(DB::connection(), 'id', 'select * from "users" where "score" > ?', [1], true, []));
 
         // And one that every driver runs.
         [$count] = $this->counted(fn (): array => [DB::select('select current_timestamp as t'), DB::select('select current_timestamp as t')]);
@@ -189,6 +189,84 @@ final class QueryMemoTest extends TestCase
         });
 
         $this->assertSame(1, $count);
+    }
+
+    #[Test]
+    public function a_write_made_while_a_select_returns_does_not_leave_its_rows_remembered(): void
+    {
+        $written = false;
+        DB::listen(function ($query) use (&$written): void {
+            if (! $written && str_starts_with($query->sql, 'select')) {
+                $written = true;
+                DB::table('users')->where('name', 'Alice')->update(['score' => 7]);
+            }
+        });
+
+        DB::table('users')->where('name', 'Alice')->value('score');
+
+        $this->assertSame(7, DB::table('users')->where('name', 'Alice')->value('score'));
+    }
+
+    #[Test]
+    public function a_cursor_forgets_when_it_starts_running(): void
+    {
+        $cursor = DB::cursor('select * from users');
+        DB::table('users')->get();
+        $this->assertSame(1, SelectMemo::size());
+
+        iterator_to_array($cursor);
+
+        $this->assertSame(0, SelectMemo::size());
+    }
+
+    #[Test]
+    public function more_that_must_always_run(): void
+    {
+        foreach ([
+            'select * from users for no key update', 'select * from users for key share', "select set_config('search_path', 'b', false)",
+            'select julianday()', "select strftime('%s')", 'select date()',
+        ] as $sql) {
+            $this->assertNull(SelectMemo::keyFor(DB::connection(), 'id', $sql, [], true, []), $sql);
+        }
+
+        $this->assertNull(SelectMemo::keyFor(DB::connection(), 'id', 'select datetime(?)', ['now'], true, []));
+        $this->assertNull(SelectMemo::keyFor(DB::connection(), 'id', 'select * from users where name = ?', [fopen('php://memory', 'r')], true, []));
+        $this->assertNotNull(SelectMemo::keyFor(DB::connection(), 'id', "select strftime('%Y', created_at) from users", [], true, []));
+    }
+
+    #[Test]
+    public function a_read_sent_to_the_writer_by_the_connection_is_not_answered_from_memory(): void
+    {
+        DB::table('users')->get();
+
+        [$count] = $this->counted(function (): void {
+            DB::connection()->useWriteConnectionWhenReading();
+            DB::table('users')->get();
+            DB::connection()->useWriteConnectionWhenReading(false);
+        });
+
+        $this->assertSame(1, $count);
+    }
+
+    #[Test]
+    public function a_new_pdo_shares_nothing_with_the_old_one(): void
+    {
+        DB::table('users')->get();
+
+        DB::connection()->setReadPdo(DB::connection()->getPdo());
+
+        [$count] = $this->counted(fn (): mixed => DB::table('users')->get());
+
+        $this->assertSame(1, $count);
+    }
+
+    #[Test]
+    public function a_result_holding_a_stream_is_not_remembered(): void
+    {
+        SelectMemo::flush();
+        SelectMemo::remember('k', [(object) ['payload' => fopen('php://memory', 'r')]], SelectMemo::generation());
+
+        $this->assertSame(0, SelectMemo::size());
     }
 
     #[Test]

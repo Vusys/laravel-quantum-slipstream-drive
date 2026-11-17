@@ -11,7 +11,7 @@ use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
  * Remembers the rows of a SELECT so an identical one, run again before anything could have
  * changed them, is answered without a round trip. Only invoked when `query_memo.enabled`.
  *
- * "Identical" is the connection, the SQL and the bindings. "Before
+ * "Identical" is the connection object, the SQL and the bindings. "Before
  * anything could have changed them" is enforced by forgetting everything, across every
  * connection, whenever a connection runs anything that is not a memoisable SELECT, whenever a
  * transaction begins, commits or rolls back, at request and job boundaries, and after `ttl_ms`.
@@ -25,18 +25,24 @@ use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 final class SelectMemo
 {
     /** Clauses and keywords that make a SELECT's answer depend on more than the data. */
-    private const string VOLATILE = '/\b(?:for\s+update|for\s+(?:no\s+key\s+)?(?:share|key\s+share)|lock\s+in\s+share\s+mode|into|sql_calc_found_rows'
+    private const string VOLATILE = '/\b(?:for\s+(?:no\s+key\s+)?update|for\s+(?:key\s+)?share|lock\s+in\s+share\s+mode|into|sql_calc_found_rows'
         .'|current_timestamp|current_date|current_time|localtime|localtimestamp)\b'
         .'|\b(?:nextval|currval|lastval|setval|last_insert_id|last_insert_rowid|found_rows|row_count|changes|total_changes'
         .'|get_lock|release_lock|release_all_locks|is_free_lock|is_used_lock|pg_\w*advisory\w*|pg_sleep\w*|sleep|benchmark'
         .'|rand|random|randomblob|random_bytes|uuid\w*|gen_random_uuid|newid|now|sysdate|curdate|curtime|utc_timestamp|utc_date|utc_time'
         .'|unix_timestamp|clock_timestamp|statement_timestamp|transaction_timestamp|timeofday|txid_current\w*|pg_current_xact_id'
-        .'|connection_id|pg_backend_pid)\s*\(|[\'"]now[\'"]|:=/i';
+        .'|connection_id|pg_backend_pid|set_config|setseed|pg_notify)\s*\('
+        // SQLite reads the clock with no argument, or with a one-argument strftime().
+        .'|\b(?:date|time|datetime|julianday|unixepoch)\s*\(\s*\)|\bstrftime\s*\(\s*\'[^\']*\'\s*\)'
+        .'|[\'"]now[\'"]|:=/i';
 
     /** @var array<string, array{rows: array<array-key, mixed>, expires: int}> */
     private static array $entries = [];
 
     private static int $bypassing = 0;
+
+    /** Bumped by every flush, so a read that raced one is not remembered. */
+    private static int $generation = 0;
 
     /**
      * Runs $callback with every SELECT going to the database, as `withoutIdentityMap()` asks.
@@ -64,11 +70,21 @@ final class SelectMemo
      * does anyone asking for the latest truth with `useWritePdo()`. So is one inside
      * `IdentityMap::disabled()` or a `withoutIdentityMap()` query.
      *
+     * A binding that is a stream is one too: it serialises to nothing that tells two apart.
+     *
+     * @param  string  $identity  this connection object's, so a purged and rebuilt connection of
+     *                            the same name, perhaps to another host, shares nothing
      * @param  array<array-key, mixed>  $bindings
      * @param  array<array-key, mixed>  $fetchUsing
      */
-    public static function keyFor(Connection $connection, string $query, array $bindings, bool $useReadPdo, array $fetchUsing): ?string
+    public static function keyFor(Connection $connection, string $identity, string $query, array $bindings, bool $useReadPdo, array $fetchUsing): ?string
     {
+        foreach ($bindings as $binding) {
+            if (is_resource($binding) || gettype($binding) === 'resource (closed)') {
+                return null;
+            }
+        }
+
         if (! $useReadPdo || self::$bypassing > 0 || $fetchUsing !== [] || $connection->pretending() || resolve(IdentityMapStore::class)->isDisabled() || ! preg_match('/^\s*\(?\s*select\b/i', $query) || preg_match(self::VOLATILE, $query)) {
             return null;
         }
@@ -79,7 +95,11 @@ final class SelectMemo
             return null;
         }
 
-        return implode("\0", [$connection->getName(), $connection->getDatabaseName(), $query, $bound]);
+        if (in_array('now', array_map(static fn (mixed $b): mixed => is_string($b) ? strtolower(trim($b)) : $b, $bindings), true)) {
+            return null;
+        }
+
+        return implode("\0", [$identity, $query, $bound]);
     }
 
     /**
@@ -104,11 +124,32 @@ final class SelectMemo
         return self::copies($entry['rows']);
     }
 
+    public static function generation(): int
+    {
+        return self::$generation;
+    }
+
     /**
+     * Remembers $rows unless the memo was flushed since $generation, when the read began: a
+     * listener on the query, or anything else, may have written in between. A result holding a
+     * stream (Postgres `bytea`) is not remembered, because a copy of the row would share it.
+     *
      * @param  array<array-key, mixed>  $rows
      */
-    public static function remember(string $key, array $rows): void
+    public static function remember(string $key, array $rows, int $generation): void
     {
+        if ($generation !== self::$generation) {
+            return;
+        }
+
+        foreach ($rows as $row) {
+            foreach (is_object($row) ? get_object_vars($row) : (is_array($row) ? $row : [$row]) as $value) {
+                if (is_resource($value)) {
+                    return;
+                }
+            }
+        }
+
         $config = config('quantum-slipstream-drive.query_memo');
         $maxRows = is_array($config) && is_int($config['max_rows'] ?? null) ? $config['max_rows'] : 1000;
         $maxEntries = is_array($config) && is_int($config['max_entries'] ?? null) ? $config['max_entries'] : 500;
@@ -130,6 +171,7 @@ final class SelectMemo
 
     public static function flush(): void
     {
+        self::$generation++;
         self::$entries = [];
     }
 
