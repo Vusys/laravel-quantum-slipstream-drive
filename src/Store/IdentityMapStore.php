@@ -65,6 +65,14 @@ final class IdentityMapStore
     private array $absentKeysByClass = [];
 
     /**
+     * Classes that have recorded a unique-key absence since their last flush.
+     * The markers themselves live in the unique-key index, keyed by fingerprint.
+     *
+     * @var array<string, true>
+     */
+    private array $uniqueAbsenceClasses = [];
+
+    /**
      * Reverse-index for raw-row serving: physical row key
      * ("{connection}|{table}|{pkName}|{pkValue}") → set of mapKeys whose entry
      * may hold a native row snapshot for that physical row. A physical row can
@@ -652,11 +660,16 @@ final class IdentityMapStore
         unset($this->absentKeysByClass[$modelClass]);
     }
 
-    /** Whether anything is cached for the class: a row or an absence. */
+    /**
+     * Whether anything may be cached for the class: a row, a primary-key
+     * absence, or a unique-key absence. May answer true after an eviction,
+     * never false while something is held.
+     */
     public function hasStateFor(string $modelClass): bool
     {
         return ($this->entryKeysByClass[$modelClass] ?? []) !== []
-            || ($this->absentKeysByClass[$modelClass] ?? []) !== [];
+            || ($this->absentKeysByClass[$modelClass] ?? []) !== []
+            || isset($this->uniqueAbsenceClasses[$modelClass]);
     }
 
     public function flush(?string $modelClass = null): void
@@ -667,6 +680,7 @@ final class IdentityMapStore
             $this->clock = 0;
             $this->entryKeysByClass = [];
             $this->absentKeysByClass = [];
+            $this->uniqueAbsenceClasses = [];
             $this->rawRowIndex = [];
             $this->observabilityEnabled = null;
             $this->rawReadsEnabled = null;
@@ -686,7 +700,7 @@ final class IdentityMapStore
         foreach (array_keys($this->absentKeysByClass[$modelClass] ?? []) as $key) {
             unset($this->absent[$key]);
         }
-        unset($this->absentKeysByClass[$modelClass]);
+        unset($this->absentKeysByClass[$modelClass], $this->uniqueAbsenceClasses[$modelClass]);
 
         $this->uniqueKeyIndex->flush($modelClass);
     }
@@ -897,6 +911,7 @@ final class IdentityMapStore
         $uniqueFp = $this->uniqueKeyIndex->makeFingerprint($connection, $modelClass, $table, $fingerprint, $equalityValues);
 
         $this->uniqueKeyIndex->recordAbsent($uniqueFp);
+        $this->uniqueAbsenceClasses[$modelClass] = true;
     }
 
     /**

@@ -102,7 +102,7 @@ final class RawWriteInterceptor
         // Even a modeled delete reaches other tables through ON DELETE actions
         // that no model event reports, so this runs under suppression too.
         if ($operation === 'delete' || $operation === 'truncate') {
-            $this->invalidateCascades($event->connectionName, $table);
+            $this->invalidateCascades($event->connectionName, $table, truncate: $operation === 'truncate');
         }
 
         if (self::$suppressionDepth > 0) {
@@ -126,21 +126,28 @@ final class RawWriteInterceptor
     /**
      * Flush every class with cached state whose rows a delete from $table may
      * have changed through a foreign key: cascaded away, or nulled or defaulted.
+     *
+     * The FK walk runs on the delete's connection whatever the class's default
+     * connection, because cached state isn't keyed by connection; a class that
+     * shares a table name on another connection is over-invalidated, as raw
+     * writes are.
      */
-    private function invalidateCascades(string $connectionName, string $table): void
+    private function invalidateCascades(string $connectionName, string $table, bool $truncate): void
     {
         foreach (array_keys(self::$registered) as $class) {
-            if (! $this->store->hasStateFor($class) && ! $this->registry->hasStateFor($class)) {
+            if (! $this->store->hasStateFor($class)
+                && ! $this->registry->hasStateFor($class)
+                && ! $this->graph->hasStateFor($class)) {
                 continue;
             }
 
-            $instance = new $class;
+            $childTable = ModelMetadata::table(new $class);
 
-            if ($instance->getConnection()->getName() !== $connectionName) {
-                continue;
-            }
-
-            $reach = $this->schema->tablesWhoseDeletesReach($connectionName, ModelMetadata::table($instance));
+            // PostgreSQL's TRUNCATE ... CASCADE empties every referencing table,
+            // whatever its ON DELETE action.
+            $reach = $truncate
+                ? $this->schema->tablesWhoseTruncatesReach($connectionName, $childTable)
+                : $this->schema->tablesWhoseDeletesReach($connectionName, $childTable);
 
             if (! isset($reach[$table])) {
                 continue;

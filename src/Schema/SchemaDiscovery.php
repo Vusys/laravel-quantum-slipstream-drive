@@ -27,6 +27,9 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
     /** @var array<string, array<string, true>> */
     private array $deleteReachCache = [];
 
+    /** @var array<string, array<string, true>> */
+    private array $truncateReachCache = [];
+
     /**
      * @param  class-string<Model>  $modelClass
      * @return list<list<string>>
@@ -110,12 +113,47 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
         return $this->deleteReachCache[$cacheKey] ??= $this->collectReach($connectionName, $table, onlyCascades: false, visiting: []);
     }
 
+    /**
+     * Tables whose truncation can empty $table: any table it references, at
+     * any depth, since PostgreSQL's TRUNCATE ... CASCADE follows every foreign
+     * key whatever its ON DELETE action.
+     *
+     * @return array<string, true>
+     */
+    public function tablesWhoseTruncatesReach(?string $connectionName, string $table): array
+    {
+        $cacheKey = ($connectionName ?? '__default__').':'.$table;
+
+        return $this->truncateReachCache[$cacheKey] ??= $this->collectReferenced($connectionName, $table, visiting: []);
+    }
+
     public function flush(): void
     {
         $this->uniqueIndexCache = [];
         $this->columnSemanticsCache = [];
         $this->foreignKeyCache = [];
         $this->deleteReachCache = [];
+        $this->truncateReachCache = [];
+    }
+
+    /**
+     * @param  array<string, true>  $visiting
+     * @return array<string, true>
+     */
+    private function collectReferenced(?string $connectionName, string $table, array $visiting): array
+    {
+        $visiting[$table] = true;
+        $reach = [];
+
+        foreach ($this->foreignKeysOf($connectionName, $table) as [$parent]) {
+            $reach[$parent] = true;
+
+            if (! isset($visiting[$parent])) {
+                $reach += $this->collectReferenced($connectionName, $parent, $visiting);
+            }
+        }
+
+        return $reach;
     }
 
     /**
