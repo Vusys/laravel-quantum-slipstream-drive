@@ -110,7 +110,7 @@ final class MemoryMorphTo extends MorphTo
             /** @var TRelatedModel $cached */
             $cached = $entry->model;
 
-            return $cached;
+            return ModelMetadata::servedAlone($cached);
         }
 
         return parent::getResults();
