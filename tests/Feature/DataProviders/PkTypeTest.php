@@ -152,9 +152,10 @@ final class PkTypeTest extends TestCase
         $model = $this->createModel($modelClass);
         $key = $model->getKey();
 
-        $modelClass::find($key);
-        $model->delete();
-        $model->restore();
+        // The read-back instance: a created model lacks the database's defaults.
+        $read = $modelClass::query()->whereKey($key)->firstOrFail();
+        $read->delete();
+        $read->restore();
 
         $queries = 0;
         DB::listen(function () use (&$queries): void {
