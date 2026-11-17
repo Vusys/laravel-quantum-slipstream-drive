@@ -142,9 +142,12 @@ final class RawBuilderInvalidationTest extends TestCase
             static fn (Explanation $e): bool => $e->type === PlanType::RawWriteInvalidation,
         ));
 
-        $this->assertNotEmpty($raw, 'a raw write must emit a RawWriteInvalidation explanation');
-        $this->assertSame(User::class, $raw[0]->modelClass);
-        $this->assertTrue($raw[0]->sqlExecuted);
+        // Every class registered on `users` is flushed (TraitHostedUser too, once any
+        // earlier test has booted it), so look for User's rather than the first.
+        $forUser = array_values(array_filter($raw, static fn (Explanation $e): bool => $e->modelClass === User::class));
+
+        $this->assertNotEmpty($forUser, 'a raw write must emit a RawWriteInvalidation explanation');
+        $this->assertTrue($forUser[0]->sqlExecuted);
     }
 
     #[Test]
