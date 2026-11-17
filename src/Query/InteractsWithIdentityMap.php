@@ -414,7 +414,7 @@ trait InteractsWithIdentityMap
                     $this->eagerLoadRelations([$cached]);
                 }
 
-                return $cached;
+                return ModelMetadata::servedAlone($cached);
             }
         }
 
@@ -478,6 +478,21 @@ trait InteractsWithIdentityMap
      */
     #[\Override]
     public function getModels($columns = ['*']): array
+    {
+        $models = $this->resolveModels($columns);
+
+        if (count($models) === 1) {
+            ModelMetadata::servedAlone(reset($models));
+        }
+
+        return $models;
+    }
+
+    /**
+     * @param  list<string>|string  $columns
+     * @return array<int, TModel>
+     */
+    private function resolveModels(array|string $columns): array
     {
         if ($this->bypassesIdentityMap()) {
             return parent::getModels($columns);
@@ -1379,7 +1394,7 @@ trait InteractsWithIdentityMap
                     $this->eagerLoadRelations([$sorted]);
                 }
 
-                return $sorted;
+                return ModelMetadata::servedAlone($sorted);
             }
         }
 
@@ -1435,7 +1450,7 @@ trait InteractsWithIdentityMap
                 $this->eagerLoadRelations([$coveredModels[0]]);
             }
 
-            return $coveredModels[0];
+            return ModelMetadata::servedAlone($coveredModels[0]);
         }
 
         return parent::sole($columns);

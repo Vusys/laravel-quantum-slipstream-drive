@@ -47,6 +47,24 @@ final class ModelMetadata
         return array_key_exists($model->getKeyName(), $model->getAttributes()) ? $model->getKey() : null;
     }
 
+    /**
+     * A model returned on its own may lazy-load, as Laravel's hydrate() leaves a
+     * one-row result under `Model::preventLazyLoading()`. A cached instance may
+     * have come from a many-row read, which set the flag. Only ever lowered, so
+     * serving from memory never makes a read throw that SQL wouldn't.
+     *
+     * @template T of Model
+     *
+     * @param  T  $model
+     * @return T
+     */
+    public static function servedAlone(Model $model): Model
+    {
+        $model->preventsLazyLoading = false;
+
+        return $model;
+    }
+
     public static function connection(Model $model): string
     {
         return $model->getConnection()->getName() ?? 'default';

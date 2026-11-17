@@ -119,7 +119,7 @@ final class MemoryBelongsTo extends BelongsTo
 
                     $this->recordGraphEdge($cached);
 
-                    return $cached;
+                    return ModelMetadata::servedAlone($cached);
                 }
             }
         }
