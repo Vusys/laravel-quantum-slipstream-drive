@@ -111,6 +111,20 @@ final class AllModelsTest extends TestCase
     }
 
     #[Test]
+    public function an_absence_recorded_before_any_model_event_is_invalidated_by_a_raw_insert(): void
+    {
+        // The first thing this process does with PlainCountry is miss: an absence is cached with
+        // no model event fired, so nothing has registered the class with the raw-write hook yet.
+        $this->assertNull(PlainCountry::query()->find(999));
+
+        DB::table('countries')->insert(['id' => 999, 'name' => 'Iceland']);
+
+        $found = PlainCountry::query()->whereKey(999)->first();
+        $this->assertInstanceOf(PlainCountry::class, $found);
+        $this->assertSame('Iceland', $found->name);
+    }
+
+    #[Test]
     public function a_delete_is_seen_by_the_next_find(): void
     {
         $alice = $this->plainUser();

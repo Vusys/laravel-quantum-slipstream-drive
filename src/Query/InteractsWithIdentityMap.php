@@ -64,6 +64,25 @@ trait InteractsWithIdentityMap
     /** @var list<PendingHasRewrite> */
     private array $pendingHasRewrites = [];
 
+    /**
+     * Registers the model with the raw-write hook before this builder can cache anything. A
+     * first lookup that misses records an absence with no model event fired, and a model that
+     * is only ever registered by its events (all-models mode) would otherwise leave that absence
+     * beyond the reach of a raw insert into its table.
+     *
+     * @template TModelNew of Model
+     *
+     * @param  TModelNew  $model
+     * @return static<TModelNew>
+     */
+    #[\Override]
+    public function setModel(Model $model)
+    {
+        RawWriteInterceptor::register($model::class);
+
+        return parent::setModel($model);
+    }
+
     public function __construct(QueryBuilder $query)
     {
         parent::__construct($query);

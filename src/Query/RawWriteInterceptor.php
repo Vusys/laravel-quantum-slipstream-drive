@@ -84,7 +84,17 @@ final class RawWriteInterceptor
     /** @param class-string<Model> $modelClass */
     public function registerModel(string $modelClass): void
     {
-        // All-models mode registers on every model event; only a new class resets the table map.
+        self::register($modelClass);
+    }
+
+    /**
+     * Registration is process-wide, like the registry it fills, so a builder can do it the
+     * moment it is given its model, without the container. Only a new class resets the table map.
+     *
+     * @param  class-string<Model>  $modelClass
+     */
+    public static function register(string $modelClass): void
+    {
         if (isset(self::$registered[$modelClass])) {
             return;
         }
