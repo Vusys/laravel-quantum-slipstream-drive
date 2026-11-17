@@ -4,6 +4,10 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ## \[Unreleased\]
 
+## \[0.1.0\] - 2026-11-17
+
+First release. A scoped Eloquent identity map, opted into per model with `HasIdentityMap`, that serves redundant reads within a request or job from memory and keeps itself consistent through saves, mass writes, raw writes, transactions and foreign-key cascades. The fixes below were found by running a strict-mode app's 6,029-test suite with the map on every model (#153).
+
 ### Fixed
 
 - Under `Model::preventLazyLoading()`, a model served from memory on its own may lazy-load again. Laravel flags only models hydrated in a result of more than one row. A cached instance first read in a list kept that flag, so finding it alone (`find()`, `first()`, route binding, a lazy `belongsTo`) threw `LazyLoadingViolationException` where a one-row SQL read wouldn't. The flag is only ever cleared, never set, so a read from memory never throws where SQL wouldn't. Found by running an app's suite with the map on every model.
