@@ -64,6 +64,10 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
         $this->registerLifecycleHooks();
         $this->registerRawWriteInterceptor();
         $this->registerRawReadServing();
+
+        if (config('quantum-slipstream-drive.all_models.enabled') === true) {
+            AllModels::install($this->app->make('events'));
+        }
     }
 
     /**

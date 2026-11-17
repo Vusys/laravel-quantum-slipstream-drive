@@ -119,6 +119,23 @@ Controls how the predicate evaluator resolves **string** equality per connection
 
 Set the relevant driver's env var when your MySQL/MariaDB deployment uses a case-insensitive collation (`utf8mb4_unicode_ci`, `utf8mb4_general_ci`, etc.) and you observe predicate-evaluation mismatches. See [Driver semantics](architecture.md#driver-semantics-database_semantics).
 
+## `all_models`
+
+| Key                  | Env                       | Default |
+| -------------------- | ------------------------- | ------- |
+| `all_models.enabled` | `IDENTITY_MAP_ALL_MODELS` | `false` |
+
+The identity map for every Eloquent model, with no `HasIdentityMap` trait. When `enabled` is `true`, Eloquent's default builder (`Model::$builder`) becomes the identity map's, and wildcard model-event listeners keep the map in step with saves, deletes and restores. Raw writes to those models' tables invalidate them, as they do for trait models.
+
+Left alone:
+
+- A model that chooses its own builder, through a `$builder` override, `#[UseEloquentBuilder]` or its own `newEloquentBuilder()`.
+- Everything, if something else already replaced Eloquent's default builder.
+
+The trait adds the in-memory relation classes on top; models without it load relations through the identity map's builder, which still serves a lazy `belongsTo` by key. The setting is read at boot.
+
+See [Every model at once](getting-started.md#every-model-at-once).
+
 ## `raw_reads`
 
 | Key                 | Env                      | Default |

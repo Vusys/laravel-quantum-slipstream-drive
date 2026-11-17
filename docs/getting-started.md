@@ -17,6 +17,18 @@ final class User extends Model
 
 That is the entire setup. The trait overrides the model's Eloquent builder and relation objects, and registers the model-event listeners that keep the map in step with saves, deletes, and restores. Models without the trait are never stored in or served from the map, and queries on them are entirely unaffected.
 
+## Every model at once
+
+To try the map across an app without touching its models, turn on all-models mode:
+
+```dotenv
+IDENTITY_MAP_ALL_MODELS=true
+```
+
+Every Eloquent model then gets the identity map's builder and the same model-event listeners as the trait, so repeat lookups by key are served from memory everywhere. A model that chooses its own builder (a `$builder` override, `#[UseEloquentBuilder]`, or its own `newEloquentBuilder()`, as a nested set does) is left alone. Compose that one by hand, as below.
+
+The trait still adds the in-memory relation classes, which answer `belongsTo` and `hasMany` reads from the map, so add it to your hottest models even with this mode on. The mode is off by default while it is measured on real apps. See [`all_models`](configuration.md#all_models).
+
 ## When another package owns the model's builder
 
 `HasIdentityMap` works by giving the model its own Eloquent builder, and so do other packages: a nested set's tree builder, a temporal package's builder. Two traits that both define `newEloquentBuilder()` collide. Compose the two builders instead. Extend the other package's builder, add `InteractsWithIdentityMap`, and return that from the model:

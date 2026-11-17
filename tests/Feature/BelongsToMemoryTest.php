@@ -111,6 +111,8 @@ final class BelongsToMemoryTest extends TestCase
     #[Test]
     public function belongs_to_falls_back_when_related_has_no_identity_map(): void
     {
+        $this->skipUnderAllModels();
+
         $label = $this->readBack(Label::create(['name' => 'php']));
         $post = $this->readBack(Post::create(['user_id' => User::create(['name' => 'Alice', 'email' => 'a@example.com'])->id, 'label_id' => $label->id, 'title' => 'Hello', 'published' => false]));
 
@@ -131,6 +133,8 @@ final class BelongsToMemoryTest extends TestCase
     {
         // Label lacks HasIdentityMap. Manually putting it in the store must not cause the
         // belongsTo to serve it from memory — the !in_array(HasIdentityMap) guard must fire.
+        $this->skipUnderAllModels();
+
         $user = $this->readBack(User::create(['name' => 'Alice', 'email' => 'alice@example.com']));
         $label = $this->readBack(Label::create(['name' => 'php']));
         $post = $this->readBack(Post::create(['user_id' => $user->id, 'label_id' => $label->id, 'title' => 'Hello', 'published' => false]));
@@ -402,5 +406,13 @@ final class BelongsToMemoryTest extends TestCase
             $reasons,
             'a cached entry in a non-Exists lifecycle state must not be served via backfill either',
         );
+    }
+
+    /** These pin the opt-in default; all-models mode serves Label without the trait, on purpose. */
+    private function skipUnderAllModels(): void
+    {
+        if (config('quantum-slipstream-drive.all_models.enabled') === true) {
+            $this->markTestSkipped('All-models mode serves models without HasIdentityMap.');
+        }
     }
 }
