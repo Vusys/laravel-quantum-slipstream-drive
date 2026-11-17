@@ -4,6 +4,10 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ## \[Unreleased\]
 
+## \[0.2.0\] - 2026-11-17
+
+All-models mode: the identity map for every Eloquent model in an app, with no trait to add.
+
 ### Added
 
 - All-models mode (`all_models.enabled`, env `IDENTITY_MAP_ALL_MODELS`, default off): the identity map for every Eloquent model, with no `HasIdentityMap` trait. Eloquent's default builder becomes the identity map's, and wildcard model-event listeners keep the map in step, including raw-write and foreign-key-cascade invalidation. Models that choose their own builder (a `$builder` override, `#[UseEloquentBuilder]`, or their own `newEloquentBuilder()`) are left alone. On a 6,029-test app that never used the package, the suite stays green with the mode on, with 30% fewer `SELECT`s, 46% less database time and a 30% faster suite (#153). See [Every model at once](docs/getting-started.md#every-model-at-once).
