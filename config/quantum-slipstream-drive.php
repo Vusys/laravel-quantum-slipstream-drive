@@ -200,6 +200,39 @@ return [
     ],
 
     /*
+     * SELECT memo. An identical SELECT (same connection, SQL, bindings and read
+     * or write PDO) run again before anything could have changed its rows is
+     * answered from memory, as fresh copies of the rows. It covers every query,
+     * Eloquent or `DB::table()`, including the ones the identity map can't serve:
+     * a constrained `where()` or a relation query with a pivot.
+     *
+     * Everything is forgotten, across every connection, when any connection runs
+     * anything else (a write, a locking read, a procedure call), when a
+     * transaction begins, commits or rolls back (savepoints included), at request
+     * and job boundaries, and after ttl_ms. A SELECT that reads the clock, a
+     * random number or a sequence, takes an advisory lock or sleeps always runs.
+     * So does a read from the write PDO, which is how Laravel's refresh() and
+     * fresh() read, and anything inside IdentityMap::disabled() or a
+     * withoutIdentityMap() query.
+     *
+     * The TTL is the one bound on staleness from a write by ANOTHER process,
+     * which this process can't see. A loop polling the database more often than
+     * ttl_ms sees another process's change up to ttl_ms late.
+     *
+     *   enabled     — default off. Installs the same connection resolvers as
+     *                 raw_reads; toggling at runtime requires `DB::purge()`.
+     *   ttl_ms      — how long a remembered SELECT stays valid.
+     *   max_rows    — larger results aren't remembered.
+     *   max_entries — oldest entries are dropped beyond this.
+     */
+    'query_memo' => [
+        'enabled' => (bool) env('IDENTITY_MAP_QUERY_MEMO', false),
+        'ttl_ms' => (int) env('IDENTITY_MAP_QUERY_MEMO_TTL_MS', 1000),
+        'max_rows' => 1000,
+        'max_entries' => 500,
+    ],
+
+    /*
      * Streaming decision log. When enabled the package emits an Explanation
      * for every finalised plan, in addition to anything captured by
      * IdentityMap::explain(). Two sinks fire per decision:

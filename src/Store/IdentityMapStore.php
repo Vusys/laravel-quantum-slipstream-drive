@@ -23,6 +23,7 @@ use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
 use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Query\SelectMemo;
 use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 use Vusys\QuantumSlipstreamDrive\Support\EvictionBatch;
 
@@ -619,6 +620,7 @@ final class IdentityMapStore
         $mapKey = $this->makeKey($model, $key, $fingerprint);
 
         unset($this->entries[$mapKey], $this->absent[$mapKey]);
+        SelectMemo::flush();
     }
 
     /**
@@ -688,6 +690,7 @@ final class IdentityMapStore
             resolve(SchemaDiscovery::class)->flush();
             ScopeFingerprinter::flush();
             ModelMetadata::flush();
+            SelectMemo::flush();
 
             return;
         }
@@ -703,6 +706,7 @@ final class IdentityMapStore
         unset($this->absentKeysByClass[$modelClass], $this->uniqueAbsenceClasses[$modelClass]);
 
         $this->uniqueKeyIndex->flush($modelClass);
+        SelectMemo::flush();
     }
 
     /**
