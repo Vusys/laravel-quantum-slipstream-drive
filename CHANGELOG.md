@@ -4,6 +4,10 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ## \[Unreleased\]
 
+### Fixed
+
+- `find()` keeps Laravel's conditional return type: the model or `null` for a single id, a `Collection` for an array or `Arrayable` of ids. The identity-map override declared `Model|Collection|null` for every call, so callers had to narrow the result of `find($id)` before using it. Found in a Chain of Command controller.
+
 ### Changed
 
 - Cap breaches now evict the least-recently-used tenth of the affected store instead of flushing it entirely ([#102](https://github.com/Vusys/laravel-quantum-slipstream-drive/issues/102)). Applies to the identity-map store (`store_caps.max_entries`), unique-key index (`store_caps.max_unique_keys`), coverage registry (`store_caps.max_coverage_entries`), and identity graph (`relation_graph.max_edges` / `max_coverage_entries`). Hot entries survive sustained churn; correctness is preserved because every consumer re-validates its references at serve time (a coverage region that lost an entry falls through to SQL), coverage regions referencing an evicted row are pruned with it, and an evicted edge bucket takes its same-key coverage grant with it. The key that tripped the cap is now stored rather than dropped.
