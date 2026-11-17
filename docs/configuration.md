@@ -148,6 +148,19 @@ Off by default and risk-managed: enabling installs a per-driver connection resol
 
 See [Raw read-serving](raw-reads.md).
 
+## `query_memo`
+
+| Key                       | Env                              | Default |
+| ------------------------- | -------------------------------- | ------- |
+| `query_memo.enabled`      | `IDENTITY_MAP_QUERY_MEMO`        | `false` |
+| `query_memo.ttl_ms`       | `IDENTITY_MAP_QUERY_MEMO_TTL_MS` | `1000`  |
+| `query_memo.max_rows`     |                                  | `1000`  |
+| `query_memo.max_entries`  |                                  | `500`   |
+
+Answer an identical SELECT from memory until anything could have changed its rows: any other statement, a transaction event, a request or job boundary, or `ttl_ms`. The TTL bounds staleness from writes by other processes. Reads from the write PDO (`refresh()`, `fresh()`) and SELECTs that read the clock, randomness, a sequence or a lock always run.
+
+See [SELECT memo](query-memo.md).
+
 ## `observability`
 
 | Key                     | Env                                  | Default                      |
