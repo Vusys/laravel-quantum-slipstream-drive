@@ -17,6 +17,7 @@ use Vusys\QuantumSlipstreamDrive\Tests\Factories\UserFactory;
 
 /**
  * @property int $id
+ * @property int|null $country_id
  * @property string $name
  * @property string $email
  * @property bool $active

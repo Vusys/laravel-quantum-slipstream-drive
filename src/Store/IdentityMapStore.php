@@ -652,6 +652,13 @@ final class IdentityMapStore
         unset($this->absentKeysByClass[$modelClass]);
     }
 
+    /** Whether anything is cached for the class: a row or an absence. */
+    public function hasStateFor(string $modelClass): bool
+    {
+        return ($this->entryKeysByClass[$modelClass] ?? []) !== []
+            || ($this->absentKeysByClass[$modelClass] ?? []) !== [];
+    }
+
     public function flush(?string $modelClass = null): void
     {
         if ($modelClass === null) {

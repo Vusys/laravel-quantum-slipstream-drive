@@ -83,6 +83,11 @@ final class CoverageRegistry
         return null;
     }
 
+    public function hasStateFor(string $modelClass): bool
+    {
+        return ($this->entries[$modelClass] ?? []) !== [];
+    }
+
     public function flushModelClass(string $modelClass): void
     {
         $this->count -= count($this->entries[$modelClass] ?? []);

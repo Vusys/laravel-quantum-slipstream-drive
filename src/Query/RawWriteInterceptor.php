@@ -10,6 +10,7 @@ use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
 use Vusys\QuantumSlipstreamDrive\Enums\PlanType;
 use Vusys\QuantumSlipstreamDrive\Explanation;
 use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
+use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 /**
@@ -45,6 +46,7 @@ final class RawWriteInterceptor
         private readonly IdentityMapStore $store,
         private readonly CoverageRegistry $registry,
         private readonly IdentityGraph $graph,
+        private readonly SchemaDiscovery $schema,
     ) {}
 
     /**
@@ -88,10 +90,6 @@ final class RawWriteInterceptor
 
     public function handle(QueryExecuted $event): void
     {
-        if (self::$suppressionDepth > 0) {
-            return;
-        }
-
         $parsed = $this->parseWrite($event->sql);
 
         if ($parsed === null) {
@@ -100,6 +98,16 @@ final class RawWriteInterceptor
 
         [$operation, $rawTable] = $parsed;
         $table = $this->stripPrefix($rawTable, $event->connection->getTablePrefix());
+
+        // Even a modeled delete reaches other tables through ON DELETE actions
+        // that no model event reports, so this runs under suppression too.
+        if ($operation === 'delete' || $operation === 'truncate') {
+            $this->invalidateCascades($event->connectionName, $table);
+        }
+
+        if (self::$suppressionDepth > 0) {
+            return;
+        }
 
         foreach ($this->classesForTable($table) as $class) {
             $this->store->flush($class);
@@ -110,6 +118,42 @@ final class RawWriteInterceptor
                 type: PlanType::RawWriteInvalidation,
                 modelClass: $class,
                 reason: "Raw builder {$operation} on `{$table}` bypassed Eloquent; conservatively flushed cached state for {$class}.",
+                sqlExecuted: true,
+            ));
+        }
+    }
+
+    /**
+     * Flush every class with cached state whose rows a delete from $table may
+     * have changed through a foreign key: cascaded away, or nulled or defaulted.
+     */
+    private function invalidateCascades(string $connectionName, string $table): void
+    {
+        foreach (array_keys(self::$registered) as $class) {
+            if (! $this->store->hasStateFor($class) && ! $this->registry->hasStateFor($class)) {
+                continue;
+            }
+
+            $instance = new $class;
+
+            if ($instance->getConnection()->getName() !== $connectionName) {
+                continue;
+            }
+
+            $reach = $this->schema->tablesWhoseDeletesReach($connectionName, ModelMetadata::table($instance));
+
+            if (! isset($reach[$table])) {
+                continue;
+            }
+
+            $this->store->flush($class);
+            $this->registry->flushModelClass($class);
+            $this->graph->invalidateModelClass($class);
+
+            $this->store->capture(new Explanation(
+                type: PlanType::RawWriteInvalidation,
+                modelClass: $class,
+                reason: "A delete on `{$table}` can change {$class}'s rows through a foreign key's ON DELETE action; flushed its cached state.",
                 sqlExecuted: true,
             ));
         }
