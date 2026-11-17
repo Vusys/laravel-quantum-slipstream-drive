@@ -261,6 +261,14 @@ Eviction triggers a coverage flush for the model class, since any previously-rec
 
 Writes issued through the modeled Eloquent path — model saves, `$model->delete()`, and bulk `update()`/`delete()` — wrap their SQL in a suppression guard, so the hook ignores them: those paths already keep the cache consistent, and precisely. Only genuine raw-builder bypasses trigger the conservative flush. Table matching is by name (prefix-stripped) across every registered model, so a shared table name on multiple connections is over-invalidated rather than missed.
 
+## Foreign-key cascades
+
+A delete can change rows in *other* tables through a foreign key's `ON DELETE CASCADE`, `SET NULL` or `SET DEFAULT`, and no model event reports it. So every `DELETE` or `TRUNCATE` the hook sees runs a cascade check, including the modeled ones it otherwise ignores. For each model class that has cached state on the same connection, schema discovery walks up the class's foreign keys: its parents with an acting `ON DELETE`, and whatever cascades deletes to those parents. If the deleted table is among them, the class is flushed.
+
+The walk is cached per request and only runs for classes with cached state, so a delete costs nothing extra when nothing could be affected. It needs [schema discovery](configuration.md#schema_discovery); with discovery off, cascades go unseen.
+
+Not covered: `ON UPDATE` actions, which only fire when a referenced key changes, and triggers.
+
 ## See also
 
 - [Observability](observability.md) — the `explain()` API, the `PlanType` catalogue, and the streaming decision log.

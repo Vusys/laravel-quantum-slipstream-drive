@@ -375,6 +375,15 @@ final class IdentityGraph
         }
     }
 
+    /** Whether any edge or coverage may reference the class (the reverse indexes are hints, so it may over-report). */
+    public function hasStateFor(string $modelClass): bool
+    {
+        return isset($this->edgesBucketsByClass[$modelClass])
+            || isset($this->coverageKeysByClass[$modelClass])
+            || isset($this->pivotEdgesBucketsByClass[$modelClass])
+            || isset($this->pivotCoverageKeysByClass[$modelClass]);
+    }
+
     public function invalidateModelClass(string $modelClass): void
     {
         $needle = '|'.$modelClass.'|';

@@ -21,6 +21,15 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
     /** @var array<string, array<string, ColumnSemantics>> */
     private array $columnSemanticsCache = [];
 
+    /** @var array<string, list<array{string, string}>> */
+    private array $foreignKeyCache = [];
+
+    /** @var array<string, array<string, true>> */
+    private array $deleteReachCache = [];
+
+    /** @var array<string, array<string, true>> */
+    private array $truncateReachCache = [];
+
     /**
      * @param  class-string<Model>  $modelClass
      * @return list<list<string>>
@@ -89,10 +98,135 @@ final class SchemaDiscovery implements ColumnSemanticsResolver
         return $semantics[$column] ?? ColumnSemantics::unknown();
     }
 
+    /**
+     * Tables whose deletes can change rows of $table through a foreign key's ON
+     * DELETE action: a parent whose delete cascades to, or nulls or defaults,
+     * this table's rows, and any table whose delete cascades to such a parent.
+     * Empty when discovery is off or introspection fails.
+     *
+     * @return array<string, true>
+     */
+    public function tablesWhoseDeletesReach(?string $connectionName, string $table): array
+    {
+        $cacheKey = ($connectionName ?? '__default__').':'.$table;
+
+        return $this->deleteReachCache[$cacheKey] ??= $this->collectReach($connectionName, $table, onlyCascades: false, visiting: []);
+    }
+
+    /**
+     * Tables whose truncation can empty $table: any table it references, at
+     * any depth, since PostgreSQL's TRUNCATE ... CASCADE follows every foreign
+     * key whatever its ON DELETE action.
+     *
+     * @return array<string, true>
+     */
+    public function tablesWhoseTruncatesReach(?string $connectionName, string $table): array
+    {
+        $cacheKey = ($connectionName ?? '__default__').':'.$table;
+
+        return $this->truncateReachCache[$cacheKey] ??= $this->collectReferenced($connectionName, $table, visiting: []);
+    }
+
     public function flush(): void
     {
         $this->uniqueIndexCache = [];
         $this->columnSemanticsCache = [];
+        $this->foreignKeyCache = [];
+        $this->deleteReachCache = [];
+        $this->truncateReachCache = [];
+    }
+
+    /**
+     * @param  array<string, true>  $visiting
+     * @return array<string, true>
+     */
+    private function collectReferenced(?string $connectionName, string $table, array $visiting): array
+    {
+        $visiting[$table] = true;
+        $reach = [];
+
+        foreach ($this->foreignKeysOf($connectionName, $table) as [$parent]) {
+            $reach[$parent] = true;
+
+            if (! isset($visiting[$parent])) {
+                $reach += $this->collectReferenced($connectionName, $parent, $visiting);
+            }
+        }
+
+        return $reach;
+    }
+
+    /**
+     * @param  array<string, true>  $visiting
+     * @return array<string, true>
+     */
+    private function collectReach(?string $connectionName, string $table, bool $onlyCascades, array $visiting): array
+    {
+        $visiting[$table] = true;
+        $reach = [];
+
+        foreach ($this->foreignKeysOf($connectionName, $table) as [$parent, $onDelete]) {
+            $acts = $onlyCascades
+                ? $onDelete === 'cascade'
+                : in_array($onDelete, ['cascade', 'set null', 'set default'], true);
+
+            if (! $acts) {
+                continue;
+            }
+
+            $reach[$parent] = true;
+
+            // Whatever deletes the parent's rows by cascade reaches this table too.
+            if (! isset($visiting[$parent])) {
+                $reach += $this->collectReach($connectionName, $parent, onlyCascades: true, visiting: $visiting);
+            }
+        }
+
+        return $reach;
+    }
+
+    /**
+     * The table's foreign keys as [referenced table, on-delete action].
+     *
+     * @return list<array{string, string}>
+     */
+    private function foreignKeysOf(?string $connectionName, string $table): array
+    {
+        if (config('quantum-slipstream-drive.schema_discovery.enabled', true) === false) {
+            return [];
+        }
+
+        $cacheKey = ($connectionName ?? '__default__').':'.$table;
+
+        if (isset($this->foreignKeyCache[$cacheKey])) {
+            return $this->foreignKeyCache[$cacheKey];
+        }
+
+        try {
+            $foreignKeys = $this->silently($connectionName, fn (): array => Schema::connection($connectionName)->getForeignKeys($table));
+            $prefix = DB::connection($connectionName)->getTablePrefix();
+        } catch (Throwable) {
+            return $this->foreignKeyCache[$cacheKey] = [];
+        }
+
+        $parsed = [];
+
+        foreach ($foreignKeys as $foreignKey) {
+            $parent = $foreignKey['foreign_table'];
+            $onDelete = $foreignKey['on_delete'];
+
+            if ($onDelete === null) {
+                continue;
+            }
+
+            if ($prefix !== '' && str_starts_with($parent, $prefix)) {
+                $parent = substr($parent, strlen($prefix));
+            }
+
+            $parsed[] = [$parent, strtolower($onDelete)];
+        }
+
+        return $this->foreignKeyCache[$cacheKey] = $parsed;
     }
 
     /**
