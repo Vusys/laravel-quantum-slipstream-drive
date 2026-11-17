@@ -269,6 +269,9 @@ jobs:
       - name: Run Larastan
         run: vendor/bin/phpstan analyse --no-progress --error-format=github
 
+      - name: Type-inference tests
+        run: vendor/bin/phpunit --testsuite PHPStan
+
       - name: Run Rector (dry-run)
         run: vendor/bin/rector process --dry-run --no-progress-bar
 
