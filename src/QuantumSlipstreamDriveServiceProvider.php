@@ -21,6 +21,7 @@ use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
 use Vusys\QuantumSlipstreamDrive\Knowledge\ColumnBackfiller;
 use Vusys\QuantumSlipstreamDrive\Query\RawReadServing;
 use Vusys\QuantumSlipstreamDrive\Query\RawWriteInterceptor;
+use Vusys\QuantumSlipstreamDrive\Query\SelectMemo;
 use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 use Vusys\QuantumSlipstreamDrive\Store\JournalEntry;
@@ -71,16 +72,16 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
     }
 
     /**
-     * When raw read-serving is enabled, install the per-driver connection
-     * resolvers so `DB::table()` reads can be answered from the identity map,
-     * then purge any already-resolved connection so it rebuilds on the swapped
+     * When raw read-serving or the SELECT memo is enabled, install the per-driver
+     * connection resolvers so `DB::table()` reads can be answered from the identity
+     * map and repeated SELECTs from the memo, then purge any already-resolved connection so it rebuilds on the swapped
      * class. Purging is safe here: boot runs before the app issues its first
      * query (and before the test suite migrates), so no live connection state
      * is lost.
      */
     private function registerRawReadServing(): void
     {
-        if (config('quantum-slipstream-drive.raw_reads.enabled') !== true) {
+        if (config('quantum-slipstream-drive.raw_reads.enabled') !== true && config('quantum-slipstream-drive.query_memo.enabled') !== true) {
             return;
         }
 
@@ -206,5 +207,6 @@ class QuantumSlipstreamDriveServiceProvider extends ServiceProvider
         $this->app->make(SchemaDiscovery::class)->flush();
         $this->app->make(IdentityGraph::class)->flush();
         RawWriteInterceptor::resetSuppression();
+        SelectMemo::flush();
     }
 }

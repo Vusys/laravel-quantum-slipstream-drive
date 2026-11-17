@@ -88,5 +88,6 @@ nav:
   - Configuration: configuration.md
   - Architecture & internals: architecture.md
   - Raw read-serving: raw-reads.md
+  - SELECT memo: query-memo.md
   - Observability: observability.md
   - Testing: testing.md

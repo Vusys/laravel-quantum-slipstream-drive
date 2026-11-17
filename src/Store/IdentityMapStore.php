@@ -23,6 +23,7 @@ use Vusys\QuantumSlipstreamDrive\Predicate\PredicateEvaluator;
 use Vusys\QuantumSlipstreamDrive\Predicate\PredicateNode;
 use Vusys\QuantumSlipstreamDrive\Query\ModelMetadata;
 use Vusys\QuantumSlipstreamDrive\Query\ScopeFingerprinter;
+use Vusys\QuantumSlipstreamDrive\Query\SelectMemo;
 use Vusys\QuantumSlipstreamDrive\Schema\SchemaDiscovery;
 use Vusys\QuantumSlipstreamDrive\Support\EvictionBatch;
 
@@ -607,7 +608,21 @@ final class IdentityMapStore
         $this->absentKeysByClass[$modelClass][$mapKey] = true;
     }
 
+    /**
+     * Drops one model's entry, and everything the SELECT memo holds, because whoever calls
+     * this wants the next read to be the database's.
+     */
     public function forget(Model $model): void
+    {
+        $this->evict($model);
+        SelectMemo::flush();
+    }
+
+    /**
+     * Drops one model's entry without touching the SELECT memo: for the package's own use in
+     * the middle of a read, where nothing has changed in the database.
+     */
+    public function evict(Model $model): void
     {
         $key = ModelMetadata::key($model);
 
@@ -688,6 +703,7 @@ final class IdentityMapStore
             resolve(SchemaDiscovery::class)->flush();
             ScopeFingerprinter::flush();
             ModelMetadata::flush();
+            SelectMemo::flush();
 
             return;
         }
@@ -703,6 +719,7 @@ final class IdentityMapStore
         unset($this->absentKeysByClass[$modelClass], $this->uniqueAbsenceClasses[$modelClass]);
 
         $this->uniqueKeyIndex->flush($modelClass);
+        SelectMemo::flush();
     }
 
     /**

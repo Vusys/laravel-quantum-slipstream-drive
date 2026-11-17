@@ -110,7 +110,7 @@ final readonly class ColumnBackfiller
         ));
 
         if (! $fresh instanceof Model) {
-            $this->store->forget($entry->model);
+            $this->store->evict($entry->model);
 
             return false;
         }
@@ -194,7 +194,7 @@ final readonly class ColumnBackfiller
 
             if (! $row instanceof Model) {
                 // The row vanished between coverage capture and now — stale entry.
-                $this->store->forget($entry->model);
+                $this->store->evict($entry->model);
 
                 return false;
             }

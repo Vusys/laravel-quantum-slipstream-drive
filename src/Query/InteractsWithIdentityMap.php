@@ -142,6 +142,20 @@ trait InteractsWithIdentityMap
     }
 
     /**
+     * A query that bypasses the identity map bypasses the SELECT memo too: both are asked
+     * for by a caller wanting the database's answer.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $read
+     * @return T
+     */
+    private function pastTheMemo(Closure $read): mixed
+    {
+        return $this->bypassesIdentityMap() ? SelectMemo::bypassing($read) : $read();
+    }
+
+    /**
      * Run the read as SQL and record its rows as a miss would.
      *
      * @param  list<string>|array<int, string>  $columns
@@ -514,7 +528,7 @@ trait InteractsWithIdentityMap
     private function resolveModels(array|string $columns): array
     {
         if ($this->bypassesIdentityMap()) {
-            return parent::getModels($columns);
+            return $this->pastTheMemo(fn (): mixed => parent::getModels($columns));
         }
 
         // get('name') passes a bare string through; the base query wraps it the same way.
@@ -929,7 +943,7 @@ trait InteractsWithIdentityMap
     public function exists(): bool
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::exists();
+            return $this->pastTheMemo(fn (): mixed => parent::exists());
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1047,7 +1061,7 @@ trait InteractsWithIdentityMap
     public function count(string $columns = '*'): int
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::count($columns);
+            return $this->pastTheMemo(fn (): mixed => parent::count($columns));
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1087,7 +1101,7 @@ trait InteractsWithIdentityMap
     public function sum($column): mixed
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::sum($column);
+            return $this->pastTheMemo(fn (): mixed => parent::sum($column));
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1134,7 +1148,7 @@ trait InteractsWithIdentityMap
     public function min($column): mixed
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::min($column);
+            return $this->pastTheMemo(fn (): mixed => parent::min($column));
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1192,7 +1206,7 @@ trait InteractsWithIdentityMap
     public function max($column): mixed
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::max($column);
+            return $this->pastTheMemo(fn (): mixed => parent::max($column));
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1250,7 +1264,7 @@ trait InteractsWithIdentityMap
     public function avg($column): mixed
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::avg($column);
+            return $this->pastTheMemo(fn (): mixed => parent::avg($column));
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1317,7 +1331,7 @@ trait InteractsWithIdentityMap
     public function pluck($column, $key = null): SupportCollection
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::pluck($column, $key);
+            return $this->pastTheMemo(fn (): mixed => parent::pluck($column, $key));
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1368,7 +1382,7 @@ trait InteractsWithIdentityMap
     public function first($columns = ['*']): ?Model
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::first($columns);
+            return $this->pastTheMemo(fn (): mixed => parent::first($columns));
         }
 
         $store = resolve(IdentityMapStore::class);
@@ -1428,7 +1442,7 @@ trait InteractsWithIdentityMap
     public function sole($columns = ['*']): Model
     {
         if ($this->bypassesIdentityMap() || $this->readsThrough()) {
-            return parent::sole($columns);
+            return $this->pastTheMemo(fn (): mixed => parent::sole($columns));
         }
 
         $store = resolve(IdentityMapStore::class);
