@@ -157,6 +157,20 @@ return [
     ],
 
     /*
+     * All-models mode: the identity map for every Eloquent model, with no
+     * HasIdentityMap trait. Eloquent's default builder becomes the identity
+     * map's, and model events keep the map in step. Models that choose their
+     * own builder (a `$builder` override, #[UseEloquentBuilder], or their own
+     * newEloquentBuilder()) are left alone. The trait still adds the in-memory
+     * relation classes on top.
+     *
+     *   enabled — default off while it's measured on real apps.
+     */
+    'all_models' => [
+        'enabled' => (bool) env('IDENTITY_MAP_ALL_MODELS', false),
+    ],
+
+    /*
      * Raw query-builder read serving. `DB::table('users')->find(1)` bypasses
      * Eloquent entirely, so by default it always issues SQL even when the row is
      * already cached in the identity map. When enabled, the package intercepts

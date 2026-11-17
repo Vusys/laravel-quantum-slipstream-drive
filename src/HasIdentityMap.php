@@ -12,9 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Vusys\QuantumSlipstreamDrive\Coverage\CoverageRegistry;
-use Vusys\QuantumSlipstreamDrive\Graph\IdentityGraph;
-use Vusys\QuantumSlipstreamDrive\Graph\ModelIdentity;
 use Vusys\QuantumSlipstreamDrive\Query\IdentityMapBuilder;
 use Vusys\QuantumSlipstreamDrive\Query\RawWriteInterceptor;
 use Vusys\QuantumSlipstreamDrive\Relations\MemoryBelongsTo;
@@ -22,7 +19,6 @@ use Vusys\QuantumSlipstreamDrive\Relations\MemoryBelongsToMany;
 use Vusys\QuantumSlipstreamDrive\Relations\MemoryHasMany;
 use Vusys\QuantumSlipstreamDrive\Relations\MemoryMorphMany;
 use Vusys\QuantumSlipstreamDrive\Relations\MemoryMorphTo;
-use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
 
 trait HasIdentityMap
 {
@@ -150,47 +146,13 @@ trait HasIdentityMap
             $app->make(RawWriteInterceptor::class)->registerModel(static::class);
         }
 
-        static::retrieved(function (Model $model): void {
-            resolve(IdentityMapStore::class)->remember($model);
-        });
-
-        static::saved(function (Model $model): void {
-            resolve(IdentityMapStore::class)->afterSaved($model);
-            $graph = resolve(IdentityGraph::class);
-
-            if ($model->wasRecentlyCreated) {
-                resolve(CoverageRegistry::class)->flushModelClass($model::class);
-                $graph->invalidateModelClass($model::class);
-            } else {
-                $changedColumns = array_keys($model->getChanges());
-
-                if ($changedColumns !== []) {
-                    resolve(CoverageRegistry::class)->flushByColumns($model::class, $changedColumns);
-                }
-
-                $identity = ModelIdentity::fromModel($model);
-                if ($identity instanceof ModelIdentity) {
-                    $graph->invalidateModel($identity);
-                }
-            }
-        });
-
-        static::deleted(function (Model $model): void {
-            resolve(IdentityMapStore::class)->afterDeleted($model);
-            resolve(CoverageRegistry::class)->flushModelClass($model::class);
-            resolve(IdentityGraph::class)->invalidateModelClass($model::class);
-        });
+        static::retrieved(ModelLifecycle::retrieved(...));
+        static::saved(ModelLifecycle::saved(...));
+        static::deleted(ModelLifecycle::deleted(...));
 
         if (in_array(SoftDeletes::class, class_uses_recursive(static::class), true)) {
-            static::registerModelEvent('restored', function (Model $model): void {
-                resolve(IdentityMapStore::class)->afterSaved($model);
-                resolve(CoverageRegistry::class)->flushModelClass($model::class);
-                resolve(IdentityGraph::class)->invalidateModelClass($model::class);
-            });
-
-            static::registerModelEvent('forceDeleted', function (Model $model): void {
-                resolve(IdentityMapStore::class)->afterForceDeleted($model);
-            });
+            static::registerModelEvent('restored', ModelLifecycle::restored(...));
+            static::registerModelEvent('forceDeleted', ModelLifecycle::forceDeleted(...));
         }
     }
 }

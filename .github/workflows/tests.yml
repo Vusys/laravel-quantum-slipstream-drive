@@ -320,6 +320,7 @@ jobs:
         env:
           DB_CONNECTION: sqlite
           IDENTITY_MAP_PARTIAL_MODELS: backfill_missing_columns
+          IDENTITY_MAP_ALL_MODELS: 'true'
         run: vendor/bin/phpunit
 
   gate:
