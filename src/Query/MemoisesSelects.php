@@ -47,6 +47,13 @@ trait MemoisesSelects
         return $rows;
     }
 
+    /**
+     * @param  string  $query
+     * @param  array<array-key, mixed>  $bindings
+     * @param  bool  $useReadPdo
+     * @param  array<array-key, mixed>  $fetchUsing
+     * @return array<array-key, mixed>
+     */
     #[\Override]
     public function selectResultSets($query, $bindings = [], $useReadPdo = true, array $fetchUsing = [])
     {
@@ -55,6 +62,13 @@ trait MemoisesSelects
         return parent::selectResultSets($query, $bindings, $useReadPdo, $fetchUsing);
     }
 
+    /**
+     * @param  string  $query
+     * @param  array<array-key, mixed>  $bindings
+     * @param  bool  $useReadPdo
+     * @param  array<array-key, mixed>  $fetchUsing
+     * @return \Generator<int, \stdClass>
+     */
     #[\Override]
     public function cursor($query, $bindings = [], $useReadPdo = true, array $fetchUsing = [])
     {
@@ -63,6 +77,11 @@ trait MemoisesSelects
         return parent::cursor($query, $bindings, $useReadPdo, $fetchUsing);
     }
 
+    /**
+     * @param  string  $query
+     * @param  array<array-key, mixed>  $bindings
+     * @return bool
+     */
     #[\Override]
     public function statement($query, $bindings = [])
     {
@@ -71,6 +90,11 @@ trait MemoisesSelects
         return parent::statement($query, $bindings);
     }
 
+    /**
+     * @param  string  $query
+     * @param  array<array-key, mixed>  $bindings
+     * @return int
+     */
     #[\Override]
     public function affectingStatement($query, $bindings = [])
     {
@@ -90,6 +114,9 @@ trait MemoisesSelects
     /**
      * Begin, commit and roll back, including savepoints: a rollback undoes writes whose
      * results may already have been remembered.
+     *
+     * @param  string  $event
+     * @return array<array-key, mixed>|null
      */
     #[\Override]
     protected function fireConnectionEvent($event)
