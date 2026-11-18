@@ -4,6 +4,10 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ## \[Unreleased\]
 
+## \[0.3.0\] - 2026-11-18
+
+The SELECT memo: an identical SELECT is answered from memory until anything could have changed its rows.
+
 ### Added
 
 - SELECT memo (`query_memo.enabled`, env `IDENTITY_MAP_QUERY_MEMO`, default off): an identical SELECT (same connection, SQL and bindings) is answered from memory, as fresh copies of its rows, until anything could have changed them. It covers the queries the identity map can't serve by key, such as constrained `where()`s, pivot relation queries and partial `DB::table()` reads. Everything is forgotten on any other statement on any connection, on every transaction event including savepoints, at request and job boundaries, on `IdentityMap::flush()`/`forget()`, and after `ttl_ms` (default 1000), which bounds staleness from other processes' writes. Reads from the write PDO (`refresh()`, `fresh()`, `useWritePdo()`), `withoutIdentityMap()` queries, `IdentityMap::disabled()`, `DB::pretend()`, and SELECTs that read the clock, randomness, a sequence or a lock always run. On per-request crawls with all-models mode on, it saved 13.6% of Koel's queries, 8.0% of Monica's and 3.9% of BookStack's, with no request worse and identical responses (#153). See [SELECT memo](docs/query-memo.md).
