@@ -8,6 +8,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Vusys\QuantumSlipstreamDrive\Query\IdentityMapBuilder;
+use Vusys\QuantumSlipstreamDrive\Query\InteractsWithIdentityMap;
 use Vusys\QuantumSlipstreamDrive\Query\RawWriteInterceptor;
 
 /**
@@ -19,7 +20,8 @@ use Vusys\QuantumSlipstreamDrive\Query\RawWriteInterceptor;
  *  1. Eloquent's default builder class (`Model::$builder`) becomes
  *     {@see IdentityMapBuilder}. A model that already chooses its own builder
  *     (a `$builder` override, `#[UseEloquentBuilder]`, or its own
- *     `newEloquentBuilder()`) keeps it and is left alone.
+ *     `newEloquentBuilder()`) keeps it, and is covered only if that builder
+ *     uses {@see InteractsWithIdentityMap}.
  *  2. Wildcard model-event listeners keep the store in step, exactly as the
  *     trait's per-class listeners do. They skip trait models, which have their
  *     own, and models whose builder isn't the identity map's.
@@ -69,7 +71,7 @@ final class AllModels
     public static function covers(Model $model): bool
     {
         return self::$covered[$model::class] ??= ! in_array(HasIdentityMap::class, class_uses_recursive($model), true)
-            && $model->newModelQuery() instanceof IdentityMapBuilder;
+            && in_array(InteractsWithIdentityMap::class, class_uses_recursive($model->newModelQuery()), true);
     }
 
     /**

@@ -129,7 +129,7 @@ The identity map for every Eloquent model, with no `HasIdentityMap` trait. When 
 
 Left alone:
 
-- A model that chooses its own builder, through a `$builder` override, `#[UseEloquentBuilder]` or its own `newEloquentBuilder()`.
+- A model that chooses its own builder, through a `$builder` override, `#[UseEloquentBuilder]` or its own `newEloquentBuilder()`, unless that builder uses `InteractsWithIdentityMap`. See [When another package owns the model's builder](getting-started.md#when-another-package-owns-the-models-builder).
 - Everything, if something else already replaced Eloquent's default builder.
 
 The trait adds the in-memory relation classes on top; models without it load relations through the identity map's builder, which still serves a lazy `belongsTo` by key. The setting is read at boot.
