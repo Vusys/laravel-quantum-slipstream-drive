@@ -4,6 +4,10 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ## \[Unreleased\]
 
+### Fixed
+
+- All-models mode covers a model whose own builder composes `InteractsWithIdentityMap`. Such a model got no model-event listeners, because only the package's own builder class was recognised, so nothing it read was ever cached. A model with its own builder now joins the mode by adding the trait to that builder. On Koel, whose core models all choose their own builders, adding it to two base builders took a crawl with all-models and the memo on from 357 to 324 queries (−9.2%), with no request worse and identical responses.
+
 ## \[0.3.0\] - 2026-11-18
 
 The SELECT memo: an identical SELECT is answered from memory until this process changes anything, or until its TTL passes, which bounds how late another process's writes are seen.

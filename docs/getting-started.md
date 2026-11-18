@@ -25,7 +25,7 @@ To try the map across an app without touching its models, turn on all-models mod
 IDENTITY_MAP_ALL_MODELS=true
 ```
 
-Every Eloquent model then gets the identity map's builder and the same model-event listeners as the trait, so repeat lookups by key are served from memory everywhere. A model that chooses its own builder (a `$builder` override, `#[UseEloquentBuilder]`, or its own `newEloquentBuilder()`, as a nested set does) is left alone. Compose that one by hand, as below.
+Every Eloquent model then gets the identity map's builder and the same model-event listeners as the trait, so repeat lookups by key are served from memory everywhere. A model that chooses its own builder (a `$builder` override, `#[UseEloquentBuilder]`, or its own `newEloquentBuilder()`, as a nested set does) is left alone. To cover it too, add `InteractsWithIdentityMap` to its builder, as below; the model needs no trait, because this mode keeps it in step.
 
 The trait still adds the in-memory relation classes, which answer `belongsTo` and `hasMany` reads from the map, so add it to your hottest models even with this mode on. The mode is off by default while it is measured on real apps. See [`all_models`](configuration.md#all_models).
 

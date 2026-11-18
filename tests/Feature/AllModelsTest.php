@@ -11,6 +11,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Vusys\QuantumSlipstreamDrive\AllModels;
 use Vusys\QuantumSlipstreamDrive\Query\IdentityMapBuilder;
 use Vusys\QuantumSlipstreamDrive\Store\IdentityMapStore;
+use Vusys\QuantumSlipstreamDrive\Tests\Models\ComposedBuilderCountry;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\OwnBuilderCountry;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\PlainCountry;
 use Vusys\QuantumSlipstreamDrive\Tests\Models\PlainUser;
@@ -175,6 +176,25 @@ final class AllModelsTest extends TestCase
         });
 
         $this->assertSame(1, $sql);
+    }
+
+    #[Test]
+    public function a_model_whose_own_builder_composes_the_identity_map_is_kept_in_step(): void
+    {
+        $id = ComposedBuilderCountry::query()->insertGetId(['name' => 'Iceland']);
+        $iceland = ComposedBuilderCountry::query()->find($id);
+        $this->assertInstanceOf(ComposedBuilderCountry::class, $iceland);
+
+        $sql = $this->countSql(function () use ($id): void {
+            ComposedBuilderCountry::query()->find($id);
+        });
+        $this->assertSame(0, $sql);
+
+        $iceland->update(['name' => 'Ísland']);
+        $this->assertSame('Ísland', ComposedBuilderCountry::query()->where('name', 'Ísland')->first()?->name);
+
+        $iceland->delete();
+        $this->assertNull(ComposedBuilderCountry::query()->find($id));
     }
 
     #[Test]
