@@ -6,7 +6,7 @@ All notable changes to `vusys/laravel-quantum-slipstream-drive` are documented h
 
 ## \[0.3.0\] - 2026-11-18
 
-The SELECT memo: an identical SELECT is answered from memory until anything could have changed its rows.
+The SELECT memo: an identical SELECT is answered from memory until this process changes anything, or until its TTL passes, which bounds how late another process's writes are seen.
 
 ### Added
 
